@@ -3,15 +3,17 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { AgentRunError, type AgentRuntime } from "@banglaclaw/agent";
 import { requiredApiKeyEnv } from "@banglaclaw/providers";
-import { SessionManager, type RunRecord, type Session } from "@banglaclaw/session";
+import { InMemorySessionStore, SessionManager, type RunRecord, type Session } from "@banglaclaw/session";
+import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
 import { ApiKeyAuthenticator } from "@banglaclaw/auth";
 import { TelegramApi } from "@banglaclaw/channels";
 import { startGateway, type RunningGateway } from "@banglaclaw/gateway";
-import { BanglaClawError, createLogger, parseLogLevel } from "@banglaclaw/shared";
+import { BanglaClawError, createLogger, parseLogLevel, type LoadedConfig } from "@banglaclaw/shared";
 import { AllowlistPolicy } from "@banglaclaw/tools";
 import type { McpManager, McpServerStatus } from "@banglaclaw/mcp";
 import { buildRegistry, connectMcp, createRuntime, load, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
 import { setupChannels } from "./channels.js";
+import { setupKnowledge, type KnowledgeSetup } from "./knowledge.js";
 import { bold, createRenderer, dim, green, red, yellow } from "./render.js";
 
 const CHANNEL = "cli";
@@ -47,9 +49,10 @@ function memoryNotice(services: Services): void {
 }
 
 export async function agentRun(message: string, options: SessionOption): Promise<void> {
-  const { runtime, services, mcp } = await createRuntime(options);
+  const { runtime, services, mcp, knowledge } = await createRuntime(options);
   try {
     reportMcpFailures(mcp);
+    await prepareKnowledge(knowledge, false);
     const { session } = await resolveSession(runtime, services, options.session);
     const controller = new AbortController();
     process.once("SIGINT", () => controller.abort());
@@ -62,7 +65,11 @@ export async function agentRun(message: string, options: SessionOption): Promise
 }
 
 export async function chat(options: SessionOption): Promise<void> {
-  const { runtime, services, mcp } = await createRuntime(options);
+  const { runtime, services, mcp, knowledge } = await createRuntime(options);
+  await prepareKnowledge(knowledge, true).catch(async (error: unknown) => {
+    await services.close();
+    throw error;
+  });
   let { session, created } = await resolveSession(runtime, services, options.session).catch(async (error: unknown) => {
     await services.close();
     throw error;
@@ -326,7 +333,7 @@ runtime:
   timeoutMs: 60000
 
 tools:
-  allow: [calculator, current_datetime]   # add "bangladesh__*" to enable an MCP server's tools
+  allow: [calculator, current_datetime, search_knowledge, remember, recall, forget]   # add "bangladesh__*" for an MCP server
 
 storage:
   provider: memory                # or: postgres (needs DATABASE_URL, then \`banglaclaw db migrate\`)
@@ -334,6 +341,24 @@ storage:
 
 memory:
   maxHistoryMessages: 20
+  longTerm:
+    enabled: false               # remember/recall/forget tools, scoped per user/chat
+    autoRecall: true             # add relevant memories to the prompt each run
+    recallLimit: 5
+    maxPerOwner: 200
+
+embeddings:
+  model: text-embedding-3-small  # uses OPENAI_API_KEY (or EMBEDDINGS_API_KEY)
+  # baseUrl: http://localhost:11434/v1   # e.g. Ollama with model: bge-m3
+
+knowledge:
+  enabled: false                 # search_knowledge tool (RAG over your documents)
+  vectorStore: memory            # memory (rebuilt on start) | qdrant (persistent)
+  vectorStoreUrl: http://localhost:56333   # Qdrant from docker/compose.yaml
+  sources: []                    # files/dirs ingested on start, e.g. [docs/faq, policies.pdf]
+  chunkSize: 1200
+  chunkOverlap: 150
+  searchLimit: 5
 
 gateway:
   host: 127.0.0.1            # use 0.0.0.0 only behind a reverse proxy / firewall
@@ -426,10 +451,12 @@ export async function doctor(options: GlobalOptions): Promise<void> {
   else if (hasKey) ok(`${keyEnv} is set`);
   else fail(`${keyEnv} is not set — export it or add it to your environment`);
 
+  // Knowledge/memory tools are allowed by default but only exist when enabled; don't flag them as unknown.
+  const optional = new Set(["search_knowledge", "remember", "recall", "forget"]);
   const registry = buildRegistry();
-  const unknown = config.tools.allow.filter((name) => registry.get(name) === undefined);
+  const unknown = config.tools.allow.filter((name) => registry.get(name) === undefined && !optional.has(name) && !name.includes("__"));
   if (unknown.length > 0) warn(`Unknown tools in tools.allow: ${unknown.join(", ")}`);
-  ok(`Tools allowed: ${config.tools.allow.filter((n) => registry.get(n) !== undefined).join(", ") || "(none)"}`);
+  ok(`Tools allowed: ${config.tools.allow.join(", ") || "(none)"}`);
   ok(`Limits: ${config.runtime.maxIterations} iterations, ${config.runtime.maxToolCalls} tool calls, ${config.runtime.timeoutMs}ms timeout`);
 
   try {
@@ -459,6 +486,25 @@ export async function doctor(options: GlobalOptions): Promise<void> {
       if (denied > 0) warn(`${denied} MCP tools are not in tools.allow (add e.g. "<server>__*" to enable them)`);
     } finally {
       await mcp.close();
+    }
+  }
+
+  if (config.knowledge.enabled || config.memory.longTerm.enabled) {
+    try {
+      const knowledge = setupKnowledge(loaded, new InMemorySessionStore(), createLogger({ level: "error" }));
+      await (knowledge.kb ?? knowledge.memory)?.init();
+      ok(`Knowledge: ${config.embeddings.model} embeddings, ${knowledge.vectorStore} vector store${knowledge.vectorStore === "qdrant" ? ` (${config.knowledge.vectorStoreUrl})` : ""}`);
+      if (knowledge.kb !== undefined) {
+        ok(`Knowledge base: ${config.knowledge.sources.length} source path(s)${knowledge.vectorStore === "qdrant" ? `, ${(await knowledge.kb.listDocuments()).length} documents stored` : ""}`);
+      }
+      if (knowledge.memory !== undefined) {
+        if (knowledge.vectorStore === "memory") warn("Long-term memory uses the in-memory vector store and is lost on restart");
+        else ok("Long-term memory: enabled");
+      }
+      const unallowed = knowledge.tools.filter((t) => !new AllowlistPolicy(config.tools.allow).check(t).allowed).map((t) => t.name);
+      if (unallowed.length > 0) warn(`Not in tools.allow: ${unallowed.join(", ")}`);
+    } catch (error) {
+      fail(`Knowledge: ${describe(error)}`);
     }
   }
 
@@ -536,6 +582,12 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   }
 
   const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL, "info") });
+  try {
+    await prepareKnowledge(bundle.knowledge, true);
+  } catch (error) {
+    await services.close();
+    throw error;
+  }
   let channels;
   try {
     channels = setupChannels(services.loaded, bundle.runtime, services.sessions, logger);
@@ -563,10 +615,12 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       skills: bundle.skills,
       agent: { name: config.agent.name, model: bundle.providerId },
       config: gatewayConfig,
-      version: "0.5.0",
+      version: "0.6.0",
       logger,
       routes: channels.routes,
       webChat: config.channels.web.enabled,
+      ...(bundle.knowledge.kb !== undefined && { knowledge: { kb: bundle.knowledge.kb, searchLimit: config.knowledge.searchLimit, minScore: config.knowledge.minScore } }),
+      ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
     });
   } catch (error) {
     await services.close();
@@ -654,4 +708,88 @@ export async function keyRevoke(id: string, options: GlobalOptions): Promise<voi
     if (!(await auth.store.revokeApiKey(id))) throw new BanglaClawError("KEY_NOT_FOUND", `No active key with id ${id}`);
     console.log(`${green("✔")} Revoked key ${id}`);
   });
+}
+
+/** Ingests knowledge.sources before a run/serve and reports on stderr. */
+async function prepareKnowledge(knowledge: KnowledgeSetup, verbose: boolean): Promise<void> {
+  if (knowledge.kb === undefined) return;
+  const { ingested, skipped, errors } = await knowledge.ingestSources();
+  if (verbose || ingested > 0) {
+    process.stderr.write(dim(`knowledge (${knowledge.vectorStore}): ${ingested} documents ingested, ${skipped} unchanged\n`));
+  }
+  for (const e of errors) process.stderr.write(yellow(`! could not ingest ${e.path}: ${e.error}\n`));
+  if (knowledge.vectorStore === "memory" && verbose) {
+    process.stderr.write(dim("  in-memory vectors are rebuilt on every start; use knowledge.vectorStore: qdrant to persist\n"));
+  }
+}
+
+function openKnowledge(options: GlobalOptions): { knowledge: KnowledgeSetup; loaded: LoadedConfig } {
+  const loaded = load(options);
+  const knowledge = setupKnowledge(loaded, new InMemorySessionStore(), createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }));
+  return { knowledge, loaded };
+}
+
+function requireKb(knowledge: KnowledgeSetup): KnowledgeBase {
+  if (knowledge.kb === undefined) throw new BanglaClawError("KNOWLEDGE_DISABLED", "knowledge.enabled is false in banglaclaw.yaml");
+  return knowledge.kb;
+}
+
+export async function kbIngest(paths: string[], options: GlobalOptions): Promise<void> {
+  const { knowledge, loaded } = openKnowledge(options);
+  const kb = requireKb(knowledge);
+  if (knowledge.vectorStore === "memory") {
+    throw new BanglaClawError("PERSISTENT_STORE_REQUIRED", "knowledge.vectorStore is memory, so ingested documents would vanish on exit. Use qdrant, or list files under knowledge.sources to ingest them on every start.");
+  }
+  // Paths are typed relative to the shell's cwd; sources are named relative to the config file like knowledge.sources.
+  const { results, errors } = await kb.ingestPaths(paths.map((p) => resolve(p)), loaded.baseDir);
+  for (const r of results) console.log(`${r.skipped ? dim("= unchanged") : green("+ ingested ")} ${r.source} ${dim(`(${r.chunks} chunks)`)}`);
+  for (const e of errors) console.log(red(`✖ ${e.path}: ${e.error}`));
+  if (results.length === 0 && errors.length === 0) console.log(dim("No supported files found (.txt .md .html .pdf)."));
+  if (errors.length > 0) process.exitCode = 1;
+}
+
+export async function kbList(options: GlobalOptions): Promise<void> {
+  const { knowledge } = openKnowledge(options);
+  const kb = requireKb(knowledge);
+  if (knowledge.vectorStore === "memory") await prepareKnowledge(knowledge, false);
+  const docs = await kb.listDocuments();
+  if (docs.length === 0) console.log(dim("No documents."));
+  for (const d of docs) console.log(`${bold(d.source)}  ${d.title !== d.source ? d.title : ""} ${dim(`${d.chunkCount} chunks · ${d.ingestedAt}`)}`);
+}
+
+export async function kbSearch(query: string, options: GlobalOptions & { limit: string }): Promise<void> {
+  const { knowledge, loaded } = openKnowledge(options);
+  const kb = requireKb(knowledge);
+  if (knowledge.vectorStore === "memory") await prepareKnowledge(knowledge, false);
+  const hits = await kb.search(query, { limit: Number(options.limit), minScore: loaded.config.knowledge.minScore });
+  if (hits.length === 0) console.log(dim("No matches."));
+  for (const h of hits) {
+    console.log(`${bold(`${h.source}#${h.chunkIndex}`)} ${dim(`score ${h.score}`)}`);
+    console.log(`  ${h.text.slice(0, 300).replace(/\s+/g, " ")}${h.text.length > 300 ? "…" : ""}`);
+  }
+}
+
+export async function kbDelete(source: string, options: GlobalOptions): Promise<void> {
+  const { knowledge } = openKnowledge(options);
+  if (!(await requireKb(knowledge).deleteDocument(source))) throw new BanglaClawError("DOCUMENT_NOT_FOUND", `No document ${source}`);
+  console.log(`${green("✔")} Deleted ${source}`);
+}
+
+function requireMemory(knowledge: KnowledgeSetup): LongTermMemory {
+  if (knowledge.memory === undefined) throw new BanglaClawError("MEMORY_DISABLED", "memory.longTerm.enabled is false in banglaclaw.yaml");
+  if (knowledge.vectorStore === "memory") throw new BanglaClawError("PERSISTENT_STORE_REQUIRED", "Long-term memories only persist with knowledge.vectorStore: qdrant");
+  return knowledge.memory;
+}
+
+export async function memoryList(options: GlobalOptions & { owner: string }): Promise<void> {
+  const memory = requireMemory(openKnowledge(options).knowledge);
+  const items = await memory.list(options.owner);
+  if (items.length === 0) console.log(dim(`No memories for ${options.owner}.`));
+  for (const m of items) console.log(`${bold(m.id)}  ${m.text} ${dim(m.createdAt)}`);
+}
+
+export async function memoryForget(id: string, options: GlobalOptions & { owner: string }): Promise<void> {
+  const memory = requireMemory(openKnowledge(options).knowledge);
+  if (!(await memory.forget(options.owner, id))) throw new BanglaClawError("MEMORY_NOT_FOUND", `No memory ${id} for ${options.owner}`);
+  console.log(`${green("✔")} Forgot ${id}`);
 }

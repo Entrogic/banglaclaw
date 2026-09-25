@@ -19,6 +19,10 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | POST | `/v1/sessions/:id/messages` | Send a message, i.e. run the agent in that session: `{ text }` |
 | GET | `/v1/sessions/:id/runs?limit=` | Runs of a session, with tool calls |
 | GET | `/v1/runs/:id` | One run |
+| GET | `/v1/knowledge/search?q=&limit=` | Search the knowledge base (when enabled) |
+| GET | `/v1/knowledge/documents` | Ingested documents |
+| GET | `/v1/memories` | The caller's long-term memories |
+| DELETE | `/v1/memories/:id` | Delete one of the caller's memories (204) |
 | GET | `/v1/ws` | WebSocket (see below) |
 
 - `externalId` is the channel-native conversation id (for example a chat id). It is namespaced per user, so two API users never share or discover each other's sessions.

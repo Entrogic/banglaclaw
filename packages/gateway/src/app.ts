@@ -5,6 +5,7 @@ import { cors } from "hono/cors";
 import type { UpgradeWebSocket } from "hono/ws";
 import type { z } from "zod";
 import type { Principal } from "@banglaclaw/auth";
+import { ownerForUser } from "@banglaclaw/knowledge";
 import { createLogger, type Logger } from "@banglaclaw/shared";
 import { GatewayContext, type GatewayDeps } from "./context.js";
 import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
@@ -188,6 +189,32 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
       if (session?.userId === c.get("principal").user.id) return c.json({ run: runJson(run) });
     }
     throw new HttpError(404, "run_not_found", "Run not found");
+  });
+
+  v1.get("/knowledge/documents", async (c) => {
+    if (deps.knowledge === undefined) throw new HttpError(404, "knowledge_disabled", "Knowledge base is not enabled");
+    return c.json({ documents: await deps.knowledge.kb.listDocuments() });
+  });
+
+  v1.get("/knowledge/search", async (c) => {
+    if (deps.knowledge === undefined) throw new HttpError(404, "knowledge_disabled", "Knowledge base is not enabled");
+    const q = c.req.query("q")?.trim() ?? "";
+    if (q === "" || q.length > 500) throw new HttpError(400, "invalid_request", "q is required (max 500 characters)");
+    const limit = limitQuery(20, deps.knowledge.searchLimit).parse(c.req.query("limit"));
+    return c.json({ results: await deps.knowledge.kb.search(q, { limit, minScore: deps.knowledge.minScore }) });
+  });
+
+  v1.get("/memories", async (c) => {
+    if (deps.memory === undefined) throw new HttpError(404, "memory_disabled", "Long-term memory is not enabled");
+    const memories = await deps.memory.list(ownerForUser(c.get("principal").user.id));
+    return c.json({ memories: memories.map(({ id, text, createdAt }) => ({ id, text, createdAt })) });
+  });
+
+  v1.delete("/memories/:id", async (c) => {
+    if (deps.memory === undefined) throw new HttpError(404, "memory_disabled", "Long-term memory is not enabled");
+    const forgotten = await deps.memory.forget(ownerForUser(c.get("principal").user.id), c.req.param("id"));
+    if (!forgotten) throw new HttpError(404, "memory_not_found", "Memory not found");
+    return c.body(null, 204);
   });
 
   app.route("/v1", v1);

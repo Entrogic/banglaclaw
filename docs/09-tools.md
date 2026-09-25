@@ -28,6 +28,10 @@ Implemented in `packages/tools`. `ToolRegistry` holds tools and produces provide
 - `calculator` — arithmetic via a hand-written parser (no `eval`), accepts Bangla digits
 - `current_datetime` — current time in a given or configured IANA timezone, formatted in English and Bangla
 
+## Knowledge and memory tools (v0.6)
+
+When enabled (docs/07): `search_knowledge` (safe), `remember` (sensitive), `recall` (safe) and `forget` (sensitive). The memory tools are scoped to the session owner on the server side. They are in the default `tools.allow` because they only exist once their feature is enabled.
+
 ## MCP tools (v0.3)
 
 Tools discovered on MCP servers are registered as `<server>__<tool>` with risk `sensitive` or `destructive` — see docs/10.

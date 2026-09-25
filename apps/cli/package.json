@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/cli",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -23,6 +23,7 @@
     "@banglaclaw/auth": "workspace:*",
     "@banglaclaw/channels": "workspace:*",
     "@banglaclaw/gateway": "workspace:*",
+    "@banglaclaw/knowledge": "workspace:*",
     "@banglaclaw/mcp": "workspace:*",
     "@banglaclaw/providers": "workspace:*",
     "@banglaclaw/session": "workspace:*",

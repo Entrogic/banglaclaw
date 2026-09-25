@@ -28,7 +28,7 @@ Security is a core architecture requirement, not a later feature.
 - Timeouts
 - Network restrictions
 
-## Implemented controls (v0.5)
+## Implemented controls (v0.6)
 
 - Deny-by-default tool allowlist; destructive tools are always denied (no confirmation flow yet)
 - Input and output validation, per-call timeouts and a run timeout, and iteration / tool-call limits
@@ -45,6 +45,10 @@ Security is a core architecture requirement, not a later feature.
   - Telegram webhook secret-token and WhatsApp `X-Hub-Signature-256` verification (timing-safe)
   - tokens from the environment only, and never included in error messages
   - web chat served with a strict CSP — see docs/11
+- Knowledge and memory:
+  - memories are owner-scoped on the server side; secrets are refused by `remember`
+  - retrieved passages and memories are framed as data, not instructions
+  - the knowledge base is readable by every bot user, so don't ingest per-user private data — see docs/07
 
 ## Principle
 

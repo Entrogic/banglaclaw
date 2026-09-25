@@ -25,17 +25,20 @@ PostgreSQL is the initial recommended relational database.
 - A run and its tool calls are inserted in a single transaction. Messages are appended in a transaction that also bumps `sessions.updated_at`.
 - Local database: `docker compose -f docker/compose.yaml up -d` starts PostgreSQL 17 on `localhost:54329`, and also creates a `banglaclaw_test` database for integration tests.
 
+## Vector storage (v0.6)
+
+Knowledge chunks and long-term memories live in a vector store, not in PostgreSQL: Qdrant collections `banglaclaw_knowledge` and `banglaclaw_memories` (configurable), or the in-memory store. See docs/07.
+
 ## Planned tables
 
 ```text
-memories     (v0.6, long-term memory)
 audit_logs   (v1.0, security hardening)
 ```
 
 ## Optional infrastructure
 
 - Redis — caching, queues and ephemeral coordination
-- Qdrant — vector retrieval
+- Qdrant — vector retrieval (implemented in v0.6)
 - S3-compatible storage — files and artifacts
 
 Storage interfaces should remain replaceable.

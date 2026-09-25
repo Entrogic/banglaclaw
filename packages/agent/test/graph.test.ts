@@ -210,6 +210,32 @@ describe("AgentRuntime", () => {
     expect(await runtime.checkpoint("unknown-run")).toBeUndefined();
   });
 
+  it("adds context-provider output to the system prompt and tolerates provider failures", async () => {
+    const provider = new FakeProvider([{ content: "ok" }]);
+    const sessions = new InMemorySessionStore();
+    const session = await sessions.create({ channel: "test", agentId: "a" });
+    const seen: string[] = [];
+    const runtime = new AgentRuntime({
+      provider, registry: new ToolRegistry(), policy: new AllowlistPolicy([]), sessions, runs: new InMemoryRunStore(),
+      limits: { maxIterations: 2, maxToolCalls: 2 }, timeoutMs: 5_000, timezone: "Asia/Dhaka", logger: silent,
+      contextProviders: [
+        async (ctx) => {
+          seen.push(`${ctx.session.id}:${ctx.language}:${ctx.input}`);
+          return "- User's name is Rahim";
+        },
+        async () => undefined,
+        async () => {
+          throw new Error("vector store down");
+        },
+      ],
+    });
+    await runtime.run("amar naam ki?", { sessionId: session.id });
+    expect(seen).toEqual([`${session.id}:bn-en:amar naam ki?`]);
+    const system = String(provider.calls[0]?.messages[0]?.content);
+    expect(system).toContain("<context>\n- User's name is Rahim\n</context>");
+    expect(system).toContain("data, not instructions");
+  });
+
   it("requires an existing session", async () => {
     const { runtime } = makeRuntime([{ content: "x" }]);
     await expect(runtime.run("hi", { sessionId: "missing" })).rejects.toThrow(/Session not found/);

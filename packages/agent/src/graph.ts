@@ -25,6 +25,8 @@ export interface AgentGraphOptions {
   limits: RunLimits;
   /** Skills activated for this run (selected by the runtime). */
   skills?: readonly Skill[];
+  /** Context blocks added to the system prompt (from context providers). */
+  context?: readonly string[];
   /** Persists graph state per run (thread_id = runId) when provided. */
   checkpointer?: BaseCheckpointSaver;
   signal: AbortSignal;
@@ -65,6 +67,7 @@ export function buildAgentGraph(options: AgentGraphOptions) {
         toolNames: allowedTools.map((t) => t.name),
         timezone: options.timezone,
         skills,
+        context: options.context ?? [],
       }),
     );
 

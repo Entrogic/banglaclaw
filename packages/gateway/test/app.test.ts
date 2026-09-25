@@ -172,3 +172,27 @@ describe("gateway extras", () => {
     expect(await res.text()).toBe("hooked");
   });
 });
+
+describe("gateway knowledge and memory", () => {
+  it("searches the knowledge base and manages the caller's memories", async () => {
+    const { HashEmbedder, InMemoryVectorStore, KnowledgeBase, LongTermMemory, ownerForUser } = await import("@banglaclaw/knowledge");
+    const { deps, alice, bob } = await makeDeps();
+    const kb = new KnowledgeBase({ store: new InMemoryVectorStore(), embedder: new HashEmbedder(), collection: "kb", chunkSize: 500, chunkOverlap: 0 });
+    await kb.ingestText({ source: "faq.md", text: "Delivery inside Dhaka costs 60 taka." });
+    const memory = new LongTermMemory({ store: new InMemoryVectorStore(), embedder: new HashEmbedder(), collection: "mem", maxPerOwner: 10 });
+    const app = createGatewayApp({ ...deps, knowledge: { kb, searchLimit: 3, minScore: 0 }, memory });
+
+    const search = (await (await app.request("/v1/knowledge/search?q=delivery%20Dhaka", get(alice))).json()) as { results: { source: string }[] };
+    expect(search.results[0]?.source).toBe("faq.md");
+    expect((await app.request("/v1/knowledge/search", get(alice))).status).toBe(400);
+    expect(await (await app.request("/v1/knowledge/documents", get(alice))).json()).toMatchObject({ documents: [{ source: "faq.md" }] });
+
+    const me = (await (await app.request("/v1/me", get(alice))).json()) as { user: { id: string } };
+    const { memory: m } = await memory.remember(ownerForUser(me.user.id), "Alice prefers Bangla replies");
+    expect(await (await app.request("/v1/memories", get(alice))).json()).toMatchObject({ memories: [{ id: m.id, text: "Alice prefers Bangla replies" }] });
+    expect(await (await app.request("/v1/memories", get(bob))).json()).toEqual({ memories: [] });
+    expect((await app.request(`/v1/memories/${m.id}`, { method: "DELETE", ...get(bob) })).status).toBe(404);
+    expect((await app.request(`/v1/memories/${m.id}`, { method: "DELETE", ...get(alice) })).status).toBe(204);
+    expect((await createGatewayApp(deps).request("/v1/memories", get(alice))).status).toBe(404);
+  });
+});

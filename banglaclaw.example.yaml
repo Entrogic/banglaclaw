@@ -17,6 +17,10 @@ tools:
   allow:
     - calculator
     - current_datetime
+    - search_knowledge
+    - remember
+    - recall
+    - forget
     - bangladesh__*        # every tool of the "bangladesh" MCP server below
 
 storage:
@@ -25,6 +29,24 @@ storage:
 
 memory:
   maxHistoryMessages: 20
+  longTerm:
+    enabled: false               # remember/recall/forget tools, scoped per user/chat
+    autoRecall: true             # add relevant memories to the prompt each run
+    recallLimit: 5
+    maxPerOwner: 200
+
+embeddings:
+  model: text-embedding-3-small  # uses OPENAI_API_KEY (or EMBEDDINGS_API_KEY)
+  # baseUrl: http://localhost:11434/v1   # e.g. Ollama with model: bge-m3
+
+knowledge:
+  enabled: false                 # search_knowledge tool (RAG over your documents)
+  vectorStore: memory            # memory (rebuilt on start) | qdrant (persistent)
+  vectorStoreUrl: http://localhost:56333   # Qdrant from docker/compose.yaml
+  sources: []                    # files/dirs ingested on start, e.g. [docs/faq, policies.pdf]
+  chunkSize: 1200
+  chunkOverlap: 150
+  searchLimit: 5
 
 gateway:
   host: 127.0.0.1            # use 0.0.0.0 only behind a reverse proxy / firewall

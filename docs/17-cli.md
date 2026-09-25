@@ -16,6 +16,8 @@ banglaclaw db migrate | status                 # PostgreSQL schema + checkpoint 
 banglaclaw serve [--port 3000] [--host …]      # gateway (REST, SSE, WebSocket, /chat) + enabled channels (docs/11, 18)
 banglaclaw key create --user <name> [--name]   # issue an API key (shown once; postgres storage)
 banglaclaw key list [--user <name>] | revoke <id>
+banglaclaw kb ingest <paths…> | list | search <q> | delete <source>   # knowledge base (docs/07)
+banglaclaw memory list [--owner cli:local] | forget <id> [--owner …]  # long-term memories
 banglaclaw init [--force]                      # write banglaclaw.yaml
 banglaclaw doctor                              # Node, config, keys, tools, skills, storage
 ```

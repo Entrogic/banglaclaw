@@ -1,5 +1,6 @@
 import type { Hono } from "hono";
 import type { AgentRuntime } from "@banglaclaw/agent";
+import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
 import type { ApiKeyAuthenticator, Principal } from "@banglaclaw/auth";
 import type { RunStore, Session, SessionStore } from "@banglaclaw/session";
 import { ConcurrencyLimiter, RateLimiter, type BanglaClawConfig, type Logger } from "@banglaclaw/shared";
@@ -25,6 +26,8 @@ export interface GatewayDeps {
   routes?: Hono[];
   /** Serve the browser chat page at /chat. */
   webChat?: boolean;
+  knowledge?: { kb: KnowledgeBase; searchLimit: number; minScore: number };
+  memory?: LongTermMemory;
   logger?: Logger;
 }
 

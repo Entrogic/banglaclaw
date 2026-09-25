@@ -31,6 +31,28 @@ storage:
 
 memory:
   maxHistoryMessages: 20   # short-term memory window
+  longTerm:
+    enabled: false         # remember/recall/forget tools (docs/07)
+    autoRecall: true
+    recallLimit: 5
+    maxPerOwner: 200
+    collection: banglaclaw_memories
+
+embeddings:
+  model: text-embedding-3-small
+  # dimensions: 512
+  # baseUrl: http://localhost:11434/v1
+
+knowledge:
+  enabled: false           # search_knowledge tool
+  vectorStore: memory      # memory | qdrant
+  vectorStoreUrl: http://localhost:6333
+  collection: banglaclaw_knowledge
+  sources: []              # ingested on start
+  chunkSize: 1200
+  chunkOverlap: 150
+  searchLimit: 5
+  minScore: 0.2
 
 skills:
   dirs: [skills]
@@ -100,6 +122,8 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `BANGLACLAW_GATEWAY_PORT`, `BANGLACLAW_GATEWAY_HOST` | Override `gateway.port` / `gateway.host` |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | Telegram channel secrets |
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp channel secrets |
+| `QDRANT_URL`, `QDRANT_API_KEY` | Override `knowledge.vectorStoreUrl`; Qdrant API key |
+| `EMBEDDINGS_API_KEY` | Embeddings key (defaults to `OPENAI_API_KEY`) |
 | `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |
 | `BANGLACLAW_LOG_LEVEL` | `debug` \| `info` \| `warn` (default) \| `error`; JSON logs go to stderr |

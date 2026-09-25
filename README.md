@@ -54,6 +54,16 @@ export TELEGRAM_BOT_TOKEN=123456:ABC...   # from @BotFather (or put it in .env)
 pnpm banglaclaw serve                     # long polling; also serves the web chat at /chat
 ```
 
+Knowledge base and long-term memory (see [Memory & Knowledge](docs/07-memory.md)):
+
+```bash
+docker compose -f docker/compose.yaml up -d      # includes Qdrant on :56333
+# banglaclaw.yaml: knowledge: {enabled: true, vectorStore: qdrant, vectorStoreUrl: http://localhost:56333}
+#                  memory: {longTerm: {enabled: true}}
+pnpm banglaclaw kb ingest docs/faq policies.pdf
+pnpm banglaclaw agent run "ঢাকার বাইরে ডেলিভারি চার্জ কত?"
+```
+
 Persistent sessions with PostgreSQL:
 
 ```bash
@@ -110,5 +120,6 @@ Pre-alpha. Implemented so far:
 - **v0.3 MCP**: MCP client (stdio and Streamable HTTP), tool discovery into the permission-checked tool registry, and a bundled Bangladesh reference-data MCP server.
 - **v0.4 Gateway**: HTTP API (Hono) with REST, SSE and WebSocket streaming, API-key authentication with per-user isolation, and per-key rate limits.
 - **v0.5 Channels**: Telegram (polling or webhook), WhatsApp Cloud API, a browser chat page, and allowlist access with per-chat rate limits.
+- **v0.6 Knowledge**: RAG over your documents (txt/md/html/pdf, Bangla-aware chunking, Qdrant or in-memory vectors) and owner-scoped long-term memory.
 
-Next up is Knowledge / RAG (v0.6) — see the [roadmap](docs/20-roadmap.md).
+Next up is Multi-agent (v0.7) — see the [roadmap](docs/20-roadmap.md).

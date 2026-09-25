@@ -1,15 +1,28 @@
 import { randomUUID } from "node:crypto";
 import { HumanMessage } from "@langchain/core/messages";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
-import { BanglaClawError, createLogger, type Logger, type RunEvent, type ToolAuditEvent } from "@banglaclaw/shared";
+import { BanglaClawError, createLogger, type Language, type Logger, type RunEvent, type ToolAuditEvent } from "@banglaclaw/shared";
 import type { ModelProvider } from "@banglaclaw/providers";
-import { trimHistory, type RunRecord, type RunStatus, type RunStore, type SessionStore } from "@banglaclaw/session";
+import { trimHistory, type RunRecord, type RunStatus, type RunStore, type Session, type SessionStore } from "@banglaclaw/session";
 import type { SkillSet } from "@banglaclaw/skills";
 import type { PermissionPolicy, ToolRegistry } from "@banglaclaw/tools";
 import { detectLanguage } from "./language.js";
 import { buildAgentGraph, type RunLimits } from "./graph.js";
 import { SYSTEM_PROMPT_VERSION } from "./prompts.js";
 import type { AgentState } from "./state.js";
+
+export interface RunContext {
+  session: Session;
+  input: string;
+  language: Language;
+  signal: AbortSignal;
+}
+
+/**
+ * Adds background context to a run's system prompt (e.g. recalled long-term memories).
+ * Returning undefined adds nothing. Failures are logged and skipped, never fatal.
+ */
+export type ContextProvider = (ctx: RunContext) => Promise<string | undefined>;
 
 export interface AgentRuntimeOptions {
   provider: ModelProvider;
@@ -27,6 +40,7 @@ export interface AgentRuntimeOptions {
   /** Maximum skills activated per message. Default 2. */
   maxActiveSkills?: number;
   checkpointer?: BaseCheckpointSaver;
+  contextProviders?: ContextProvider[];
   logger?: Logger;
 }
 
@@ -75,6 +89,20 @@ export class AgentRuntime {
     return tuple?.checkpoint.channel_values as Partial<AgentState> | undefined;
   }
 
+  async #collectContext(ctx: RunContext, log: Logger): Promise<string[]> {
+    const providers = this.#options.contextProviders ?? [];
+    const results = await Promise.allSettled(providers.map((p) => p(ctx)));
+    const blocks: string[] = [];
+    for (const r of results) {
+      if (r.status === "fulfilled") {
+        if (r.value !== undefined && r.value.trim() !== "") blocks.push(r.value.trim());
+      } else {
+        log.warn("context provider failed", { error: r.reason });
+      }
+    }
+    return blocks;
+  }
+
   async run(input: string, options: RunOptions): Promise<RunRecord> {
     const text = input.trim();
     if (text.length === 0) throw new BanglaClawError("EMPTY_INPUT", "Input message is empty");
@@ -96,6 +124,7 @@ export class AgentRuntime {
     const language = detectLanguage(text);
     const skills = (this.#options.skills?.select(text, this.#options.maxActiveSkills ?? 2) ?? []).map((m) => m.skill);
     const skillNames = skills.map((s) => s.name);
+    const context = await this.#collectContext({ session, input: text, language, signal }, log);
 
     const graph = buildAgentGraph({
       runId,
@@ -106,6 +135,7 @@ export class AgentRuntime {
       policy,
       limits,
       skills,
+      context,
       ...(this.#options.checkpointer !== undefined && { checkpointer: this.#options.checkpointer }),
       signal,
       emit,

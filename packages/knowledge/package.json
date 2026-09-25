@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/session",
+  "name": "@banglaclaw/knowledge",
   "version": "0.6.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,14 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@banglaclaw/agent": "workspace:*",
     "@banglaclaw/shared": "workspace:*",
-    "@langchain/core": "^1.2.12"
+    "@banglaclaw/tools": "workspace:*",
+    "unpdf": "^1.8.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@banglaclaw/providers": "workspace:*",
+    "@banglaclaw/session": "workspace:*"
   }
 }

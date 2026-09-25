@@ -16,7 +16,7 @@ describe("loadConfig", () => {
     expect(source).toBeUndefined();
     expect(config.models.default).toEqual({ provider: "openai-compatible", model: "gpt-4o-mini" });
     expect(config.runtime).toEqual({ maxIterations: 6, maxToolCalls: 8, timeoutMs: 60_000 });
-    expect(config.tools.allow).toEqual(["calculator", "current_datetime"]);
+    expect(config.tools.allow).toEqual(["calculator", "current_datetime", "search_knowledge", "remember", "recall", "forget"]);
     expect(config.timezone).toBe("Asia/Dhaka");
     expect(config.storage).toEqual({ provider: "memory", checkpoints: true });
     expect(config.memory.maxHistoryMessages).toBe(20);
@@ -29,6 +29,9 @@ describe("loadConfig", () => {
     expect(config.channels.telegram).toEqual({ enabled: false, mode: "polling", access: "allowlist", allowedUserIds: [], rateLimitPerMinute: 10 });
     expect(config.channels.whatsapp).toMatchObject({ enabled: false, access: "allowlist", allowedNumbers: [] });
     expect(config.channels.web).toEqual({ enabled: true });
+    expect(config.memory.longTerm).toEqual({ enabled: false, autoRecall: true, recallLimit: 5, maxPerOwner: 200, collection: "banglaclaw_memories" });
+    expect(config.embeddings).toEqual({ provider: "openai-compatible", model: "text-embedding-3-small" });
+    expect(config.knowledge).toMatchObject({ enabled: false, vectorStore: "memory", sources: [], chunkSize: 1200, chunkOverlap: 150 });
     expect(secrets).toEqual({});
   });
 
@@ -116,6 +119,14 @@ describe("loadConfig", () => {
     expect(config.channels.whatsapp.phoneNumberId).toBe("1098");
     expect(secrets).toMatchObject({ telegramBotToken: "123:abc", whatsappAppSecret: "s" });
     expect(() => loadConfig({ cwd: tempDir("channels:\n  telegram:\n    botToken: x\n"), env: {} })).toThrow(ConfigError);
+  });
+
+  it("reads knowledge settings, QDRANT_URL and vector secrets", () => {
+    const cwd = tempDir("knowledge:\n  enabled: true\n  vectorStore: qdrant\n  sources: [docs]\nembeddings:\n  model: bge-m3\n  baseUrl: http://localhost:11434/v1\n");
+    const { config, secrets } = loadConfig({ cwd, env: { QDRANT_URL: "http://localhost:56333", QDRANT_API_KEY: "q", EMBEDDINGS_API_KEY: "e" } });
+    expect(config.knowledge).toMatchObject({ enabled: true, vectorStore: "qdrant", vectorStoreUrl: "http://localhost:56333", sources: ["docs"] });
+    expect(config.embeddings).toMatchObject({ model: "bge-m3", baseUrl: "http://localhost:11434/v1" });
+    expect(secrets).toMatchObject({ qdrantApiKey: "q", embeddingsApiKey: "e" });
   });
 
   it("rejects an unknown provider", () => {

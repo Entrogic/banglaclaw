@@ -53,10 +53,10 @@
 
 ## v0.6 — Knowledge
 
-- [ ] RAG
-- [ ] Qdrant integration
-- [ ] Document ingestion
-- [ ] Long-term memory
+- [x] RAG
+- [x] Qdrant integration
+- [x] Document ingestion
+- [x] Long-term memory
 
 ## v0.7 — Multi-agent
 

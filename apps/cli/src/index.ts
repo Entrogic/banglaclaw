@@ -9,10 +9,16 @@ import {
   describe,
   doctor,
   init,
+  kbDelete,
+  kbIngest,
+  kbList,
+  kbSearch,
   keyCreate,
   keyList,
   keyRevoke,
   mcpList,
+  memoryForget,
+  memoryList,
   planned,
   runList,
   runShow,
@@ -30,7 +36,7 @@ loadDotEnv();
 const program = new Command()
   .name("banglaclaw")
   .description("Bangla-first AI agent runtime")
-  .version("0.5.0")
+  .version("0.6.0")
   .option("-c, --config <path>", "path to banglaclaw.yaml");
 
 const globals = () => program.opts<{ config?: string }>();
@@ -112,6 +118,30 @@ key
   .description("revoke an API key")
   .argument("<id>", "key id (the part after bck_)")
   .action((id: string) => keyRevoke(id, globals()));
+
+const kb = program.command("kb").description("manage the knowledge base (RAG)");
+kb.command("ingest").description("ingest files or directories (.txt .md .html .pdf)").argument("<paths...>").action((paths: string[]) => kbIngest(paths, globals()));
+kb.command("list").description("list ingested documents").action(() => kbList(globals()));
+kb
+  .command("search")
+  .description("search the knowledge base")
+  .argument("<query...>")
+  .option("-n, --limit <n>", "maximum results", "5")
+  .action((words: string[], opts: { limit: string }) => kbSearch(words.join(" "), { ...globals(), ...opts }));
+kb.command("delete").description("remove a document by source path").argument("<source>").action((source: string) => kbDelete(source, globals()));
+
+const memory = program.command("memory").description("inspect long-term memories (qdrant vector store)");
+memory
+  .command("list")
+  .description("list memories of an owner")
+  .option("-o, --owner <owner>", "owner id: cli:local, user:<id>, telegram:<chat id>, whatsapp:<number>", "cli:local")
+  .action((opts: { owner: string }) => memoryList({ ...globals(), ...opts }));
+memory
+  .command("forget")
+  .description("delete a memory")
+  .argument("<id>")
+  .option("-o, --owner <owner>", "owner id", "cli:local")
+  .action((id: string, opts: { owner: string }) => memoryForget(id, { ...globals(), ...opts }));
 
 program
   .command("init")

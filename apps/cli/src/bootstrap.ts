@@ -8,7 +8,8 @@ import { ConfigError, createLogger, loadConfig, parseLogLevel, type LoadedConfig
 import { SkillSet, loadSkillsFromDirs } from "@banglaclaw/skills";
 import type { PermissionPolicy } from "@banglaclaw/tools";
 import { PostgresStorage } from "@banglaclaw/storage";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { AllowlistPolicy, ToolRegistry, builtinTools, type AnyTool } from "@banglaclaw/tools";
+import { setupKnowledge, type KnowledgeSetup } from "./knowledge.js";
 
 export interface GlobalOptions {
   config?: string;
@@ -18,9 +19,10 @@ export function load(options: GlobalOptions): LoadedConfig {
   return loadConfig(options.config !== undefined ? { path: options.config } : {});
 }
 
-export function buildRegistry(mcp?: McpManager): ToolRegistry {
+export function buildRegistry(mcp?: McpManager, extra: AnyTool[] = []): ToolRegistry {
   const registry = new ToolRegistry();
   for (const tool of builtinTools) registry.register(tool);
+  for (const tool of extra) registry.register(tool);
   for (const tool of mcp?.tools() ?? []) registry.register(tool);
   return registry;
 }
@@ -107,6 +109,7 @@ export interface RuntimeBundle {
   policy: PermissionPolicy;
   skills: SkillSet;
   providerId: string;
+  knowledge: KnowledgeSetup;
 }
 
 export async function createRuntime(options: GlobalOptions): Promise<RuntimeBundle> {
@@ -122,7 +125,9 @@ export async function createRuntime(options: GlobalOptions): Promise<RuntimeBund
       await connected.close();
       await closeStorage();
     };
-    const registry = buildRegistry(mcp);
+    const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
+    const knowledge = setupKnowledge(services.loaded, services.sessions, logger);
+    const registry = buildRegistry(mcp, knowledge.tools);
     const policy = new AllowlistPolicy(config.tools.allow);
     const skills = loadSkills(services.loaded);
     const runtime = new AgentRuntime({
@@ -139,9 +144,10 @@ export async function createRuntime(options: GlobalOptions): Promise<RuntimeBund
       skills,
       maxActiveSkills: config.skills.maxActive,
       ...(services.checkpointer !== undefined && { checkpointer: services.checkpointer }),
-      logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }),
+      contextProviders: knowledge.contextProviders,
+      logger,
     });
-    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id };
+    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id, knowledge };
   } catch (error) {
     await services.close();
     await mcp?.close();

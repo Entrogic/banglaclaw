@@ -89,7 +89,8 @@ export const ConfigSchema = z.strictObject({
     })
     .prefault({}),
   tools: z
-    .strictObject({ allow: z.array(z.string().min(1)).default(["calculator", "current_datetime"]) })
+    // Knowledge/memory tools only exist when those features are enabled, so allowing them by default is safe.
+    .strictObject({ allow: z.array(z.string().min(1)).default(["calculator", "current_datetime", "search_knowledge", "remember", "recall", "forget"]) })
     .prefault({}),
   timezone: z.string().min(1).default("Asia/Dhaka"),
   storage: z
@@ -104,6 +105,44 @@ export const ConfigSchema = z.strictObject({
     .strictObject({
       /** Short-term memory window: most recent session messages sent to the model. */
       maxHistoryMessages: z.int().min(0).max(500).default(20),
+      /** Long-term memory: remember/recall/forget tools, scoped to the session owner. */
+      longTerm: z
+        .strictObject({
+          enabled: z.boolean().default(false),
+          /** Add the most relevant memories to the system prompt before each run. */
+          autoRecall: z.boolean().default(true),
+          recallLimit: z.int().min(1).max(50).default(5),
+          maxPerOwner: z.int().min(1).max(10_000).default(200),
+          collection: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).default("banglaclaw_memories"),
+        })
+        .prefault({}),
+    })
+    .prefault({}),
+  embeddings: z
+    .strictObject({
+      /** OpenAI-compatible /embeddings endpoint (OpenAI, Ollama, vLLM, …). */
+      provider: z.literal("openai-compatible").default("openai-compatible"),
+      model: z.string().min(1).default("text-embedding-3-small"),
+      /** Output dimensions (models that support shortening, e.g. text-embedding-3-*). */
+      dimensions: z.int().min(8).max(8192).optional(),
+      baseUrl: z.url().optional(),
+    })
+    .prefault({}),
+  knowledge: z
+    .strictObject({
+      enabled: z.boolean().default(false),
+      /** memory: rebuilt from `sources` on each start. qdrant: persistent (needs vectorStoreUrl). */
+      vectorStore: z.enum(["memory", "qdrant"]).default("memory"),
+      /** Qdrant URL; also used by long-term memory. */
+      vectorStoreUrl: z.url().default("http://localhost:6333"),
+      collection: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).default("banglaclaw_knowledge"),
+      /** Files/directories (relative to the config file) ingested on startup; unchanged files are skipped. */
+      sources: z.array(z.string().min(1)).default([]),
+      chunkSize: z.int().min(200).max(8_000).default(1_200),
+      chunkOverlap: z.int().min(0).max(2_000).default(150),
+      searchLimit: z.int().min(1).max(50).default(5),
+      /** Hits below this cosine similarity are dropped. */
+      minScore: z.number().min(-1).max(1).default(0.2),
     })
     .prefault({}),
   skills: z
@@ -169,6 +208,9 @@ export interface Secrets {
   whatsappAppSecret?: string;
   /** Token echoed during webhook verification (hub.verify_token). */
   whatsappVerifyToken?: string;
+  qdrantApiKey?: string;
+  /** Overrides OPENAI_API_KEY for the embeddings endpoint. */
+  embeddingsApiKey?: string;
 }
 
 export interface LoadConfigOptions {
@@ -240,6 +282,8 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
     ["whatsappAccessToken", "WHATSAPP_ACCESS_TOKEN"],
     ["whatsappAppSecret", "WHATSAPP_APP_SECRET"],
     ["whatsappVerifyToken", "WHATSAPP_VERIFY_TOKEN"],
+    ["qdrantApiKey", "QDRANT_API_KEY"],
+    ["embeddingsApiKey", "EMBEDDINGS_API_KEY"],
   ];
   for (const [key, name] of secretEnv) {
     const value = nonEmpty(env[name]);
@@ -257,7 +301,12 @@ function applyEnvOverrides(input: Record<string, unknown>, env: NodeJS.ProcessEn
   const storage = nonEmpty(env.BANGLACLAW_STORAGE);
   const gatewayPort = nonEmpty(env.BANGLACLAW_GATEWAY_PORT);
   const gatewayHost = nonEmpty(env.BANGLACLAW_GATEWAY_HOST);
+  const qdrantUrl = nonEmpty(env.QDRANT_URL);
   let raw = input;
+  if (qdrantUrl !== undefined) {
+    const current = isRecord(raw.knowledge) ? raw.knowledge : {};
+    raw = { ...raw, knowledge: { ...current, vectorStoreUrl: qdrantUrl } };
+  }
   if (gatewayPort !== undefined || gatewayHost !== undefined) {
     const current = isRecord(raw.gateway) ? raw.gateway : {};
     raw = {

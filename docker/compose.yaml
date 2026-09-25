@@ -1,6 +1,7 @@
 # Local PostgreSQL for BanglaClaw development.
 #   docker compose -f docker/compose.yaml up -d
 #   export DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw
+#   Qdrant (knowledge / long-term memory): http://localhost:56333
 name: banglaclaw
 
 services:
@@ -21,5 +22,15 @@ services:
       timeout: 3s
       retries: 20
 
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    ports:
+      - "127.0.0.1:56333:6333"
+    volumes:
+      - qdrant:/qdrant/storage
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+
 volumes:
   pgdata:
+  qdrant:

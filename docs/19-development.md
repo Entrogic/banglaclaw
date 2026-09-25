@@ -39,7 +39,7 @@ banglaclaw/
 └── turbo.json
 ```
 
-## Implemented so far (v0.5)
+## Implemented so far (v0.6)
 
 ```text
 apps/cli            banglaclaw CLI (commander)
@@ -53,6 +53,7 @@ packages/mcp        MCP client manager, MCP tool wrapping (stdio + Streamable HT
 packages/auth       users, API key generation/verification, AuthStore + in-memory store
 packages/gateway    Hono HTTP gateway: REST, SSE, WebSocket, rate limits, request ids, /chat page
 packages/channels   ChannelRouter + Telegram (polling/webhook) and WhatsApp Cloud API adapters
+packages/knowledge  embeddings, vector stores (memory/Qdrant), chunking, loaders, KnowledgeBase, LongTermMemory
 packages/agent      language detection, prompts, LangGraph graph, AgentRuntime
 mcp-servers/        bundled MCP servers (bangladesh)
 skills/             bundled skills (calculation, time-and-date)
@@ -63,7 +64,8 @@ Postgres integration tests (`packages/storage/test`) run only when `TEST_DATABAS
 
 ```bash
 docker compose -f docker/compose.yaml up -d
-TEST_DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw_test pnpm test
+TEST_DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw_test \
+TEST_QDRANT_URL=http://localhost:56333 pnpm test
 ```
 
 Workspace packages export `src/index.ts` under the `@banglaclaw/source` condition, so tsx, Vitest and `tsc --noEmit` use sources directly; `pnpm build` emits `dist/` in dependency order via Turborepo. TypeScript is pinned to 6.x until typescript-eslint supports 7.x.
