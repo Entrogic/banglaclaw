@@ -55,6 +55,14 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await storage.sessions.list({ channel: "cli" })).toHaveLength(1);
     expect(await storage.sessions.list()).toHaveLength(2);
     await expect(storage.sessions.create({ channel: "telegram", externalId: "42", agentId: "x" })).rejects.toThrow();
+    const handed = await storage.sessions.update(session.id, { status: "handoff", handoffReason: "angry customer", activeAgent: "support" });
+    expect(handed).toMatchObject({ status: "handoff", handoffReason: "angry customer", activeAgent: "support" });
+    expect(handed?.handoffAt).toBeInstanceOf(Date);
+    expect((await storage.sessions.list({ status: "handoff" })).map((s) => s.id)).toEqual([session.id]);
+    const released = await storage.sessions.update(session.id, { status: "active", activeAgent: null });
+    expect(released).toMatchObject({ status: "active" });
+    expect(released).not.toHaveProperty("handoffReason");
+    expect(released).not.toHaveProperty("activeAgent");
     await storage.sessions.detachExternalId(session.id);
     expect(await storage.sessions.findByExternalId("telegram", "42")).toBeUndefined();
     expect((await manager.resolve({ channel: "telegram", externalId: "42", agentId: "banglaclaw" })).created).toBe(true);
@@ -76,6 +84,10 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await storage.auth.revokeApiKey(issued.key.id)).toBe(false);
     expect(await auth.authenticate(issued.token)).toBeUndefined();
     expect((await storage.auth.listUsers()).map((u) => u.name)).toEqual(["other", "shop-bot"]);
+
+    const ops = await auth.issueKey("ops", "console", "operator");
+    expect(ops.user.role).toBe("operator");
+    expect((await auth.authenticate(ops.token))?.user.role).toBe("operator");
   });
 
   it("round-trips messages including tool calls, oldest first", async () => {
@@ -108,6 +120,8 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
       skills: ["calculation"],
       stopReason: "completed",
       output: "4",
+      agent: "sales",
+      agentPath: ["banglaclaw", "sales"],
       toolCalls: [
         { runId: "", toolCallId: "c1", tool: "calculator", input: { expression: "2+2" }, status: "ok", output: { result: 4 }, durationMs: 1 },
         { runId: "", toolCallId: "c2", tool: "shell", input: {}, status: "unknown_tool", error: "No tool", durationMs: 0 },
@@ -117,7 +131,7 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     await storage.runs.save(second);
 
     const got = await storage.runs.get(second.id);
-    expect(got).toMatchObject({ id: second.id, skills: ["calculation"], output: "4", stopReason: "completed", language: "bn" });
+    expect(got).toMatchObject({ id: second.id, skills: ["calculation"], output: "4", stopReason: "completed", language: "bn", agent: "sales", agentPath: ["banglaclaw", "sales"] });
     expect(got?.toolCalls.map((c) => [c.toolCallId, c.status])).toEqual([["c1", "ok"], ["c2", "unknown_tool"]]);
     expect(got?.toolCalls[0]?.runId).toBe(second.id);
     expect(got).not.toHaveProperty("error");
@@ -154,10 +168,17 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect((await storage.runs.get(record.id))?.toolCalls[0]).toMatchObject({ tool: "calculator", status: "ok", output: { result: 100 } });
     expect(await runtime.checkpoint(record.id)).toMatchObject({ response: "১০০", toolCallCount: 1 });
 
+    // While handed off, user messages are stored (run row first — messages.run_id is a foreign key).
+    await storage.sessions.update(s.id, { status: "handoff", handoffReason: "test" });
+    const waiting = await runtime.run("কেউ আছেন?", { sessionId: s.id });
+    expect(waiting).toMatchObject({ status: "handoff", agent: "human" });
+    expect(await storage.sessions.countMessages(s.id)).toBe(5);
+    await storage.sessions.update(s.id, { status: "active" });
+
     // A new runtime instance (e.g. after restart) sees the persisted history.
     await runtime.run("আবার বলো", { sessionId: s.id });
     const history = provider.calls[2]?.messages.slice(1).map((m) => m.getType());
-    expect(history).toEqual(["human", "ai", "tool", "ai", "human"]);
+    expect(history).toEqual(["human", "ai", "tool", "ai", "human", "human"]);
   });
 });
 
@@ -169,6 +190,8 @@ function baseRun(sessionId: string, overrides: Partial<RunRecord> = {}): RunReco
     promptVersion: "test",
     language: "bn",
     skills: [],
+    agent: "banglaclaw",
+    agentPath: ["banglaclaw"],
     input: "২+২?",
     status: "completed",
     iterations: 1,

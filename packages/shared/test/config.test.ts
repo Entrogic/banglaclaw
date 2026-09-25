@@ -31,6 +31,8 @@ describe("loadConfig", () => {
     expect(config.channels.web).toEqual({ enabled: true });
     expect(config.memory.longTerm).toEqual({ enabled: false, autoRecall: true, recallLimit: 5, maxPerOwner: 200, collection: "banglaclaw_memories" });
     expect(config.embeddings).toEqual({ provider: "openai-compatible", model: "text-embedding-3-small" });
+    expect(config.agents).toEqual({ dirs: ["agents"], maxTransfers: 3 });
+    expect(config.handoff).toEqual({ enabled: false });
     expect(config.knowledge).toMatchObject({ enabled: false, vectorStore: "memory", sources: [], chunkSize: 1200, chunkOverlap: 150 });
     expect(secrets).toEqual({});
   });

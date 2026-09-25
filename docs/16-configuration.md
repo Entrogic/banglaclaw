@@ -76,6 +76,13 @@ channels:
     allowedNumbers: []       # e.g. ["8801712345678"]
     rateLimitPerMinute: 10
 
+agents:
+  dirs: [agents]           # <dir>/<name>/AGENT.md specialists (examples/agents)
+  maxTransfers: 3
+
+handoff:
+  enabled: false           # request_human tool + operator queue
+
 gateway:
   host: 127.0.0.1          # use 0.0.0.0 only behind a reverse proxy
   port: 3000
@@ -124,6 +131,7 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp channel secrets |
 | `QDRANT_URL`, `QDRANT_API_KEY` | Override `knowledge.vectorStoreUrl`; Qdrant API key |
 | `EMBEDDINGS_API_KEY` | Embeddings key (defaults to `OPENAI_API_KEY`) |
+| `HANDOFF_WEBHOOK_URL` | Receives `POST {event: "handoff", sessionId, channel, reason, at}` |
 | `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |
 | `BANGLACLAW_LOG_LEVEL` | `debug` \| `info` \| `warn` (default) \| `error`; JSON logs go to stderr |

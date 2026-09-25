@@ -1,5 +1,5 @@
 import type { BaseMessage } from "@langchain/core/messages";
-import type { RunRecord, Session } from "@banglaclaw/session";
+import { isOperatorMessage, type RunRecord, type Session } from "@banglaclaw/session";
 
 /** Channel-native ids are namespaced per user so two API users can't collide or probe each other. */
 export function scopedExternalId(userId: string, externalId: string): string {
@@ -12,6 +12,10 @@ export function sessionJson(s: Session) {
     id: s.id,
     channel: s.channel,
     agentId: s.agentId,
+    status: s.status,
+    ...(s.activeAgent !== undefined && { activeAgent: s.activeAgent }),
+    ...(s.handoffReason !== undefined && { handoffReason: s.handoffReason }),
+    ...(s.handoffAt !== undefined && { handoffAt: s.handoffAt.toISOString() }),
     ...(s.externalId !== undefined && { externalId: s.externalId.startsWith(prefix) ? s.externalId.slice(prefix.length) : s.externalId }),
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
@@ -26,6 +30,9 @@ export function runJson(r: RunRecord) {
     ...(r.stopReason !== undefined && { stopReason: r.stopReason }),
     language: r.language,
     skills: r.skills,
+    agent: r.agent,
+    agentPath: r.agentPath,
+    ...(r.handoffReason !== undefined && { handoffReason: r.handoffReason }),
     input: r.input,
     ...(r.output !== undefined && { output: r.output }),
     ...(r.error !== undefined && { error: r.error }),
@@ -51,7 +58,7 @@ export function messageJson(m: BaseMessage) {
   const type = m.getType();
   const toolCalls = "tool_calls" in m && Array.isArray(m.tool_calls) ? (m.tool_calls as { id?: string; name: string; args: unknown }[]) : [];
   return {
-    role: type === "human" ? "user" : type === "ai" ? "assistant" : type,
+    role: type === "human" ? "user" : isOperatorMessage(m) ? "operator" : type === "ai" ? "assistant" : type,
     content: m.text,
     ...(toolCalls.length > 0 && { toolCalls: toolCalls.map((c) => ({ id: c.id, name: c.name, args: c.args })) }),
     ...("tool_call_id" in m && typeof m.tool_call_id === "string" && { toolCallId: m.tool_call_id }),

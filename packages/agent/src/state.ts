@@ -10,6 +10,12 @@ export const AgentStateAnnotation = Annotation.Root({
   language: replace<Language>(() => "en"),
   /** Names of skills activated for this run. */
   skills: replace<string[]>(() => []),
+  /** Agent currently answering (multi-agent); "supervisor" is the default/front agent. */
+  activeAgent: replace<string>(() => "supervisor"),
+  agentPath: replace<string[]>(() => []),
+  transfers: replace<number>(() => 0),
+  /** Set when an agent requested a human operator. */
+  handoffReason: replace<string | undefined>(() => undefined),
   /** Conversation history for this session plus messages produced in this run (no system prompt). */
   messages: Annotation<BaseMessage[]>({ reducer: messagesStateReducer, default: () => [] }),
   iterations: replace<number>(() => 0),

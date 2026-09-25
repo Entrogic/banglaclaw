@@ -6,6 +6,7 @@ import type { UpgradeWebSocket } from "hono/ws";
 import type { z } from "zod";
 import type { Principal } from "@banglaclaw/auth";
 import { ownerForUser } from "@banglaclaw/knowledge";
+import { HandoffDesk, HandoffError } from "@banglaclaw/session";
 import { createLogger, type Logger } from "@banglaclaw/shared";
 import { GatewayContext, type GatewayDeps } from "./context.js";
 import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
@@ -111,7 +112,7 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
 
   v1.get("/me", (c) => {
     const { user, key } = c.get("principal");
-    return c.json({ user: { id: user.id, name: user.name }, key: { id: key.id, name: key.name, createdAt: key.createdAt.toISOString() } });
+    return c.json({ user: { id: user.id, name: user.name, role: user.role }, key: { id: key.id, name: key.name, createdAt: key.createdAt.toISOString() } });
   });
 
   v1.get("/agents", (c) =>
@@ -215,6 +216,48 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
     const forgotten = await deps.memory.forget(ownerForUser(c.get("principal").user.id), c.req.param("id"));
     if (!forgotten) throw new HttpError(404, "memory_not_found", "Memory not found");
     return c.body(null, 204);
+  });
+
+  // Human handoff queue — operators only (users.role = operator); they may read any user's handed-off session.
+  const desk = new HandoffDesk(deps.sessions, deps.runs, deps.deliver);
+  const operatorOnly = (principal: Principal) => {
+    if (principal.user.role !== "operator") throw new HttpError(403, "forbidden", "Operator role required");
+  };
+  const handoffCall = async <T>(fn: () => Promise<T>): Promise<T> => {
+    try {
+      return await fn();
+    } catch (error) {
+      if (error instanceof HandoffError) {
+        throw error.code === "session_not_found" ? new HttpError(404, "session_not_found", "Session not found") : new HttpError(409, "not_handed_off", error.message);
+      }
+      throw error;
+    }
+  };
+
+  v1.get("/handoffs", async (c) => {
+    operatorOnly(c.get("principal"));
+    const queue = await desk.queue(limitQuery(200, 50).parse(c.req.query("limit")));
+    return c.json({ handoffs: queue.map(sessionJson) });
+  });
+
+  v1.get("/handoffs/:id", async (c) => {
+    operatorOnly(c.get("principal"));
+    const { session, messages } = await handoffCall(() => desk.get(c.req.param("id"), limitQuery(500, 50).parse(c.req.query("limit"))));
+    return c.json({ session: sessionJson(session), messages: messages.map(messageJson) });
+  });
+
+  v1.post("/handoffs/:id/reply", async (c) => {
+    const principal = c.get("principal");
+    operatorOnly(principal);
+    const body = await parseJson(c, messageBody(config.maxInputChars));
+    const result = await handoffCall(() => desk.reply(c.req.param("id"), principal.user.name, body.text));
+    return c.json(result);
+  });
+
+  v1.post("/handoffs/:id/release", async (c) => {
+    operatorOnly(c.get("principal"));
+    const session = await handoffCall(() => desk.release(c.req.param("id")));
+    return c.json({ session: sessionJson(session) });
   });
 
   app.route("/v1", v1);

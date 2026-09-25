@@ -7,7 +7,7 @@ import { trimHistory, type RunRecord, type RunStatus, type RunStore, type Sessio
 import type { SkillSet } from "@banglaclaw/skills";
 import type { PermissionPolicy, ToolRegistry } from "@banglaclaw/tools";
 import { detectLanguage } from "./language.js";
-import { buildAgentGraph, type RunLimits } from "./graph.js";
+import { SUPERVISOR, buildAgentGraph, type RunLimits, type TeamOptions } from "./graph.js";
 import { SYSTEM_PROMPT_VERSION } from "./prompts.js";
 import type { AgentState } from "./state.js";
 
@@ -41,6 +41,10 @@ export interface AgentRuntimeOptions {
   maxActiveSkills?: number;
   checkpointer?: BaseCheckpointSaver;
   contextProviders?: ContextProvider[];
+  /** Specialist agents and human handoff (multi-agent). Omit for a single agent. */
+  team?: TeamOptions;
+  /** Called after a run hands its session to a human operator (e.g. notify a webhook). Errors are logged. */
+  onHandoff?: (session: Session, reason: string) => void | Promise<void>;
   logger?: Logger;
 }
 
@@ -117,6 +121,8 @@ export class AgentRuntime {
     const emit = (event: RunEvent) => options.onEvent?.(event);
     const audits: ToolAuditEvent[] = [];
 
+    if (session.status === "handoff") return this.#recordWhileHandedOff(session, text, runId, startedAt, emit, log);
+
     const signals = [AbortSignal.timeout(timeoutMs)];
     if (options.signal !== undefined) signals.push(options.signal);
     const signal = AbortSignal.any(signals);
@@ -125,6 +131,9 @@ export class AgentRuntime {
     const skills = (this.#options.skills?.select(text, this.#options.maxActiveSkills ?? 2) ?? []).map((m) => m.skill);
     const skillNames = skills.map((s) => s.name);
     const context = await this.#collectContext({ session, input: text, language, signal }, log);
+
+    const team = this.#options.team;
+    const startAgent = session.activeAgent !== undefined && team?.profiles.some((p) => p.name === session.activeAgent) === true ? session.activeAgent : SUPERVISOR;
 
     const graph = buildAgentGraph({
       runId,
@@ -136,6 +145,7 @@ export class AgentRuntime {
       limits,
       skills,
       context,
+      ...(team !== undefined && { team }),
       ...(this.#options.checkpointer !== undefined && { checkpointer: this.#options.checkpointer }),
       signal,
       emit,
@@ -151,11 +161,11 @@ export class AgentRuntime {
     let state: AgentState | undefined;
     let failure: unknown;
 
-    log.info("run start", { language, skills: skillNames, historyMessages: prior.length });
-    emit({ type: "run_start", runId, sessionId: session.id, language, skills: skillNames });
+    log.info("run start", { language, skills: skillNames, agent: startAgent, historyMessages: prior.length });
+    emit({ type: "run_start", runId, sessionId: session.id, language, skills: skillNames, agent: startAgent });
     try {
       state = await graph.invoke(
-        { sessionId: session.id, input: text, messages: [...prior, new HumanMessage(text)] },
+        { sessionId: session.id, input: text, activeAgent: startAgent, messages: [...prior, new HumanMessage(text)] },
         { signal, recursionLimit: limits.maxIterations * 2 + 6, configurable: { thread_id: runId } },
       );
     } catch (error) {
@@ -165,7 +175,15 @@ export class AgentRuntime {
     const finishedAt = new Date();
     const aborted = failure !== undefined && signal.aborted;
     const status: RunStatus =
-      failure === undefined ? (state?.stopReason === "completed" ? "completed" : "limited") : aborted ? "aborted" : "error";
+      failure !== undefined
+        ? aborted
+          ? "aborted"
+          : "error"
+        : state?.stopReason === "completed"
+          ? "completed"
+          : state?.stopReason === "handoff"
+            ? "handoff"
+            : "limited";
 
     const record: RunRecord = {
       id: runId,
@@ -174,6 +192,9 @@ export class AgentRuntime {
       promptVersion: SYSTEM_PROMPT_VERSION,
       language,
       skills: skillNames,
+      agent: state?.activeAgent ?? startAgent,
+      agentPath: state?.agentPath ?? [startAgent],
+      ...(state?.handoffReason !== undefined && { handoffReason: state.handoffReason }),
       input: text,
       status,
       iterations: state?.iterations ?? 0,
@@ -196,7 +217,52 @@ export class AgentRuntime {
 
     // Only persist messages for runs that finished, so no dangling tool calls are stored.
     await sessions.appendMessages(session.id, runId, state.messages.slice(prior.length));
-    log.info("run end", { status, iterations: record.iterations, toolCalls: audits.length, durationMs: record.durationMs });
+
+    const nextAgent = state.activeAgent === SUPERVISOR ? null : state.activeAgent;
+    if (state.handoffReason !== undefined) {
+      const updated = await sessions.update(session.id, { status: "handoff", handoffReason: state.handoffReason, activeAgent: nextAgent });
+      log.warn("session handed off to a human", { reason: state.handoffReason });
+      try {
+        await this.#options.onHandoff?.(updated ?? session, state.handoffReason);
+      } catch (error) {
+        log.error("handoff notification failed", { error });
+      }
+    } else if ((session.activeAgent ?? null) !== nextAgent) {
+      await sessions.update(session.id, { activeAgent: nextAgent });
+    }
+    log.info("run end", { status, agent: record.agent, iterations: record.iterations, toolCalls: audits.length, durationMs: record.durationMs });
+    return record;
+  }
+
+  /** While a human owns the session, user messages are stored for the operator and the bot stays silent. */
+  async #recordWhileHandedOff(session: Session, text: string, runId: string, startedAt: Date, emit: (e: RunEvent) => void, log: Logger): Promise<RunRecord> {
+    const language = detectLanguage(text);
+    emit({ type: "run_start", runId, sessionId: session.id, language, skills: [], agent: "human" });
+    emit({ type: "handoff", runId, reason: session.handoffReason ?? "", pending: true });
+    const finishedAt = new Date();
+    const record: RunRecord = {
+      id: runId,
+      sessionId: session.id,
+      provider: "human",
+      promptVersion: SYSTEM_PROMPT_VERSION,
+      language,
+      skills: [],
+      agent: "human",
+      agentPath: ["human"],
+      ...(session.handoffReason !== undefined && { handoffReason: session.handoffReason }),
+      input: text,
+      status: "handoff",
+      stopReason: "handoff",
+      iterations: 0,
+      toolCalls: [],
+      startedAt,
+      finishedAt,
+      durationMs: finishedAt.getTime() - startedAt.getTime(),
+    };
+    // Save the run before its message: messages.run_id references runs in PostgreSQL.
+    await this.#options.runs.save(record);
+    await this.#options.sessions.appendMessages(session.id, runId, [new HumanMessage(text)]);
+    log.info("message stored for human operator");
     return record;
   }
 }

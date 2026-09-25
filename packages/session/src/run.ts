@@ -1,6 +1,7 @@
 import type { Language, StopReason, ToolAuditEvent } from "@banglaclaw/shared";
 
-export type RunStatus = "completed" | "limited" | "error" | "aborted";
+/** "handoff": the session is (or just became) owned by a human operator. */
+export type RunStatus = "completed" | "limited" | "error" | "aborted" | "handoff";
 
 export interface RunRecord {
   id: string;
@@ -9,6 +10,11 @@ export interface RunRecord {
   promptVersion: string;
   language: Language;
   skills: string[];
+  /** Agent that produced the final answer (multi-agent), or "human" while handed off. */
+  agent: string;
+  /** Agents visited in order, including transfers. */
+  agentPath: string[];
+  handoffReason?: string;
   input: string;
   output?: string;
   status: RunStatus;

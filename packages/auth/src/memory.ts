@@ -1,16 +1,21 @@
 import { randomUUID } from "node:crypto";
-import type { ApiKeyRecord, AuthStore, User } from "./types.js";
+import type { ApiKeyRecord, AuthStore, User, UserRole } from "./types.js";
 
 /** Process-local users and API keys (storage.provider: memory). */
 export class InMemoryAuthStore implements AuthStore {
   readonly #users = new Map<string, User>();
   readonly #keys = new Map<string, ApiKeyRecord>();
 
-  async createUser(name: string): Promise<User> {
+  async createUser(name: string, role: UserRole = "user"): Promise<User> {
     if ((await this.findUserByName(name)) !== undefined) throw new Error(`User "${name}" already exists`);
-    const user: User = { id: randomUUID(), name, createdAt: new Date() };
+    const user: User = { id: randomUUID(), name, role, createdAt: new Date() };
     this.#users.set(user.id, user);
     return { ...user };
+  }
+
+  async setUserRole(id: string, role: UserRole): Promise<void> {
+    const u = this.#users.get(id);
+    if (u !== undefined) u.role = role;
   }
 
   async getUser(id: string): Promise<User | undefined> {

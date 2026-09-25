@@ -30,11 +30,13 @@ export interface ToolAuditEvent {
 }
 
 /** Why an agent graph stopped. */
-export type StopReason = "completed" | "tool_limit" | "iteration_limit";
+export type StopReason = "completed" | "tool_limit" | "iteration_limit" | "handoff";
 
 /** Events streamed from an agent run to its caller. */
 export type RunEvent =
-  | { type: "run_start"; runId: string; sessionId: string; language: Language; skills: string[] }
+  | { type: "run_start"; runId: string; sessionId: string; language: Language; skills: string[]; agent: string }
+  | { type: "agent_transfer"; runId: string; from: string; to: string }
+  | { type: "handoff"; runId: string; reason: string; pending: boolean }
   | { type: "token"; runId: string; text: string }
   | { type: "tool_start"; runId: string; toolCallId: string; tool: string; input: unknown }
   | { type: "tool_end"; runId: string; audit: ToolAuditEvent }

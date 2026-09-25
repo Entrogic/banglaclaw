@@ -61,6 +61,18 @@ describe("ChannelRouter", () => {
     expect(provider.calls[1]?.messages.map((m) => m.content).slice(1)).toEqual(["second"]);
   });
 
+  it("stays silent while a human operator owns the conversation", async () => {
+    const { router, sessions, provider } = makeRouter();
+    const adapter = new RecordingAdapter();
+    await router.handle(adapter, { conversationId: "c", senderId: "100", text: "hi" });
+    const s = await sessions.findByExternalId("test", "c");
+    await sessions.update(s?.id ?? "", { status: "handoff", handoffReason: "complaint" });
+    await router.handle(adapter, { conversationId: "c", senderId: "100", text: "are you there?" });
+    expect(adapter.sent).toHaveLength(1);
+    expect(provider.calls).toHaveLength(1);
+    expect(await sessions.countMessages(s?.id ?? "")).toBe(3);
+  });
+
   it("rate limits per conversation", async () => {
     const { router, provider } = makeRouter({ rateLimitPerMinute: 2 });
     const adapter = new RecordingAdapter();

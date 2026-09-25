@@ -129,6 +129,8 @@ export class ChannelRouter {
     }
     try {
       const record = await runtime.run(text, { sessionId: session.id });
+      // Handed-off sessions: the message is stored for the operator and the bot stays silent.
+      if (record.status === "handoff" && record.output === undefined) return;
       await this.#reply(adapter, message.conversationId, record.output ?? notice("failed", language));
       log.info("channel reply sent", { runId: record.id, status: record.status });
     } catch (error) {

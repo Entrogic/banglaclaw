@@ -2,7 +2,7 @@ import type { Hono } from "hono";
 import type { AgentRuntime } from "@banglaclaw/agent";
 import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
 import type { ApiKeyAuthenticator, Principal } from "@banglaclaw/auth";
-import type { RunStore, Session, SessionStore } from "@banglaclaw/session";
+import type { Deliver, RunStore, Session, SessionStore } from "@banglaclaw/session";
 import { ConcurrencyLimiter, RateLimiter, type BanglaClawConfig, type Logger } from "@banglaclaw/shared";
 import type { SkillSet } from "@banglaclaw/skills";
 import type { PermissionPolicy, ToolRegistry } from "@banglaclaw/tools";
@@ -28,6 +28,8 @@ export interface GatewayDeps {
   webChat?: boolean;
   knowledge?: { kb: KnowledgeBase; searchLimit: number; minScore: number };
   memory?: LongTermMemory;
+  /** Delivers operator replies to channel users (Telegram, WhatsApp). */
+  deliver?: Deliver;
   logger?: Logger;
 }
 

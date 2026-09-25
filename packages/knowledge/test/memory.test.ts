@@ -16,7 +16,7 @@ function setup(maxPerOwner = 10) {
 
 describe("memoryOwner", () => {
   it("derives owners from users, channels and the CLI", () => {
-    const base = { id: "s1", agentId: "a", createdAt: new Date(), updatedAt: new Date() };
+    const base = { id: "s1", agentId: "a", status: "active" as const, createdAt: new Date(), updatedAt: new Date() };
     expect(memoryOwner({ ...base, channel: "api", userId: "u1", externalId: "u1/x" })).toBe("user:u1");
     expect(memoryOwner({ ...base, channel: "telegram", externalId: "555" })).toBe("telegram:555");
     expect(memoryOwner({ ...base, channel: "cli" })).toBe("cli:local");

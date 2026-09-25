@@ -11,10 +11,16 @@ interface Session {
   externalId?: string;   // channel-native conversation id (Telegram chat id, …)
   userId?: string;
   agentId: string;
+  status: "active" | "handoff";   // handoff: a human operator owns the conversation (v0.7)
+  activeAgent?: string;            // specialist answering the next message (v0.7)
+  handoffReason?: string;
+  handoffAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
 ```
+
+`SessionStore.update(id, { status, activeAgent, handoffReason })` changes routing and handoff state. `HandoffDesk` (`packages/session/src/handoff.ts`) implements the operator queue: `queue`, `get`, `reply` and `release`.
 
 ## Stores
 

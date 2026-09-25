@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { AgentRunError, type AgentRuntime } from "@banglaclaw/agent";
 import { requiredApiKeyEnv } from "@banglaclaw/providers";
-import { InMemorySessionStore, SessionManager, type RunRecord, type Session } from "@banglaclaw/session";
+import { HandoffDesk, InMemorySessionStore, SessionManager, isOperatorMessage, type RunRecord, type Session } from "@banglaclaw/session";
 import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
 import { ApiKeyAuthenticator } from "@banglaclaw/auth";
 import { TelegramApi } from "@banglaclaw/channels";
@@ -11,8 +11,8 @@ import { startGateway, type RunningGateway } from "@banglaclaw/gateway";
 import { BanglaClawError, createLogger, parseLogLevel, type LoadedConfig } from "@banglaclaw/shared";
 import { AllowlistPolicy } from "@banglaclaw/tools";
 import type { McpManager, McpServerStatus } from "@banglaclaw/mcp";
-import { buildRegistry, connectMcp, createRuntime, load, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
-import { setupChannels } from "./channels.js";
+import { buildRegistry, connectMcp, createRuntime, load, loadAgents, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
+import { createDeliver, setupChannels } from "./channels.js";
 import { setupKnowledge, type KnowledgeSetup } from "./knowledge.js";
 import { bold, createRenderer, dim, green, red, yellow } from "./render.js";
 
@@ -373,6 +373,13 @@ skills:
   dirs: [skills]
   maxActive: 2
 
+agents:
+  dirs: [agents]                 # <dir>/<name>/AGENT.md specialists; none = single agent (see examples/agents)
+  maxTransfers: 3
+
+handoff:
+  enabled: false                 # request_human tool; operators answer via "banglaclaw handoff" or /v1/handoffs
+
 channels:
   web:
     enabled: true                # browser chat at http://<gateway>/chat
@@ -416,6 +423,9 @@ export function init(options: { force?: boolean }): void {
   writeFileSync(path, CONFIG_TEMPLATE);
   console.log(`${green("✔")} Wrote ${path}`);
 }
+
+/** Minimal tool shape for allowlist checks of tool names that only exist at runtime. */
+const builtinToolStub = { description: "", risk: "safe" as const, inputSchema: undefined as never, outputSchema: undefined as never, execute: async () => undefined };
 
 export async function doctor(options: GlobalOptions): Promise<void> {
   let failed = false;
@@ -488,6 +498,16 @@ export async function doctor(options: GlobalOptions): Promise<void> {
       await mcp.close();
     }
   }
+
+  try {
+    const profiles = loadAgents(loaded);
+    if (profiles.length > 0) ok(`Agents: supervisor → ${profiles.map((p) => p.name).join(", ")} (max ${config.agents.maxTransfers} transfers/run)`);
+    const notAllowed = profiles.flatMap((p) => p.tools.filter((t) => !new AllowlistPolicy(config.tools.allow).check({ ...builtinToolStub, name: t }).allowed).map((t) => `${p.name}:${t}`));
+    if (notAllowed.length > 0) warn(`Agent tools not in tools.allow (they will be unavailable): ${notAllowed.join(", ")}`);
+  } catch (error) {
+    fail(describe(error));
+  }
+  if (config.handoff.enabled) ok(`Human handoff: enabled${secrets.handoffWebhookUrl !== undefined ? ", webhook notifications on" : " (set HANDOFF_WEBHOOK_URL to notify operators)"}`);
 
   if (config.knowledge.enabled || config.memory.longTerm.enabled) {
     try {
@@ -615,12 +635,13 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       skills: bundle.skills,
       agent: { name: config.agent.name, model: bundle.providerId },
       config: gatewayConfig,
-      version: "0.6.0",
+      version: "0.7.0",
       logger,
       routes: channels.routes,
       webChat: config.channels.web.enabled,
       ...(bundle.knowledge.kb !== undefined && { knowledge: { kb: bundle.knowledge.kb, searchLimit: config.knowledge.searchLimit, minScore: config.knowledge.minScore } }),
       ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
+      deliver: createDeliver(services.loaded, logger),
     });
   } catch (error) {
     await services.close();
@@ -634,6 +655,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
     throw error;
   }
 
+  if (bundle.profiles.length > 0) console.log(dim(`  agents: supervisor → ${bundle.profiles.map((p) => p.name).join(", ")}`));
   console.log(`${green("✔")} BanglaClaw gateway listening on ${bold(gateway.url)} ${dim(`(${bundle.providerId}, ${services.persistent ? "postgres" : "memory"} storage)`)}`);
   reportMcpFailures(mcp);
   if (config.channels.web.enabled) console.log(`  web chat: ${gateway.url}/chat`);
@@ -676,10 +698,14 @@ async function withPersistentAuth<T>(options: GlobalOptions, fn: (auth: ApiKeyAu
   }
 }
 
-export async function keyCreate(options: GlobalOptions & { user: string; name: string }): Promise<void> {
+export async function keyCreate(options: GlobalOptions & { user: string; name: string; role?: string }): Promise<void> {
+  if (options.role !== undefined && options.role !== "user" && options.role !== "operator") {
+    throw new BanglaClawError("INVALID_ROLE", "--role must be user or operator");
+  }
+  const role = options.role as "user" | "operator" | undefined;
   await withPersistentAuth(options, async (auth) => {
-    const issued = await auth.issueKey(options.user, options.name);
-    console.log(`${green("✔")} Created key ${bold(issued.key.id)} "${issued.key.name}" for user ${bold(issued.user.name)}`);
+    const issued = await auth.issueKey(options.user, options.name, role);
+    console.log(`${green("✔")} Created key ${bold(issued.key.id)} "${issued.key.name}" for ${issued.user.role} ${bold(issued.user.name)}`);
     console.log(yellow("  Store this token now — it cannot be shown again:"));
     console.log(`  ${issued.token}`);
   });
@@ -714,7 +740,8 @@ export async function keyRevoke(id: string, options: GlobalOptions): Promise<voi
 async function prepareKnowledge(knowledge: KnowledgeSetup, verbose: boolean): Promise<void> {
   if (knowledge.kb === undefined) return;
   const { ingested, skipped, errors } = await knowledge.ingestSources();
-  if (verbose || ingested > 0) {
+  // The in-memory store re-ingests on every start, so only report it when asked to be verbose.
+  if (verbose || (ingested > 0 && knowledge.vectorStore !== "memory")) {
     process.stderr.write(dim(`knowledge (${knowledge.vectorStore}): ${ingested} documents ingested, ${skipped} unchanged\n`));
   }
   for (const e of errors) process.stderr.write(yellow(`! could not ingest ${e.path}: ${e.error}\n`));
@@ -792,4 +819,75 @@ export async function memoryForget(id: string, options: GlobalOptions & { owner:
   const memory = requireMemory(openKnowledge(options).knowledge);
   if (!(await memory.forget(options.owner, id))) throw new BanglaClawError("MEMORY_NOT_FOUND", `No memory ${id} for ${options.owner}`);
   console.log(`${green("✔")} Forgot ${id}`);
+}
+
+export function agentList(options: GlobalOptions): void {
+  const loaded = load(options);
+  const policy = new AllowlistPolicy(loaded.config.tools.allow);
+  const registry = buildRegistry();
+  const profiles = loadAgents(loaded);
+  console.log(`${bold("supervisor")} ${dim("(default agent)")}  front desk; all allowed tools${profiles.length > 0 ? ", transfers to specialists" : ""}`);
+  if (profiles.length === 0) console.log(dim(`  No specialists found in: ${loaded.config.agents.dirs.join(", ")} (add <dir>/<name>/AGENT.md)`));
+  for (const p of profiles) {
+    const tools = p.tools.map((name) => {
+      const tool = registry.get(name);
+      // Knowledge, memory and MCP tools only exist at runtime; don't flag them as missing here.
+      if (tool === undefined) return dim(name);
+      return policy.check(tool).allowed ? name : yellow(`${name} (not allowed)`);
+    });
+    console.log(`${bold(p.name)} ${dim(`v${p.version}`)}  ${p.description}`);
+    console.log(dim(`  tools: ${tools.join(", ") || "-"}   skills: ${p.skills?.join(", ") ?? "all"}`));
+  }
+  console.log(dim(`human handoff: ${loaded.config.handoff.enabled ? "enabled (request_human)" : "disabled"}`));
+}
+
+async function withDesk<T>(options: GlobalOptions, fn: (desk: HandoffDesk, services: Services) => Promise<T>): Promise<T> {
+  const services = await openServices(options);
+  try {
+    if (!services.persistent) {
+      throw new BanglaClawError("STORAGE_REQUIRED", "Handoff queues need postgres storage so the CLI can see sessions of the running gateway.");
+    }
+    const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
+    return await fn(new HandoffDesk(services.sessions, services.runs, createDeliver(services.loaded, logger)), services);
+  } finally {
+    await services.close();
+  }
+}
+
+export async function handoffList(options: GlobalOptions): Promise<void> {
+  await withDesk(options, async (desk, services) => {
+    const queue = await desk.queue();
+    if (queue.length === 0) console.log(dim("No conversations are waiting for a human."));
+    for (const s of queue) {
+      const waiting = s.handoffAt !== undefined ? `${Math.round((Date.now() - s.handoffAt.getTime()) / 60_000)} min` : "?";
+      const count = await services.sessions.countMessages(s.id);
+      console.log(`${bold(s.id)}  ${s.channel.padEnd(9)} ${yellow(s.handoffReason ?? "")} ${dim(`waiting ${waiting} · ${count} msgs`)}`);
+    }
+  });
+}
+
+export async function handoffShow(id: string, options: GlobalOptions & { limit: string }): Promise<void> {
+  await withDesk(options, async (desk) => {
+    const { session, messages } = await desk.get(id, Number(options.limit));
+    console.log(`${bold(session.id)} ${dim(`${session.channel} · ${session.status}${session.handoffReason !== undefined ? ` · ${session.handoffReason}` : ""}`)}`);
+    for (const m of messages) {
+      const type = m.getType();
+      if (type === "human") console.log(`${green("user")}     ${m.text}`);
+      else if (type === "ai" && m.text.length > 0) console.log(`${isOperatorMessage(m) ? yellow("operator") : bold("agent   ")} ${m.text}`);
+    }
+  });
+}
+
+export async function handoffReply(id: string, text: string, options: GlobalOptions & { as: string }): Promise<void> {
+  await withDesk(options, async (desk) => {
+    const { delivered } = await desk.reply(id, options.as, text);
+    console.log(delivered ? `${green("✔")} Sent to the user and stored` : `${yellow("!")} Stored in the session; the channel could not deliver it (API sessions read it via GET /v1/sessions/:id/messages)`);
+  });
+}
+
+export async function handoffRelease(id: string, options: GlobalOptions): Promise<void> {
+  await withDesk(options, async (desk) => {
+    await desk.release(id);
+    console.log(`${green("✔")} Session ${id} is back with the bot`);
+  });
 }

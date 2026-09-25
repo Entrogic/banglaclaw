@@ -7,6 +7,7 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 export const users = pgTable("users", {
   id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
   name: text("name").notNull().unique(),
+  role: text("role").notNull().default("user"),
   createdAt: createdAt(),
 });
 
@@ -35,6 +36,10 @@ export const sessions = pgTable(
     externalId: text("external_id"),
     userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     agentId: text("agent_id").notNull(),
+    status: text("status").notNull().default("active"),
+    activeAgent: text("active_agent"),
+    handoffReason: text("handoff_reason"),
+    handoffAt: timestamp("handoff_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -42,6 +47,7 @@ export const sessions = pgTable(
     uniqueIndex("sessions_channel_external_id_key").on(t.channel, t.externalId),
     index("sessions_updated_at_idx").on(t.updatedAt),
     index("sessions_user_id_idx").on(t.userId, t.updatedAt),
+    index("sessions_status_idx").on(t.status, t.updatedAt),
   ],
 );
 
@@ -56,6 +62,9 @@ export const runs = pgTable(
     promptVersion: text("prompt_version").notNull(),
     language: text("language").notNull(),
     skills: text("skills").array().notNull().default(sql`'{}'::text[]`),
+    agent: text("agent").notNull().default("banglaclaw"),
+    agentPath: text("agent_path").array().notNull().default(sql`'{}'::text[]`),
+    handoffReason: text("handoff_reason"),
     input: text("input").notNull(),
     output: text("output"),
     status: text("status").notNull(),

@@ -14,17 +14,19 @@ banglaclaw tool list                           # built-in + MCP tools, risk leve
 banglaclaw mcp list                            # connect to MCP servers; status and discovered tools
 banglaclaw db migrate | status                 # PostgreSQL schema + checkpoint tables (DATABASE_URL)
 banglaclaw serve [--port 3000] [--host …]      # gateway (REST, SSE, WebSocket, /chat) + enabled channels (docs/11, 18)
-banglaclaw key create --user <name> [--name]   # issue an API key (shown once; postgres storage)
+banglaclaw key create --user <name> [--name] [--role operator]   # issue an API key (shown once; postgres storage)
 banglaclaw key list [--user <name>] | revoke <id>
 banglaclaw kb ingest <paths…> | list | search <q> | delete <source>   # knowledge base (docs/07)
 banglaclaw memory list [--owner cli:local] | forget <id> [--owner …]  # long-term memories
+banglaclaw agent list                          # supervisor + AGENT.md specialists
+banglaclaw handoff list | show <id> | reply <id> <text…> [--as name] | release <id>   # operators (postgres)
 banglaclaw init [--force]                      # write banglaclaw.yaml
 banglaclaw doctor                              # Node, config, keys, tools, skills, storage
 ```
 
 Global option: `-c, --config <path>`. From the repo, run via `pnpm banglaclaw <command>`. With `storage.provider: memory`, sessions exist only for the lifetime of one command, so `--session` and `session`/`run` inspection are useful with `postgres`.
 
-Planned: `agent list` (v0.7).
+The CLI renders transfers as `↪ <agent>` and handoffs as `👤` / `⏳`.
 
 ## Goals
 

@@ -33,4 +33,5 @@ triggers:
 - Convert percentages explicitly: "15% of 2000" → `2000 * 15 / 100`.
 - For money, show the result with the Taka sign (৳) and two decimals only when there are paisa.
 - Show the expression you evaluated in one short line, then the answer.
-- When replying in Bangla, write the final number in Bengali digits (e.g. ৩০০); keep the expression readable.
+- Copy numbers exactly from the calculator result; never re-type or convert digits yourself.
+- Use Bengali digits (e.g. ৩০০) only when the user wrote in Bengali script; for Banglish and English use 0-9.

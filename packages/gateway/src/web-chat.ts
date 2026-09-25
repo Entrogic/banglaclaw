@@ -69,7 +69,9 @@ export const WEB_CHAT_HTML = `<!doctype html>
       else if (m.type === "event") {
         const ev = m.event;
         if (ev.type === "token") { current = current || add("assistant", ""); current.textContent += ev.text; current.scrollIntoView({ block: "end" }); }
-        else if (ev.type === "tool_start") { add("tool", "⚙ " + ev.tool + " " + JSON.stringify(ev.input)); current = null; }
+        else if (ev.type === "tool_start" && !ev.tool.startsWith("transfer_to_") && ev.tool !== "request_human") { add("tool", "⚙ " + ev.tool + " " + JSON.stringify(ev.input)); current = null; }
+        else if (ev.type === "agent_transfer") { add("tool", "↪ " + ev.to); current = null; }
+        else if (ev.type === "handoff") { add("tool", ev.pending ? "⏳ waiting for a human operator" : "👤 handed to a human: " + ev.reason); current = null; }
       } else if (m.type === "done") {
         sessionId = m.sessionId; store.set("bc.session", sessionId);
         if (m.run.status !== "completed" && m.run.status !== "limited") add("error", m.run.error || m.run.status);

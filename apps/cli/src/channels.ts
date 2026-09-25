@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import type { AgentRuntime } from "@banglaclaw/agent";
-import { ChannelRouter, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel } from "@banglaclaw/channels";
-import type { SessionStore } from "@banglaclaw/session";
+import { ChannelRouter, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel, splitMessage } from "@banglaclaw/channels";
+import type { Deliver, SessionStore } from "@banglaclaw/session";
 import { ConfigError, type LoadedConfig, type Logger } from "@banglaclaw/shared";
 
 export interface ChannelSetup {
@@ -12,6 +12,36 @@ export interface ChannelSetup {
   /** Called once the gateway is listening (starts polling / registers webhooks). */
   start(): Promise<void>;
   stop(): Promise<void>;
+}
+
+/**
+ * Delivers operator replies (human handoff) to Telegram/WhatsApp users using the channel secrets.
+ * Stateless HTTP, so it works from `banglaclaw handoff reply` as well as the gateway.
+ */
+export function createDeliver(loaded: LoadedConfig, logger: Logger): Deliver {
+  const { config, secrets } = loaded;
+  const telegram = config.channels.telegram.enabled && secrets.telegramBotToken !== undefined ? new TelegramApi(secrets.telegramBotToken) : undefined;
+  const wa = config.channels.whatsapp;
+  const whatsapp =
+    wa.enabled && wa.phoneNumberId !== undefined && secrets.whatsappAccessToken !== undefined
+      ? new WhatsAppApi({ accessToken: secrets.whatsappAccessToken, phoneNumberId: wa.phoneNumberId, graphApiVersion: wa.graphApiVersion })
+      : undefined;
+  return async (session, text) => {
+    if (session.externalId === undefined) return false;
+    try {
+      if (session.channel === "telegram" && telegram !== undefined) {
+        for (const chunk of splitMessage(text, 4096)) await telegram.sendMessage(session.externalId, chunk);
+        return true;
+      }
+      if (session.channel === "whatsapp" && whatsapp !== undefined) {
+        for (const chunk of splitMessage(text, 4096)) await whatsapp.sendText(session.externalId, chunk);
+        return true;
+      }
+    } catch (error) {
+      logger.error("operator reply delivery failed", { channel: session.channel, error });
+    }
+    return false;
+  };
 }
 
 /** Builds the enabled channels from config (docs/11). Throws ConfigError for missing secrets. */

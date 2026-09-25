@@ -180,6 +180,20 @@ export const ConfigSchema = z.strictObject({
       web: z.strictObject({ enabled: z.boolean().default(true) }).prefault({}),
     })
     .prefault({}),
+  agents: z
+    .strictObject({
+      /** Directories (relative to the config file) scanned for <name>/AGENT.md specialists. None found = single agent. */
+      dirs: z.array(z.string().min(1)).default(["agents"]),
+      /** Agent transfers allowed per run. */
+      maxTransfers: z.int().min(1).max(10).default(3),
+    })
+    .prefault({}),
+  handoff: z
+    .strictObject({
+      /** Offer the request_human tool; handed-off sessions wait for an operator (docs/04). */
+      enabled: z.boolean().default(false),
+    })
+    .prefault({}),
   mcp: z
     .strictObject({
       /** Server name → connection. Names prefix tool names: <server>__<tool>. */
@@ -211,6 +225,8 @@ export interface Secrets {
   qdrantApiKey?: string;
   /** Overrides OPENAI_API_KEY for the embeddings endpoint. */
   embeddingsApiKey?: string;
+  /** POSTed a JSON notification whenever a session is handed to a human. */
+  handoffWebhookUrl?: string;
 }
 
 export interface LoadConfigOptions {
@@ -284,6 +300,7 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
     ["whatsappVerifyToken", "WHATSAPP_VERIFY_TOKEN"],
     ["qdrantApiKey", "QDRANT_API_KEY"],
     ["embeddingsApiKey", "EMBEDDINGS_API_KEY"],
+    ["handoffWebhookUrl", "HANDOFF_WEBHOOK_URL"],
   ];
   for (const [key, name] of secretEnv) {
     const value = nonEmpty(env[name]);

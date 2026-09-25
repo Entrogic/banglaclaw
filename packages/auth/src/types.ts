@@ -2,8 +2,12 @@ export interface User {
   id: string;
   /** Unique, human-readable handle (e.g. "shop-bot", "rahim"). */
   name: string;
+  /** operator: may see and answer human-handoff sessions of all users. */
+  role: UserRole;
   createdAt: Date;
 }
+
+export type UserRole = "user" | "operator";
 
 /** Stored API key. The secret itself is never stored — only its SHA-256 hash. */
 export interface ApiKeyRecord {
@@ -18,7 +22,8 @@ export interface ApiKeyRecord {
 }
 
 export interface AuthStore {
-  createUser(name: string): Promise<User>;
+  createUser(name: string, role?: UserRole): Promise<User>;
+  setUserRole(id: string, role: UserRole): Promise<void>;
   getUser(id: string): Promise<User | undefined>;
   findUserByName(name: string): Promise<User | undefined>;
   listUsers(): Promise<User[]>;

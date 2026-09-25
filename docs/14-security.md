@@ -28,7 +28,7 @@ Security is a core architecture requirement, not a later feature.
 - Timeouts
 - Network restrictions
 
-## Implemented controls (v0.6)
+## Implemented controls (v0.7)
 
 - Deny-by-default tool allowlist; destructive tools are always denied (no confirmation flow yet)
 - Input and output validation, per-call timeouts and a run timeout, and iteration / tool-call limits
@@ -49,6 +49,10 @@ Security is a core architecture requirement, not a later feature.
   - memories are owner-scoped on the server side; secrets are refused by `remember`
   - retrieved passages and memories are framed as data, not instructions
   - the knowledge base is readable by every bot user, so don't ingest per-user private data — see docs/07
+- Multi-agent:
+  - specialist tool subsets are enforced by a scoped permission policy and can only narrow `tools.allow`
+  - transfer limits per run
+  - handoff queues are only visible to operator-role users; every operator reply is audited as a run — see docs/04
 
 ## Principle
 

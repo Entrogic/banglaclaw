@@ -53,11 +53,29 @@ describe("InMemorySessionStore + SessionManager", () => {
   });
 });
 
+describe("session routing and handoff state", () => {
+  it("updates active agent and handoff status", async () => {
+    const store = new InMemorySessionStore();
+    const s = await store.create({ channel: "telegram", externalId: "1", agentId: "a" });
+    expect(s.status).toBe("active");
+    expect(await store.update(s.id, { activeAgent: "sales" })).toMatchObject({ activeAgent: "sales", status: "active" });
+    const handed = await store.update(s.id, { status: "handoff", handoffReason: "refund dispute" });
+    expect(handed).toMatchObject({ status: "handoff", handoffReason: "refund dispute" });
+    expect(handed?.handoffAt).toBeInstanceOf(Date);
+    expect((await store.list({ status: "handoff" })).map((x) => x.id)).toEqual([s.id]);
+    const released = await store.update(s.id, { status: "active", activeAgent: null });
+    expect(released).not.toHaveProperty("handoffReason");
+    expect(released).not.toHaveProperty("handoffAt");
+    expect(released).not.toHaveProperty("activeAgent");
+    expect(await store.update("missing", { status: "active" })).toBeUndefined();
+  });
+});
+
 describe("InMemoryRunStore", () => {
   it("lists runs by session, newest first", async () => {
     const store = new InMemoryRunStore();
     const base: RunRecord = {
-      id: "r1", sessionId: "s", provider: "fake", promptVersion: "v", language: "en", skills: [], input: "hi",
+      id: "r1", sessionId: "s", provider: "fake", promptVersion: "v", language: "en", skills: [], agent: "banglaclaw", agentPath: ["banglaclaw"], input: "hi",
       status: "completed", iterations: 1, toolCalls: [], startedAt: new Date(1000), finishedAt: new Date(2000), durationMs: 1000,
     };
     await store.save(base);
@@ -65,5 +83,35 @@ describe("InMemoryRunStore", () => {
     await store.save({ ...base, id: "r3", sessionId: "other" });
     expect((await store.listBySession("s")).map((r) => r.id)).toEqual(["r2", "r1"]);
     expect((await store.get("r1"))?.startedAt).toEqual(new Date(1000));
+  });
+});
+
+describe("HandoffDesk", () => {
+  it("queues, replies through the channel and releases", async () => {
+    const { HandoffDesk, isOperatorMessage } = await import("../src/index.js");
+    const sessions = new InMemorySessionStore();
+    const runs = new InMemoryRunStore();
+    const delivered: [string, string][] = [];
+    const desk = new HandoffDesk(sessions, runs, async (s, text) => {
+      delivered.push([s.externalId ?? "", text]);
+      return true;
+    });
+    const s = await sessions.create({ channel: "telegram", externalId: "42", agentId: "a" });
+    await expect(desk.reply(s.id, "ops", "hi")).rejects.toThrow(/not waiting/);
+    await sessions.update(s.id, { status: "handoff", handoffReason: "refund", activeAgent: "support" });
+
+    expect((await desk.queue()).map((x) => x.id)).toEqual([s.id]);
+    const result = await desk.reply(s.id, "karim", "আমি করিম, আপনার রিফান্ড দেখছি।");
+    expect(result.delivered).toBe(true);
+    expect(delivered).toEqual([["42", "আমি করিম, আপনার রিফান্ড দেখছি।"]]);
+    const { messages } = await desk.get(s.id);
+    expect(isOperatorMessage(messages[0] as never)).toBe(true);
+    expect(await runs.get(result.runId)).toMatchObject({ agent: "human", provider: "operator:karim", status: "handoff" });
+
+    expect(await desk.release(s.id)).toMatchObject({ status: "active" });
+    expect((await sessions.get(s.id))?.activeAgent).toBeUndefined();
+    expect(await desk.queue()).toEqual([]);
+    await expect(desk.release(s.id)).rejects.toThrow(/not waiting/);
+    await expect(desk.get("missing")).rejects.toThrow(/not found/);
   });
 });

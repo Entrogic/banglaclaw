@@ -61,6 +61,13 @@ skills:
   dirs: [skills]
   maxActive: 2
 
+agents:
+  dirs: [agents]                 # <dir>/<name>/AGENT.md specialists; none = single agent (see examples/agents)
+  maxTransfers: 3
+
+handoff:
+  enabled: false                 # request_human tool; operators answer via "banglaclaw handoff" or /v1/handoffs
+
 channels:
   web:
     enabled: true                # browser chat at http://<gateway>/chat

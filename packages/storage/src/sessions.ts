@@ -1,6 +1,6 @@
 import { and, count, desc, eq } from "drizzle-orm";
 import { mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages, type BaseMessage } from "@langchain/core/messages";
-import type { NewSession, Session, SessionStore } from "@banglaclaw/session";
+import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "@banglaclaw/session";
 import type { Database } from "./db.js";
 import { messages, sessions } from "./schema.js";
 
@@ -11,6 +11,10 @@ function toSession(row: SessionRow): Session {
     id: row.id,
     channel: row.channel,
     agentId: row.agentId,
+    status: row.status as SessionStatus,
+    ...(row.activeAgent !== null && { activeAgent: row.activeAgent }),
+    ...(row.handoffReason !== null && { handoffReason: row.handoffReason }),
+    ...(row.handoffAt !== null && { handoffAt: row.handoffAt }),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     ...(row.externalId !== null && { externalId: row.externalId }),
@@ -49,7 +53,27 @@ export class PostgresSessionStore implements SessionStore {
     return row === undefined ? undefined : toSession(row);
   }
 
-  async list(options: { limit?: number; channel?: string; userId?: string } = {}): Promise<Session[]> {
+  async update(id: string, patch: SessionPatch): Promise<Session | undefined> {
+    if (!isUuid(id)) return undefined;
+    const set: Partial<typeof sessions.$inferInsert> = { updatedAt: new Date() };
+    if (patch.activeAgent !== undefined) set.activeAgent = patch.activeAgent;
+    if (patch.handoffReason !== undefined) set.handoffReason = patch.handoffReason;
+    if (patch.status !== undefined) {
+      const current = await this.get(id);
+      if (current !== undefined && current.status !== patch.status) {
+        set.status = patch.status;
+        if (patch.status === "handoff") set.handoffAt = new Date();
+        else {
+          set.handoffAt = null;
+          set.handoffReason = null;
+        }
+      }
+    }
+    const [row] = await this.db.update(sessions).set(set).where(eq(sessions.id, id)).returning();
+    return row === undefined ? undefined : toSession(row);
+  }
+
+  async list(options: { limit?: number; channel?: string; userId?: string; status?: SessionStatus } = {}): Promise<Session[]> {
     const rows = await this.db
       .select()
       .from(sessions)
@@ -57,6 +81,7 @@ export class PostgresSessionStore implements SessionStore {
         and(
           options.channel !== undefined ? eq(sessions.channel, options.channel) : undefined,
           options.userId !== undefined ? eq(sessions.userId, options.userId) : undefined,
+          options.status !== undefined ? eq(sessions.status, options.status) : undefined,
         ),
       )
       .orderBy(desc(sessions.updatedAt))

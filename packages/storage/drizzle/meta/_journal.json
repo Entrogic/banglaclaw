@@ -15,6 +15,13 @@
       "when": 1790326062445,
       "tag": "0001_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790328746825,
+      "tag": "0002_multi_agent",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { generateApiKey, parseApiKey, verifySecret } from "./keys.js";
-import type { ApiKeyRecord, AuthStore, User } from "./types.js";
+import type { ApiKeyRecord, AuthStore, User, UserRole } from "./types.js";
 
 export interface Principal {
   user: User;
@@ -23,9 +23,14 @@ function publicKey({ hash: _hash, ...rest }: ApiKeyRecord): Omit<ApiKeyRecord, "
 export class ApiKeyAuthenticator {
   constructor(readonly store: AuthStore) {}
 
-  /** Creates the user if needed and issues a new key for it. */
-  async issueKey(userName: string, keyName = "default"): Promise<IssuedKey> {
-    const user = (await this.store.findUserByName(userName)) ?? (await this.store.createUser(userName));
+  /** Creates the user if needed (with `role`, default "user") and issues a new key; an explicit role updates an existing user. */
+  async issueKey(userName: string, keyName = "default", role?: UserRole): Promise<IssuedKey> {
+    let user = await this.store.findUserByName(userName);
+    if (user === undefined) user = await this.store.createUser(userName, role ?? "user");
+    else if (role !== undefined && user.role !== role) {
+      await this.store.setUserRole(user.id, role);
+      user = { ...user, role };
+    }
     const generated = generateApiKey();
     const record: ApiKeyRecord = { id: generated.id, userId: user.id, name: keyName, hash: generated.hash, createdAt: new Date() };
     await this.store.saveApiKey(record);

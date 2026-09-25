@@ -196,3 +196,34 @@ describe("gateway knowledge and memory", () => {
     expect((await createGatewayApp(deps).request("/v1/memories", get(alice))).status).toBe(404);
   });
 });
+
+describe("gateway human handoff", () => {
+  it("lets operators list, read, reply to and release handed-off sessions", async () => {
+    const { deps, alice } = await makeDeps({ script: [{ content: "bot reply" }] });
+    const ops = (await deps.auth.issueKey("ops", "console", "operator")).token;
+    const pushed: [string, string][] = [];
+    const app = createGatewayApp({ ...deps, deliver: async (s, text) => { pushed.push([s.id, text]); return true; } });
+
+    const { sessionId } = (await (await app.request("/v1/agents/run", json(alice, { text: "hi" }))).json()) as { sessionId: string };
+    await deps.sessions.update(sessionId, { status: "handoff", handoffReason: "wants a refund" });
+
+    expect((await app.request("/v1/handoffs", get(alice))).status).toBe(403);
+    const queue = (await (await app.request("/v1/handoffs", get(ops))).json()) as { handoffs: { id: string; status: string; handoffReason: string }[] };
+    expect(queue.handoffs).toEqual([expect.objectContaining({ id: sessionId, status: "handoff", handoffReason: "wants a refund" })]);
+
+    // While handed off the user's message is stored and the bot stays silent.
+    const waiting = (await (await app.request(`/v1/sessions/${sessionId}/messages`, json(alice, { text: "hello?" }))).json()) as { reply: string; run: { status: string; agent: string } };
+    expect(waiting).toMatchObject({ reply: "", run: { status: "handoff", agent: "human" } });
+
+    const reply = await app.request(`/v1/handoffs/${sessionId}/reply`, json(ops, { text: "Hi, I'm Karim from support." }));
+    expect(await reply.json()).toMatchObject({ delivered: true });
+    expect(pushed).toEqual([[sessionId, "Hi, I'm Karim from support."]]);
+    const detail = (await (await app.request(`/v1/handoffs/${sessionId}`, get(ops))).json()) as { messages: { role: string; content: string }[] };
+    expect(detail.messages.at(-1)).toEqual({ role: "operator", content: "Hi, I'm Karim from support." });
+
+    expect(await (await app.request(`/v1/handoffs/${sessionId}/release`, json(ops, {}))).json()).toMatchObject({ session: { status: "active" } });
+    expect((await app.request(`/v1/handoffs/${sessionId}/release`, json(ops, {}))).status).toBe(409);
+    expect((await app.request(`/v1/handoffs/00000000-0000-4000-8000-000000000000`, get(ops))).status).toBe(404);
+    expect(await (await app.request("/v1/me", get(ops))).json()).toMatchObject({ user: { role: "operator" } });
+  });
+});

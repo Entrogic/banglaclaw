@@ -1,5 +1,6 @@
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { AgentRuntime } from "@banglaclaw/agent";
+import { loadAgentProfiles, type AgentProfile } from "@banglaclaw/agents";
 import { InMemoryAuthStore, type AuthStore } from "@banglaclaw/auth";
 import { McpManager } from "@banglaclaw/mcp";
 import { createProvider } from "@banglaclaw/providers";
@@ -37,6 +38,25 @@ export async function connectMcp(loaded: LoadedConfig): Promise<McpManager> {
   });
   await manager.connectAll();
   return manager;
+}
+
+export function loadAgents(loaded: LoadedConfig): AgentProfile[] {
+  return loadAgentProfiles(loaded.config.agents.dirs, loaded.baseDir);
+}
+
+/** POSTs {event, sessionId, channel, reason} to HANDOFF_WEBHOOK_URL (Slack/Discord bridges, n8n, …). */
+function handoffNotifier(loaded: LoadedConfig) {
+  const url = loaded.secrets.handoffWebhookUrl;
+  if (url === undefined) return undefined;
+  return async (session: { id: string; channel: string; externalId?: string }, reason: string) => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "handoff", sessionId: session.id, channel: session.channel, reason, at: new Date().toISOString() }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) throw new Error(`handoff webhook returned ${res.status}`);
+  };
 }
 
 export function loadSkills(loaded: LoadedConfig): SkillSet {
@@ -110,6 +130,7 @@ export interface RuntimeBundle {
   skills: SkillSet;
   providerId: string;
   knowledge: KnowledgeSetup;
+  profiles: AgentProfile[];
 }
 
 export async function createRuntime(options: GlobalOptions): Promise<RuntimeBundle> {
@@ -130,6 +151,8 @@ export async function createRuntime(options: GlobalOptions): Promise<RuntimeBund
     const registry = buildRegistry(mcp, knowledge.tools);
     const policy = new AllowlistPolicy(config.tools.allow);
     const skills = loadSkills(services.loaded);
+    const profiles = loadAgents(services.loaded);
+    const notify = handoffNotifier(services.loaded);
     const runtime = new AgentRuntime({
       provider,
       registry,
@@ -145,9 +168,13 @@ export async function createRuntime(options: GlobalOptions): Promise<RuntimeBund
       maxActiveSkills: config.skills.maxActive,
       ...(services.checkpointer !== undefined && { checkpointer: services.checkpointer }),
       contextProviders: knowledge.contextProviders,
+      ...((profiles.length > 0 || config.handoff.enabled) && {
+        team: { profiles, handoff: config.handoff.enabled, maxTransfers: config.agents.maxTransfers },
+      }),
+      ...(notify !== undefined && { onHandoff: notify }),
       logger,
     });
-    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id, knowledge };
+    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id, knowledge, profiles };
   } catch (error) {
     await services.close();
     await mcp?.close();

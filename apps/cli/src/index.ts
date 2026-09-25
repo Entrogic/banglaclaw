@@ -2,12 +2,17 @@
 import { Command } from "commander";
 import { AgentRunError } from "@banglaclaw/agent";
 import {
+  agentList,
   agentRun,
   chat,
   dbMigrate,
   dbStatus,
   describe,
   doctor,
+  handoffList,
+  handoffRelease,
+  handoffReply,
+  handoffShow,
   init,
   kbDelete,
   kbIngest,
@@ -19,7 +24,6 @@ import {
   mcpList,
   memoryForget,
   memoryList,
-  planned,
   runList,
   runShow,
   serve,
@@ -36,7 +40,7 @@ loadDotEnv();
 const program = new Command()
   .name("banglaclaw")
   .description("Bangla-first AI agent runtime")
-  .version("0.6.0")
+  .version("0.7.0")
   .option("-c, --config <path>", "path to banglaclaw.yaml");
 
 const globals = () => program.opts<{ config?: string }>();
@@ -54,7 +58,24 @@ agent
   .argument("<message...>", "message text")
   .option("-s, --session <id>", "continue an existing session")
   .action((words: string[], opts: { session?: string }) => agentRun(words.join(" "), { ...globals(), ...opts }));
-agent.command("list").description("list configured agents").action(planned("agent list", "v0.7 (multi-agent)"));
+agent.command("list").description("list the supervisor and specialist agents (AGENT.md)").action(() => agentList(globals()));
+
+const handoff = program.command("handoff").description("human handoff queue (postgres storage)");
+handoff.command("list").description("conversations waiting for a human").action(() => handoffList(globals()));
+handoff
+  .command("show")
+  .description("show a handed-off conversation")
+  .argument("<sessionId>")
+  .option("-n, --limit <n>", "maximum messages", "30")
+  .action((id: string, opts: { limit: string }) => handoffShow(id, { ...globals(), ...opts }));
+handoff
+  .command("reply")
+  .description("reply to the user as a human operator (sent via the session's channel)")
+  .argument("<sessionId>")
+  .argument("<text...>")
+  .option("--as <name>", "operator name recorded with the message", process.env.USER ?? "operator")
+  .action((id: string, words: string[], opts: { as: string }) => handoffReply(id, words.join(" "), { ...globals(), ...opts }));
+handoff.command("release").description("give the conversation back to the bot").argument("<sessionId>").action((id: string) => handoffRelease(id, globals()));
 
 const session = program.command("session").description("inspect sessions");
 session
@@ -107,7 +128,8 @@ key
   .description("create an API key (creates the user if needed)")
   .requiredOption("-u, --user <name>", "user the key belongs to")
   .option("-n, --name <name>", "key label", "default")
-  .action((opts: { user: string; name: string }) => keyCreate({ ...globals(), ...opts }));
+  .option("-r, --role <role>", "user (default) or operator (may answer human handoffs)")
+  .action((opts: { user: string; name: string; role?: string }) => keyCreate({ ...globals(), ...opts }));
 key
   .command("list")
   .description("list API keys")

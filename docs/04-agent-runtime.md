@@ -26,11 +26,44 @@ START → prepare → model ─┬─ tool calls, within limits ─→ tools →
   - appends the run's new messages to the session.
 - With a checkpointer (`PostgresSaver` when `storage.provider: postgres`), graph state is checkpointed per run under `thread_id = runId`, which `runtime.checkpoint(runId)` reads back. Conversation history is owned by the session store, not by checkpoints.
 
+## Multi-agent teams (v0.7)
+
+Specialists are defined in `agents/<name>/AGENT.md` (`packages/agents`):
+
+```markdown
+---
+name: sales                       # kebab-case; "supervisor" and "human" are reserved
+description: Prices, discounts and orders      # shown to the supervisor for routing
+tools: [search_knowledge, calculator]          # narrows tools.allow (never widens it)
+skills: [calculation]                          # optional; default: all skills
+---
+Instructions for the specialist…
+```
+
+- **Supervisor.** The default agent. It gets a `transfer_to_<agent>` control tool per specialist and keeps only the tools no specialist claims, so domain requests get routed.
+- **Specialists.** Each uses only its own tool subset (enforced by a scoped permission policy, not just the prompt), and can call `transfer_to_supervisor`.
+- **Routing state.** Transfers happen inside a run (the specialist answers in the same run). The session remembers `activeAgent`, so follow-ups go straight to the specialist. `agents.maxTransfers` (default 3) stops agents bouncing a request back and forth.
+- **Events and records.** `agent_transfer` events are emitted, and `RunRecord.agent` / `agentPath` record the route.
+- **Single-agent mode.** With no AGENT.md files and handoff disabled, behavior is exactly the single-agent graph.
+
+## Human handoff (v0.7)
+
+With `handoff.enabled`, every agent can call `request_human` with a reason:
+
+1. The run ends with a localised "a human will reply" message.
+2. The session is set to `status: handoff` (with the reason and time), and `HANDOFF_WEBHOOK_URL` is notified if set.
+3. While handed off, user messages are stored for the operator. The bot doesn't call the model or reply (`RunRecord.status = handoff`, `agent = human`), and channels stay silent.
+4. Operators (users with `role: operator`) work the queue through `/v1/handoffs` or `banglaclaw handoff list | show | reply | release`.
+5. Replies are stored as assistant messages tagged `response_metadata.operator`, audited as runs, and delivered through the session's channel (Telegram, WhatsApp). API sessions read them from the messages endpoint.
+6. `release` returns the session to the supervisor.
+
+Smaller models sometimes claim to "transfer" or "escalate" in text without calling the tool. The prompts forbid this, but only the tool calls actually change state.
+
 MCP tools (v0.3) are registered in the same `ToolRegistry` and run through the same `tools` node, so the dedicated `mcp` branch in the target graph below is not needed.
 
 ## Target graph
 
-The router / planner / verifier / MCP branches below are planned for later releases:
+The planner / verifier branches below are still planned (routing is covered by the team supervisor):
 
 ```text
 START

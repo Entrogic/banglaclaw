@@ -29,9 +29,17 @@ export function createRenderer(write: (s: string) => void = (s) => process.stdou
         out(event.text);
         break;
       case "tool_start":
+        if (event.tool.startsWith("transfer_to_") || event.tool === "request_human") break;
         line(dim(`⚙ ${event.tool}(${short(event.input)})`));
         break;
+      case "agent_transfer":
+        line(dim(`↪ ${event.to}`));
+        break;
+      case "handoff":
+        line(yellow(event.pending ? "⏳ waiting for a human operator — the bot will not reply" : `👤 handed to a human: ${event.reason}`));
+        break;
       case "tool_end": {
+        if (event.audit.tool.startsWith("transfer_to_") || event.audit.tool === "request_human") break;
         const { status, output, error, durationMs } = event.audit;
         const detail = status === "ok" ? short(output) : `${status}: ${error ?? ""}`;
         line(dim(`  → ${detail} ${durationMs}ms`));

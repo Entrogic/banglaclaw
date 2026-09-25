@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { RunRecord, RunStore } from "./run.js";
-import type { NewSession, Session, SessionStore } from "./session.js";
+import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "./session.js";
 
 /** Process-local session store (storage.provider: memory). */
 export class InMemorySessionStore implements SessionStore {
@@ -13,7 +13,7 @@ export class InMemorySessionStore implements SessionStore {
       throw new Error(`Session already exists for ${input.channel}:${input.externalId}`);
     }
     const now = new Date();
-    const session: Session = { id: randomUUID(), ...input, createdAt: now, updatedAt: now };
+    const session: Session = { id: randomUUID(), ...input, status: "active", createdAt: now, updatedAt: now };
     this.#sessions.set(session.id, session);
     this.#messages.set(session.id, []);
     return { ...session };
@@ -31,13 +31,21 @@ export class InMemorySessionStore implements SessionStore {
     return undefined;
   }
 
-  async list(options: { limit?: number; channel?: string; userId?: string } = {}): Promise<Session[]> {
+  async list(options: { limit?: number; channel?: string; userId?: string; status?: SessionStatus } = {}): Promise<Session[]> {
     return [...this.#sessions.values()]
       .filter((s) => options.channel === undefined || s.channel === options.channel)
+      .filter((s) => options.status === undefined || s.status === options.status)
       .filter((s) => options.userId === undefined || s.userId === options.userId)
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .slice(0, options.limit ?? 50)
       .map((s) => ({ ...s }));
+  }
+
+  async update(id: string, patch: SessionPatch): Promise<Session | undefined> {
+    const s = this.#sessions.get(id);
+    if (s === undefined) return undefined;
+    applyPatch(s, patch);
+    return { ...s };
   }
 
   async appendMessages(sessionId: string, _runId: string, messages: BaseMessage[]): Promise<void> {
@@ -64,6 +72,26 @@ export class InMemorySessionStore implements SessionStore {
       session.updatedAt = new Date();
     }
   }
+}
+
+function applyPatch(s: Session, patch: SessionPatch): void {
+  if (patch.activeAgent !== undefined) {
+    if (patch.activeAgent === null) delete s.activeAgent;
+    else s.activeAgent = patch.activeAgent;
+  }
+  if (patch.status !== undefined && patch.status !== s.status) {
+    s.status = patch.status;
+    if (patch.status === "handoff") s.handoffAt = new Date();
+    else {
+      delete s.handoffAt;
+      delete s.handoffReason;
+    }
+  }
+  if (patch.handoffReason !== undefined) {
+    if (patch.handoffReason === null) delete s.handoffReason;
+    else s.handoffReason = patch.handoffReason;
+  }
+  s.updatedAt = new Date();
 }
 
 export class InMemoryRunStore implements RunStore {

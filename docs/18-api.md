@@ -23,6 +23,10 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | GET | `/v1/knowledge/documents` | Ingested documents |
 | GET | `/v1/memories` | The caller's long-term memories |
 | DELETE | `/v1/memories/:id` | Delete one of the caller's memories (204) |
+| GET | `/v1/handoffs` | Operators: sessions waiting for a human (all users) |
+| GET | `/v1/handoffs/:id` | Operators: a handed-off session with its messages |
+| POST | `/v1/handoffs/:id/reply` | Operators: reply as a human `{ text }` → `{ delivered, runId }` (delivered through Telegram/WhatsApp) |
+| POST | `/v1/handoffs/:id/release` | Operators: return the session to the bot (409 if it isn't handed off) |
 | GET | `/v1/ws` | WebSocket (see below) |
 
 - `externalId` is the channel-native conversation id (for example a chat id). It is namespaced per user, so two API users never share or discover each other's sessions.
@@ -38,6 +42,8 @@ event: session    data: {"sessionId":"…","created":true}
 event: run_start  data: {"type":"run_start","runId":"…","language":"bn","skills":["calculation"]}
 event: tool_start data: {"type":"tool_start","tool":"calculator","input":{…}}
 event: tool_end   data: {"type":"tool_end","audit":{"status":"ok",…}}
+event: agent_transfer data: {"type":"agent_transfer","from":"supervisor","to":"sales"}
+event: handoff    data: {"type":"handoff","reason":"…","pending":false}   (pending: true while a human owns the session)
 event: token      data: {"type":"token","text":"…"}
 event: final      data: {"type":"final","text":"…"}       (or event: error)
 event: done       data: {"sessionId":"…","run":{…}}
@@ -72,6 +78,8 @@ Every error has the same shape and carries the request id (also returned in `X-R
 |---|---|
 | 400 | `invalid_request`, `invalid_json` |
 | 401 | `unauthenticated` |
+| 403 | `forbidden` (operator role required) |
+| 409 | `not_handed_off` |
 | 404 | `not_found`, `session_not_found`, `run_not_found` |
 | 413 | `payload_too_large` (bodies over 256 KB) |
 | 429 | `rate_limited`, `too_many_concurrent_runs` (with `Retry-After`) |
@@ -80,5 +88,6 @@ Every error has the same shape and carries the request id (also returned in `X-R
 
 ## Authentication and limits
 
+- Users have a `role`: `user` (default) or `operator` (may use `/v1/handoffs`). Create operators with `banglaclaw key create --user <name> --role operator`.
 - API keys look like `bck_<id>_<secret>`. Only a SHA-256 hash of the secret is stored. Create keys with `banglaclaw key create --user <name>` (postgres storage). In memory mode, `serve` prints a temporary key.
 - Per API key: a token-bucket rate limit (`gateway.rateLimit.requestsPerMinute`, reported in `X-RateLimit-Limit` / `X-RateLimit-Remaining`) and a cap on concurrent runs (`maxConcurrentRuns`). Limits are per process; a shared store is needed for multiple instances.

@@ -60,10 +60,10 @@
 
 ## v0.7 — Multi-agent
 
-- [ ] Supervisor
-- [ ] Specialist agents
-- [ ] Agent-to-agent workflows
-- [ ] Human handoff
+- [x] Supervisor
+- [x] Specialist agents
+- [x] Agent-to-agent workflows
+- [x] Human handoff
 
 ## v1.0 — Production Runtime
 
