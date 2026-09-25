@@ -22,6 +22,14 @@ Requires Node.js 22+ and pnpm.
 
 ```bash
 pnpm install
+pnpm banglaclaw init              # guided setup: provider, key test, storage, features
+pnpm banglaclaw chat              # full-screen chat (see docs/17-cli.md)
+```
+
+Or configure by hand:
+
+```bash
+pnpm install
 cp .env.example .env              # then set OPENAI_API_KEY (or BANGLACLAW_PROVIDER=anthropic + ANTHROPIC_API_KEY)
                                   # the CLI loads ./.env automatically; exported shell variables take precedence
 
@@ -147,6 +155,7 @@ pnpm banglaclaw session list
 - **v0.5 Channels**: Telegram (polling or webhook), WhatsApp Cloud API, a browser chat page, and allowlist access with per-chat rate limits.
 - **v0.6 Knowledge**: RAG over your documents (txt/md/html/pdf, Bangla-aware chunking, Qdrant or in-memory vectors) and owner-scoped long-term memory.
 - **v0.7 Multi-agent**: a supervisor routing to AGENT.md specialists with scoped tools, plus human handoff with an operator queue (CLI/API) that replies through the user's channel.
+- **v1.1 Professional CLI**: full-screen chat UI (Ink), setup wizard, `--json` everywhere, tables, error hints and exit codes, shell completion.
 - **v1.0 Production runtime**: audit log, key scopes and roles, OpenTelemetry tracing, Prometheus metrics, token usage, OpenAPI spec + typed client, plugins, and a production Docker image.
 
 See [CHANGELOG.md](CHANGELOG.md) and the [roadmap](docs/20-roadmap.md).

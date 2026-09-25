@@ -13,8 +13,9 @@ pnpm workspaces + Turborepo. Never use npm or yarn. Node 22+.
 ```bash
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # pre-PR gate
+pnpm banglaclaw init           # setup wizard; `pnpm banglaclaw --help` for grouped commands
 pnpm banglaclaw <cmd>          # CLI from source: chat | agent run | session | run | skill list | tool list | mcp list | db migrate | serve | key | init | doctor
-pnpm dev                       # chat REPL from source (no watch mode: tsx watch restarts on Enter)
+pnpm dev                       # full-screen chat from source (no watch mode: tsx watch restarts on Enter)
 pnpm --filter @banglaclaw/agent test language              # one test file (name filter)
 pnpm --filter @banglaclaw/agent exec vitest run -t "maxIterations"   # one test by name
 pnpm --filter @banglaclaw/<pkg> add <dep>
@@ -83,6 +84,12 @@ What exists:
   - CLI wiring is in `apps/cli/src/knowledge.ts`. Qdrant tests are skipped unless `TEST_QDRANT_URL` is set; `test/pdf.ts` builds a PDF fixture.
 - **Channels** (`packages/channels`, docs/11): `ChannelRouter` handles access (allowlist by default), a per-chat `RateLimiter`, `/start` and `/new` (`SessionStore.detachExternalId`), per-conversation promise queues, typing, and `splitMessage`. `TelegramChannel` supports polling (`startPolling`) or a `webhookApp(secret)`; `WhatsAppChannel.webhookApp()` verifies `X-Hub-Signature-256`. Both platforms are plain `fetch` clients that take an injectable `fetch`, which the tests use via `fakeFetch`. `apps/cli/src/channels.ts` (`setupChannels`) builds them from config and fails fast with `ConfigError` on missing secrets. `/chat` (`packages/gateway/src/web-chat.ts`) is a self-contained page on `/v1/ws`.
 - **Auth** (`packages/auth`): `bck_<12 id>_<40 secret>` tokens store only a SHA-256 hash and are verified with `timingSafeEqual`; `issueKey` creates the user on demand. The store is `InMemoryAuthStore` or `PostgresAuthStore` (`users`, `api_keys` tables). In memory mode `banglaclaw serve` prints a temporary key; `key create/list/revoke` require postgres.
+- **CLI** (`apps/cli`, docs/17):
+  - `src/program.ts` builds the commander tree (help groups, examples, global `--json/-q/--no-color/-c`, applied in a `preAction` hook). `src/index.ts` maps errors through `ui/errors.ts` `toCliError` (hint + exit code).
+  - Commands live in `src/commands/*`: `shared.ts` holds session/knowledge/auth/desk helpers, and `doctor.ts` exports `collectChecks` (reused by the `init` wizard).
+  - Output goes through `ui/output.ts` (`emit(data, humanRenderer)` for `--json`, `print`/`note`/`warn`), `ui/table.ts` (string-width, Bangla-safe) and `ui/theme.ts` (colors and symbols). Never `console.log` in commands.
+  - `src/tui/` is the Ink chat: `useChat.ts` bridges RunEvents to state, and `App.tsx` handles input, slash menu and status bar. It is tested with ink-testing-library in `test/tui.test.tsx`. `chat-plain.ts` is the non-TTY fallback (async readline iterator).
+  - `src/init/config.ts` holds the pure wizard logic (`buildConfigYaml`, `mergeEnv`).
 - **Config** (`packages/shared/config.ts`): `banglaclaw.yaml` + `BANGLACLAW_*` env overrides validated by a strict Zod schema. API keys and `DATABASE_URL` come only from env, and the strict schema rejects them in YAML. Relative paths (such as `skills.dirs`) resolve against `baseDir`, which is the config file's directory or else cwd. The logger writes redacted JSON to stderr, because stdout is reserved for streamed replies.
 
 Post-1.0 ideas (docs/20): per-tenant document ACLs, push of operator replies to API clients, shared rate-limit store, router/planner/verifier nodes, more channels, exposing BanglaClaw as an MCP server.

@@ -1,0 +1,100 @@
+/** Fully commented config written by `banglaclaw init --yes` (non-interactive). */
+export const CONFIG_TEMPLATE = `# BanglaClaw configuration. API keys and DATABASE_URL come from environment variables only.
+agent:
+  name: banglaclaw
+
+models:
+  default:
+    provider: openai-compatible   # or: anthropic
+    model: gpt-4o-mini
+    # baseUrl: http://localhost:11434/v1
+
+runtime:
+  maxIterations: 6
+  maxToolCalls: 8
+  timeoutMs: 60000
+
+tools:
+  allow: [calculator, current_datetime, search_knowledge, remember, recall, forget]   # add "bangladesh__*" for an MCP server
+
+storage:
+  provider: memory                # or: postgres (needs DATABASE_URL, then \`banglaclaw db migrate\`)
+  checkpoints: true
+
+memory:
+  maxHistoryMessages: 20
+  longTerm:
+    enabled: false               # remember/recall/forget tools, scoped per user/chat
+    autoRecall: true             # add relevant memories to the prompt each run
+    recallLimit: 5
+    maxPerOwner: 200
+
+embeddings:
+  model: text-embedding-3-small  # uses OPENAI_API_KEY (or EMBEDDINGS_API_KEY)
+  # baseUrl: http://localhost:11434/v1   # e.g. Ollama with model: bge-m3
+
+knowledge:
+  enabled: false                 # search_knowledge tool (RAG over your documents)
+  vectorStore: memory            # memory (rebuilt on start) | qdrant (persistent)
+  vectorStoreUrl: http://localhost:56333   # Qdrant from docker/compose.yaml
+  sources: []                    # files/dirs ingested on start, e.g. [docs/faq, policies.pdf]
+  chunkSize: 1200
+  chunkOverlap: 150
+  searchLimit: 5
+
+gateway:
+  host: 127.0.0.1            # use 0.0.0.0 only behind a reverse proxy / firewall
+  port: 3000
+  corsOrigins: []            # e.g. [https://app.example.com]
+  maxInputChars: 8000
+  rateLimit:
+    requestsPerMinute: 60    # per API key
+    maxConcurrentRuns: 2     # per API key
+
+skills:
+  dirs: [skills]
+  maxActive: 2
+
+agents:
+  dirs: [agents]                 # <dir>/<name>/AGENT.md specialists; none = single agent (see examples/agents)
+  maxTransfers: 3
+
+handoff:
+  enabled: false                 # request_human tool; operators answer via "banglaclaw handoff" or /v1/handoffs
+
+channels:
+  web:
+    enabled: true                # browser chat at http://<gateway>/chat
+  telegram:
+    enabled: false               # needs TELEGRAM_BOT_TOKEN (from @BotFather)
+    mode: polling                # polling (no public URL) | webhook (needs webhookUrl + TELEGRAM_WEBHOOK_SECRET)
+    # webhookUrl: https://bot.example.com
+    access: allowlist            # allowlist | open — every message costs model tokens
+    allowedUserIds: []           # your numeric Telegram user id(s)
+    rateLimitPerMinute: 10       # per chat
+  whatsapp:
+    enabled: false               # needs WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN
+    # phoneNumberId: "123456789012345"
+    access: allowlist
+    allowedNumbers: []           # e.g. ["8801712345678"]
+    rateLimitPerMinute: 10
+
+plugins: []                      # e.g. [examples/plugins/bd-phone] — trusted code only (docs/23)
+
+mcp:
+  servers: {}
+  # Example: the bundled Bangladesh reference-data server (run from the repo root).
+  # Its tools are named bangladesh__<tool> and must be allowed in tools.allow.
+  # servers:
+  #   bangladesh:
+  #     transport: stdio
+  #     command: node
+  #     args: [--import, tsx, mcp-servers/bangladesh/src/bin.ts]   # or: [mcp-servers/bangladesh/dist/bin.js] after pnpm build
+  #     timeoutMs: 30000
+  #   remote:
+  #     transport: http
+  #     url: https://mcp.example.com/mcp
+  #     headers: { Authorization: "Bearer \${REMOTE_MCP_TOKEN}" }   # \${VAR} is read from the environment
+
+timezone: Asia/Dhaka
+`;

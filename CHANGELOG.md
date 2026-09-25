@@ -2,6 +2,25 @@
 
 All notable changes to BanglaClaw. The project follows [Semantic Versioning](https://semver.org); the `/v1` HTTP API is stable from 1.0.0 (docs/18).
 
+## 1.1.0 — Professional CLI
+
+- **`banglaclaw chat` is a full-screen Ink UI** with:
+  - markdown replies, tool-call lines, agent-transfer and handoff banners
+  - a status bar with a spinner, elapsed time, tokens, agent path and session
+  - a slash-command menu (Tab completion), persistent input history, multiline input
+  - Esc/Ctrl+C cancellation
+
+  Line mode (`--plain`, pipes) now buffers piped input correctly.
+- **`banglaclaw init` wizard:** provider and model, hidden API key entry with a live connection test, storage with PostgreSQL migration, optional extras (knowledge, memory, Telegram, example agents, handoff). It writes `banglaclaw.yaml` and a 0600 `.env` without clobbering existing keys, then runs doctor. `--yes` writes the template.
+- **Consistent output:**
+  - `--json` on list/show/status commands, `doctor`, `version` and `agent run`
+  - `-q/--quiet` and `--no-color` / `NO_COLOR` / `FORCE_COLOR`
+  - aligned, width-aware tables (Bangla-safe)
+  - errors with actionable hints and stable exit codes (0/1/2/3/4/130)
+  - quiet exit on EPIPE (`| head`)
+- **Structure:** `apps/cli/src/commands/*`, `ui/*`, `tui/*`, `program.ts`.
+- **Help and polish:** grouped `--help` (Chat / Data / Server / Setup) with examples, `banglaclaw completion bash|zsh|fish`, `banglaclaw version`, spinners for slow commands, and a redesigned `doctor` (sectioned, JSON report) and `serve` banner.
+
 ## 1.0.0 — Production runtime
 
 - **Security:**
