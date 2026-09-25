@@ -58,7 +58,7 @@ pnpm banglaclaw agent run "কুমিল্লা কোন বিভাগে
 HTTP gateway (see [API](docs/18-api.md)):
 
 ```bash
-pnpm banglaclaw serve                     # memory storage: prints a temporary API key
+pnpm banglaclaw serve                     # memory storage: prints a temporary admin API key
 # with postgres storage: pnpm banglaclaw key create --user my-app
 curl -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
      -d '{"text":"২৫ * ৪ কত?"}' http://127.0.0.1:3000/v1/agents/run

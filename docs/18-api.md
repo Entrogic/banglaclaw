@@ -115,7 +115,7 @@ for await (const e of bc.sessions.stream(sessionId, "ar 20%?")) if (e.event === 
 
 - Keys have **scopes**: `read` (GET endpoints) and `run` (agent runs and other writes). The default is both; `key create --scopes read` makes a read-only key. Missing scope → 403 `insufficient_scope`.
 - Users have a `role`: `user` (default), `operator` (may use `/v1/handoffs`) or `admin` (operator rights plus `GET /v1/audit` and `/v1/admin`). Create operators with `banglaclaw key create --user <name> --role operator`.
-- API keys look like `bck_<id>_<secret>`. Only a SHA-256 hash of the secret is stored. Create keys with `banglaclaw key create --user <name>` (postgres storage). In memory mode, `serve` prints a temporary key.
+- API keys look like `bck_<id>_<secret>`. Only a SHA-256 hash of the secret is stored. Create keys with `banglaclaw key create --user <name>` (postgres storage). In memory mode, `serve` prints a temporary admin key that is valid until the process exits (it also opens `/admin`); keep memory mode off shared or public hosts.
 - Per API key: a token-bucket rate limit (`gateway.rateLimit.requestsPerMinute`, reported in `X-RateLimit-Limit` / `X-RateLimit-Remaining`) and a cap on concurrent runs (`maxConcurrentRuns`). Limits are per process; a shared store is needed for multiple instances.
 
 ## Admin analytics

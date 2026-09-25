@@ -13,7 +13,7 @@ pnpm banglaclaw serve                  # ডিফল্ট: http://127.0.0.1:30
 pnpm banglaclaw serve --port 8080 --host 0.0.0.0
 ```
 
-`serve` একসাথে API, ওয়েব চ্যাট (`/chat`), মেট্রিক্স (`/metrics`) এবং চালু থাকা চ্যানেলগুলো শুরু করে। মেমরি স্টোরেজে এটি শুধু এই প্রসেসের জন্য একটি অস্থায়ী API key প্রিন্ট করে; স্থায়ী key-র জন্য PostgreSQL স্টোরেজ ও `banglaclaw key create` ব্যবহার করুন।
+`serve` একসাথে API, ওয়েব চ্যাট (`/chat`), মেট্রিক্স (`/metrics`) এবং চালু থাকা চ্যানেলগুলো শুরু করে। মেমরি স্টোরেজে এটি শুধু এই প্রসেসের জন্য একটি অস্থায়ী admin API key প্রিন্ট করে (এটি দিয়ে `/admin` ড্যাশবোর্ডেও ঢোকা যায়; শেয়ার্ড বা পাবলিক সার্ভারে মেমরি মোড ব্যবহার করবেন না); স্থায়ী key-র জন্য PostgreSQL স্টোরেজ ও `banglaclaw key create` ব্যবহার করুন।
 
 ```bash
 curl -H "Authorization: Bearer <key>" -H "Content-Type: application/json" \

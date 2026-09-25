@@ -19,6 +19,7 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
   - API keys: issue (token shown once), list and revoke
   - `pnpm --filter @banglaclaw/dashboard demo` for UI work with seeded data
 - `@banglaclaw/client` covers the admin endpoints.
+- With memory storage, the temporary key printed by `serve` is now an admin key, so the dashboard works without Postgres.
 
 ## 1.1.0 — Professional CLI
 

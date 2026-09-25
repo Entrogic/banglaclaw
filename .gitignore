@@ -7,3 +7,5 @@ coverage/
 .env.*
 !.env.example
 banglaclaw.yaml
+# Local agent profiles referenced by banglaclaw.yaml (examples live in examples/agents)
+/agents/

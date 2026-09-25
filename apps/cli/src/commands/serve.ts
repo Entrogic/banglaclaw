@@ -35,8 +35,9 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       throw new ConfigError(`gateway.dashboardDir has no index.html: ${dashboardDir}`);
     }
     const authenticator = new ApiKeyAuthenticator(services.auth);
-    // Memory storage has no persistent keys: issue one for this process only.
-    if (!services.persistent) devToken = (await authenticator.issueKey("dev", "temporary")).token;
+    // Memory storage has no persistent keys: issue one for this process only. It is an admin key so the
+    // dashboard, audit log and handoff queue can be tried locally; all data is gone when the process exits.
+    if (!services.persistent) devToken = (await authenticator.issueKey("dev", "temporary", "admin")).token;
     gateway = await startGateway({
       runtime: bundle.runtime,
       sessions: services.sessions,
@@ -92,7 +93,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   reportMcpFailures(mcp);
   for (const line of channels.warnings) warn(line);
   if (devToken !== undefined) {
-    printAlways(c.yellow(`${sym.warn} Temporary API key (memory storage, valid until exit):`));
+    printAlways(c.yellow(`${sym.warn} Temporary admin API key (memory storage, valid until exit):`));
     printAlways(`  ${devToken}`);
     print(c.dim("  Use postgres storage and `banglaclaw key create` for persistent keys."));
     print();
