@@ -19,7 +19,7 @@ banglaclaw serve     # API, web chat, metrics and channels
 | | `agent list` | Supervisor and AGENT.md specialists |
 | **Data** | `session list \| show <id>` | Conversations with their messages and runs |
 | | `run list --session <id> \| show <id>` | Runs: tool calls, agent path, tokens, checkpoint |
-| | `kb ingest <paths…> \| list \| search <q> \| delete <source>` | Knowledge base (docs/07) |
+| | `kb ingest <paths or URLs…> \| list \| search <q> \| delete <source>` | Knowledge base: txt, md, html, pdf, docx and http(s) URLs (docs/07) |
 | | `memory list \| forget <id> [--owner …]` | Long-term memories |
 | **Server** | `serve [--port] [--host]` | Gateway, web chat, metrics and enabled channels |
 | | `key create \| list \| revoke` | API keys: `--role user\|operator\|admin`, `--scopes read,run` |

@@ -86,7 +86,7 @@ Knowledge base and long-term memory (see [Memory & Knowledge](docs/07-memory.md)
 docker compose -f docker/compose.yaml up -d      # includes Qdrant on :56333
 # banglaclaw.yaml: knowledge: {enabled: true, vectorStore: qdrant, vectorStoreUrl: http://localhost:56333}
 #                  memory: {longTerm: {enabled: true}}
-pnpm banglaclaw kb ingest docs/faq policies.pdf
+pnpm banglaclaw kb ingest docs/faq policies.pdf নীতিমালা.docx https://shop.example.com/faq
 pnpm banglaclaw agent run "ঢাকার বাইরে ডেলিভারি চার্জ কত?"
 ```
 

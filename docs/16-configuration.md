@@ -48,7 +48,7 @@ knowledge:
   vectorStore: memory      # memory | qdrant
   vectorStoreUrl: http://localhost:6333
   collection: banglaclaw_knowledge
-  sources: []              # ingested on start
+  sources: []              # files, folders or http(s) URLs, ingested on start
   chunkSize: 1200
   chunkOverlap: 150
   searchLimit: 5

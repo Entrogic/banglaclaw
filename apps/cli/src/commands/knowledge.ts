@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { isUrl } from "@banglaclaw/knowledge";
 import { BanglaClawError } from "@banglaclaw/shared";
 import type { GlobalOptions } from "../bootstrap.js";
 import { emit, empty, print, success } from "../ui/output.js";
@@ -13,14 +14,14 @@ export async function kbIngest(paths: string[], options: GlobalOptions): Promise
   if (knowledge.vectorStore === "memory") {
     throw new BanglaClawError("PERSISTENT_STORE_REQUIRED", "knowledge.vectorStore is memory, so ingested documents would vanish on exit (list them under knowledge.sources instead)");
   }
-  // Paths are typed relative to the shell's cwd; sources are named relative to the config file like knowledge.sources.
-  const result = await withSpinner("Ingesting documents…", () => kb.ingestPaths(paths.map((p) => resolve(p)), loaded.baseDir), {
-    done: (r) => `Processed ${r.results.length + r.errors.length} files`,
+  // Paths are typed relative to the shell's cwd; sources are named relative to the config file like knowledge.sources. URLs pass through.
+  const result = await withSpinner("Ingesting documents…", () => kb.ingestPaths(paths.map((p) => (isUrl(p) ? p : resolve(p))), loaded.baseDir), {
+    done: (r) => `Processed ${r.results.length + r.errors.length} sources`,
   });
   emit(result, ({ results, errors }) => {
     for (const r of results) print(`${r.skipped ? c.dim("= unchanged") : c.green("+ ingested ")} ${r.source} ${c.dim(`(${r.chunks} chunks)`)}`);
     for (const e of errors) print(c.red(`${sym.fail} ${e.path}: ${e.error}`));
-    if (results.length === 0 && errors.length === 0) empty("No supported files found (.txt .md .html .pdf).");
+    if (results.length === 0 && errors.length === 0) empty("No supported files found (.txt .md .html .pdf .docx) or URLs.");
   });
   if (result.errors.length > 0) process.exitCode = 1;
 }

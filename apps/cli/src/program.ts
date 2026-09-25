@@ -95,13 +95,13 @@ export function buildProgram(): Command {
 
   const kb = program.command("kb").description("knowledge base (RAG)");
   kb.command("ingest")
-    .description("ingest files or folders (.txt .md .html .pdf)")
+    .description("ingest files, folders or URLs (.txt .md .html .pdf .docx, http/https)")
     .argument("<paths...>")
-    .addHelpText("after", examples(["banglaclaw kb ingest docs/faq policies.pdf"]))
+    .addHelpText("after", examples(["banglaclaw kb ingest docs/faq policies.pdf", "banglaclaw kb ingest নীতিমালা.docx https://shop.example.com/faq"]))
     .action((paths: string[]) => kbIngest(paths, g()));
   kb.command("list").description("ingested documents").action(() => kbList(g()));
   kb.command("search").description("search the knowledge base").argument("<query...>").option("-n, --limit <n>", "maximum results", "5").action((w: string[], o: { limit: string }) => kbSearch(w.join(" "), { ...g(), ...o }));
-  kb.command("delete").description("remove a document by source path").argument("<source>").action((source: string) => kbDelete(source, g()));
+  kb.command("delete").description("remove a document by source path or URL").argument("<source>").action((source: string) => kbDelete(source, g()));
 
   const memory = program.command("memory").description("long-term memories (qdrant)");
   const owner = "owner: cli:local, user:<id>, telegram:<chat>, whatsapp:<number>";

@@ -25,12 +25,13 @@ Before each run, the runtime loads the session's most recent messages and trims 
 
 `KnowledgeBase`:
 
-- **Loaders.** `.txt`, `.md`, `.html` (`<head>`, scripts and styles removed) and `.pdf` (via `unpdf`), up to 20 MB.
+- **Loaders.** `.txt`, `.md`, `.html` (`<head>`, scripts and styles removed), `.pdf` (via `unpdf`) and `.docx` (paragraphs, tabs and line breaks from `word/document.xml`, each table row on one line as `cell | cell`, title from the document properties; read with Node's `zlib`, no extra dependency, 50 MB uncompressed limit), up to 20 MB per file.
+- **URLs.** `http(s)://` entries in `knowledge.sources` or `kb ingest` are downloaded (20 s timeout, 10 MB) and loaded by content type: HTML, plain text, markdown, PDF or DOCX. The source id is the URL without its `#fragment`, so re-ingesting an unchanged page is skipped. URLs come only from the operator (config or CLI), never from the model or the API.
 - **Chunking** (`chunkText`). Paragraphs and sentences, with the Bangla `।`/`॥` treated as sentence ends; `chunkSize` 1200 characters with a `chunkOverlap` of 150.
 - **Embeddings.** Any OpenAI-compatible `/embeddings` endpoint (`text-embedding-3-small` by default, or Ollama / vLLM through `embeddings.baseUrl`). Each chunk is embedded together with its document title.
 - **Documents.** Named by their source path relative to the config file. Re-ingesting replaces the document's chunks; unchanged content (by SHA-256) is skipped.
 - **The `search_knowledge` tool** returns passages with `source#chunk` citations. Passages below `minScore` are dropped.
-- **Ingestion.** `knowledge.sources` are ingested on every start (unchanged files are skipped with Qdrant), or on demand with `banglaclaw kb ingest <paths>`.
+- **Ingestion.** `knowledge.sources` are ingested on every start (unchanged files are skipped with Qdrant), or on demand with `banglaclaw kb ingest <paths or URLs>`.
 
 ## Vector stores
 
@@ -50,4 +51,4 @@ Before each run, the runtime loads the session's most recent messages and trims 
 - Per-tenant or per-user document collections and ACLs
 - pgvector adapter
 - Hybrid search (BM25 + vectors) and re-ranking
-- Ingestion API endpoint, URL/sitemap loaders, DOCX
+- Ingestion API endpoint, sitemap crawling, scheduled re-ingestion of URL sources

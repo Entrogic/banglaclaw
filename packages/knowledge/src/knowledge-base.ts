@@ -1,9 +1,9 @@
 import { resolve } from "node:path";
 import { createLogger, type Logger } from "@banglaclaw/shared";
 import { chunkText } from "./chunking.js";
-import type { Embedder } from "./embeddings.js";
+import type { Embedder, FetchLike } from "./embeddings.js";
 import { sha256, stableUuid } from "./ids.js";
-import { collectFiles, loadFile } from "./loaders.js";
+import { collectFiles, isUrl, loadFile, loadUrl } from "./loaders.js";
 import type { VectorStore } from "./vector-store.js";
 
 export interface KnowledgeHit {
@@ -37,6 +37,8 @@ export interface KnowledgeBaseOptions {
   chunkSize: number;
   chunkOverlap: number;
   logger?: Logger;
+  /** Used to download URL sources (tests inject a stub). */
+  fetch?: FetchLike;
 }
 
 /**
@@ -97,16 +99,17 @@ export class KnowledgeBase {
   }
 
   /**
-   * Ingests files/directories (relative paths resolve against `baseDir`). Sources are named
-   * relative to `baseDir`, so the same file always maps to the same document. Failures are reported per file.
+   * Ingests files, directories and http(s) URLs (relative paths resolve against `baseDir`). Files are
+   * named relative to `baseDir` and URLs by their address, so the same source always maps to the same
+   * document. Failures are reported per source.
    */
   async ingestPaths(paths: readonly string[], baseDir: string): Promise<{ results: IngestResult[]; errors: { path: string; error: string }[] }> {
-    const files = await collectFiles(paths.map((p) => resolve(baseDir, p)));
+    const files = await collectFiles(paths.filter((p) => !isUrl(p)).map((p) => resolve(baseDir, p)));
     const results: IngestResult[] = [];
     const errors: { path: string; error: string }[] = [];
-    for (const file of files) {
+    for (const file of [...files, ...paths.filter(isUrl)]) {
       try {
-        const loaded = await loadFile(file, baseDir);
+        const loaded = isUrl(file) ? await loadUrl(file, this.#o.fetch) : await loadFile(file, baseDir);
         if (loaded.text.trim() === "") throw new Error("no extractable text");
         results.push(await this.ingestText(loaded));
       } catch (error) {

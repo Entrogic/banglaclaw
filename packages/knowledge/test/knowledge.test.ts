@@ -37,7 +37,7 @@ describe("loaders", () => {
     mkdirSync(join(dir, "docs/.hidden"), { recursive: true });
     writeFileSync(join(dir, "docs/faq.md"), "# FAQ\n\nDelivery takes 3 days.");
     writeFileSync(join(dir, "docs/notes.txt"), "plain");
-    writeFileSync(join(dir, "docs/ignored.docx"), "x");
+    writeFileSync(join(dir, "docs/ignored.xlsx"), "x");
     writeFileSync(join(dir, "docs/.hidden/secret.md"), "x");
     writeFileSync(join(dir, "docs/guide.pdf"), makePdf("Return policy: 7 days"));
     const files = await collectFiles([join(dir, "docs")]);
