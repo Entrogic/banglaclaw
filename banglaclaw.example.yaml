@@ -26,6 +26,15 @@ storage:
 memory:
   maxHistoryMessages: 20
 
+gateway:
+  host: 127.0.0.1            # use 0.0.0.0 only behind a reverse proxy / firewall
+  port: 3000
+  corsOrigins: []            # e.g. [https://app.example.com]
+  maxInputChars: 8000
+  rateLimit:
+    requestsPerMinute: 60    # per API key
+    maxConcurrentRuns: 2     # per API key
+
 skills:
   dirs: [skills]
   maxActive: 2

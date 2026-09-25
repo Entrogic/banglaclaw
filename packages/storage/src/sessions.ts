@@ -49,11 +49,16 @@ export class PostgresSessionStore implements SessionStore {
     return row === undefined ? undefined : toSession(row);
   }
 
-  async list(options: { limit?: number; channel?: string } = {}): Promise<Session[]> {
+  async list(options: { limit?: number; channel?: string; userId?: string } = {}): Promise<Session[]> {
     const rows = await this.db
       .select()
       .from(sessions)
-      .where(options.channel !== undefined ? eq(sessions.channel, options.channel) : undefined)
+      .where(
+        and(
+          options.channel !== undefined ? eq(sessions.channel, options.channel) : undefined,
+          options.userId !== undefined ? eq(sessions.userId, options.userId) : undefined,
+        ),
+      )
       .orderBy(desc(sessions.updatedAt))
       .limit(options.limit ?? 50);
     return rows.map(toSession);

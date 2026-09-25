@@ -4,13 +4,36 @@ import type { StoredMessage } from "@langchain/core/messages";
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
+export const users = pgTable("users", {
+  id: text("id").primaryKey().default(sql`gen_random_uuid()::text`),
+  name: text("name").notNull().unique(),
+  createdAt: createdAt(),
+});
+
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    /** Public key id embedded in the token; the secret is stored only as a SHA-256 hash. */
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    hash: text("hash").notNull(),
+    createdAt: createdAt(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [index("api_keys_user_id_idx").on(t.userId)],
+);
+
 export const sessions = pgTable(
   "sessions",
   {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     channel: text("channel").notNull(),
     externalId: text("external_id"),
-    userId: text("user_id"),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     agentId: text("agent_id").notNull(),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -18,6 +41,7 @@ export const sessions = pgTable(
   (t) => [
     uniqueIndex("sessions_channel_external_id_key").on(t.channel, t.externalId),
     index("sessions_updated_at_idx").on(t.updatedAt),
+    index("sessions_user_id_idx").on(t.userId, t.updatedAt),
   ],
 );
 

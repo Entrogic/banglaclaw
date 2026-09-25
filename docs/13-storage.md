@@ -12,7 +12,9 @@ PostgreSQL is the initial recommended relational database.
 
 | Table | Contents |
 |---|---|
-| `sessions` | channel, external_id (unique per channel), user_id, agent_id, timestamps |
+| `users` | unique name (v0.4) |
+| `api_keys` | public key id, user_id, name, SHA-256 hash of the secret, last_used_at, revoked_at (v0.4) |
+| `sessions` | channel, external_id (unique per channel), user_id (FK users), agent_id, timestamps |
 | `messages` | session_id, run_id, role, `data` jsonb (serialised LangChain message incl. tool calls) |
 | `runs` | status, stop_reason, language, skills[], input/output/error, provider, prompt_version, timings |
 | `tool_calls` | run_id + seq, tool, input/output jsonb, status, error, duration |
@@ -26,7 +28,6 @@ PostgreSQL is the initial recommended relational database.
 ## Planned tables
 
 ```text
-users        (v0.4, authentication)
 memories     (v0.6, long-term memory)
 audit_logs   (v1.0, security hardening)
 ```

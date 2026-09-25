@@ -22,6 +22,10 @@ describe("loadConfig", () => {
     expect(config.memory.maxHistoryMessages).toBe(20);
     expect(config.skills).toEqual({ dirs: ["skills"], maxActive: 2 });
     expect(config.mcp).toEqual({ servers: {} });
+    expect(config.gateway).toEqual({
+      host: "127.0.0.1", port: 3000, corsOrigins: [], maxInputChars: 8000,
+      rateLimit: { requestsPerMinute: 60, maxConcurrentRuns: 2 },
+    });
     expect(secrets).toEqual({});
   });
 
@@ -94,6 +98,12 @@ describe("loadConfig", () => {
   it("rejects invalid MCP server names and transports", () => {
     expect(() => loadConfig({ cwd: tempDir("mcp:\n  servers:\n    Bad-Name:\n      transport: stdio\n      command: x\n"), env: {} })).toThrow(/Invalid key/);
     expect(() => loadConfig({ cwd: tempDir("mcp:\n  servers:\n    s:\n      transport: ws\n      url: ws://x\n"), env: {} })).toThrow(ConfigError);
+  });
+
+  it("overrides gateway host/port from env", () => {
+    const { config } = loadConfig({ cwd: tempDir(), env: { BANGLACLAW_GATEWAY_PORT: "8080", BANGLACLAW_GATEWAY_HOST: "0.0.0.0" } });
+    expect(config.gateway).toMatchObject({ host: "0.0.0.0", port: 8080 });
+    expect(() => loadConfig({ cwd: tempDir(), env: { BANGLACLAW_GATEWAY_PORT: "http" } })).toThrow(ConfigError);
   });
 
   it("rejects an unknown provider", () => {

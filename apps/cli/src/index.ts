@@ -9,10 +9,14 @@ import {
   describe,
   doctor,
   init,
+  keyCreate,
+  keyList,
+  keyRevoke,
   mcpList,
   planned,
   runList,
   runShow,
+  serve,
   sessionList,
   sessionShow,
   skillList,
@@ -26,7 +30,7 @@ loadDotEnv();
 const program = new Command()
   .name("banglaclaw")
   .description("Bangla-first AI agent runtime")
-  .version("0.3.0")
+  .version("0.4.0")
   .option("-c, --config <path>", "path to banglaclaw.yaml");
 
 const globals = () => program.opts<{ config?: string }>();
@@ -84,6 +88,31 @@ db.command("status").description("show migration status").action(() => dbStatus(
 
 const mcp = program.command("mcp").description("inspect MCP servers");
 mcp.command("list").description("connect to configured MCP servers and list their tools").action(() => mcpList(globals()));
+program
+  .command("serve")
+  .description("start the HTTP gateway (REST, SSE, WebSocket)")
+  .option("-p, --port <port>", "port (default gateway.port, 3000)")
+  .option("-H, --host <host>", "bind address (default gateway.host, 127.0.0.1)")
+  .action((opts: { port?: string; host?: string }) => serve({ ...globals(), ...opts }));
+
+const key = program.command("key").description("manage gateway API keys (postgres storage)");
+key
+  .command("create")
+  .description("create an API key (creates the user if needed)")
+  .requiredOption("-u, --user <name>", "user the key belongs to")
+  .option("-n, --name <name>", "key label", "default")
+  .action((opts: { user: string; name: string }) => keyCreate({ ...globals(), ...opts }));
+key
+  .command("list")
+  .description("list API keys")
+  .option("-u, --user <name>", "only this user's keys")
+  .action((opts: { user?: string }) => keyList({ ...globals(), ...opts }));
+key
+  .command("revoke")
+  .description("revoke an API key")
+  .argument("<id>", "key id (the part after bck_)")
+  .action((id: string) => keyRevoke(id, globals()));
+
 program
   .command("init")
   .description("create banglaclaw.yaml in the current directory")

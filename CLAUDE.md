@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **v0.1 (agent core), v0.2 (sessions, PostgreSQL, skills, short-term memory, checkpoints) and v0.3 (MCP client + example server) are implemented**; v0.4 (gateway) is next — see docs/20-roadmap.md. Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
+BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **v0.1 (agent core), v0.2 (sessions, PostgreSQL, skills, short-term memory, checkpoints) and v0.3 (MCP client + example server) and v0.4 (HTTP gateway, API keys, rate limits) are implemented**; v0.5 (channels) is next — see docs/20-roadmap.md. Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
 
 ## Commands
 
@@ -13,7 +13,7 @@ pnpm workspaces + Turborepo. Never use npm or yarn. Node 22+.
 ```bash
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # pre-PR gate
-pnpm banglaclaw <cmd>          # CLI from source: chat | agent run | session | run | skill list | tool list | mcp list | db migrate | init | doctor
+pnpm banglaclaw <cmd>          # CLI from source: chat | agent run | session | run | skill list | tool list | mcp list | db migrate | serve | key | init | doctor
 pnpm dev                       # chat REPL from source (no watch mode: tsx watch restarts on Enter)
 pnpm --filter @banglaclaw/agent test language              # one test file (name filter)
 pnpm --filter @banglaclaw/agent exec vitest run -t "maxIterations"   # one test by name
@@ -30,7 +30,7 @@ The CLI loads `./.env` at startup (`apps/cli/src/env.ts`; shell variables win). 
 
 ## Monorepo mechanics
 
-- Packages: `packages/{shared,providers,tools,session,skills,storage,mcp,agent}`, `apps/cli`, `mcp-servers/bangladesh`, all named `@banglaclaw/*`. Dependency direction: `shared` ← `providers`, `tools`, `session`, `skills` ← `agent` ← `cli`. `storage` (implements the `session` interfaces) and `mcp` (produces `tools`) are wired in only by `cli`; `agent` depends on neither. Only `storage` imports Drizzle/pg; `agent` must not depend on `storage`. Shared types (`ToolSpec`, `StopReason`, `RunEvent`) live in `shared`.
+- Packages: `packages/{shared,providers,tools,session,skills,storage,mcp,auth,agent,gateway}`, `apps/cli`, `mcp-servers/bangladesh`, all named `@banglaclaw/*`. Dependency direction: `shared` ← `providers`, `tools`, `session`, `skills`, `auth` ← `agent` ← `gateway` ← `cli`. `storage` (implements the `session` and `auth` interfaces) and `mcp` (produces `tools`) are wired in only by `cli`; `agent` and `gateway` depend on neither. Only `storage` imports Drizzle/pg; `agent` must not depend on `storage`. Shared types (`ToolSpec`, `StopReason`, `RunEvent`) live in `shared`.
 - Each package's `exports` maps the custom condition `@banglaclaw/source` → `src/index.ts`. `tsconfig.base.json` (`customConditions`), tsx (`--conditions`) and each `vitest.config.ts` use it, so typecheck/test/dev need no build. `tsconfig.build.json` clears the condition so `tsc` builds against dependencies' `dist/`.
 - ESM with `NodeNext`: relative imports need `.js` extensions. Strict + `noUncheckedIndexedAccess`; ESLint forbids `any` and non-null assertions.
 - TypeScript is pinned to 6.x because typescript-eslint does not support TS 7 yet.
@@ -57,9 +57,16 @@ What exists:
 - **Tools** (`packages/tools`): `BanglaClawTool` with Zod v4 `inputSchema`/`outputSchema` and `risk`. `executeTool` runs lookup → input validation → `PermissionPolicy` → execute with timeout → output validation → audit, and returns failures as error observations instead of throwing. `AllowlistPolicy` is deny-by-default and always denies `destructive`. The graph binds only allowed tools and the executor re-checks anyway.
 - **Providers** (`packages/providers`): `ModelProvider { id; chat; stream }` taking `{tools?: ToolSpec[], signal?}`; `LangChainProvider` wraps `ChatOpenAI` (openai-compatible, optional `baseUrl`) or `ChatAnthropic`. Use `FakeProvider` (scripted turns, records calls) for agent tests.
 - **MCP** (`packages/mcp`, docs/10): `McpManager` connects the servers in `mcp.servers` (stdio or Streamable HTTP) in parallel and wraps each discovered tool as a `BanglaClawTool` named `<server>__<tool>`. It keeps the server's JSON Schema as `parameters` and validates input with `z.fromJSONSchema`. Tools run through the normal `executeTool`/allowlist path (use `bangladesh__*` wildcards). They default to `sensitive`, and `destructiveHint` makes them `destructive` (always denied). A failed server is reported via `status()` and never thrown. Stdio servers get `getDefaultEnvironment()` plus their configured `env`, with `${VAR}` expanded at connect time. Tests use `InMemoryTransport` via `transportFactory`; the stdio test spawns `mcp-servers/bangladesh/src/bin.ts` with `--import tsx`.
+- **Gateway** (`packages/gateway`, ADR-0007, docs/05 + docs/18):
+  - `createGatewayApp(deps, upgradeWebSocket?)` is a Hono app; `startGateway()` serves it on Node with `@hono/node-ws`.
+  - `/v1` middleware runs bearer API-key auth (`ApiKeyAuthenticator`) and a per-key `RateLimiter`. `GatewayContext` owns session ownership checks (other users' resources → 404), `externalId` namespacing (`<userId>/<externalId>`) and the per-key `ConcurrencyLimiter`.
+  - The run endpoints return JSON or SSE (`respondWithRun`). The WebSocket protocol lives in `ws.ts`: auth happens in-protocol, with `ref`-keyed runs and cancel.
+  - All errors map through `toHttpError`.
+  - Tests use `app.request()`, plus a real server on port 0 for WebSocket; `GatedProvider` in `test/helpers.ts` blocks a run for concurrency and cancel tests.
+- **Auth** (`packages/auth`): `bck_<12 id>_<40 secret>` tokens store only a SHA-256 hash and are verified with `timingSafeEqual`; `issueKey` creates the user on demand. The store is `InMemoryAuthStore` or `PostgresAuthStore` (`users`, `api_keys` tables). In memory mode `banglaclaw serve` prints a temporary key; `key create/list/revoke` require postgres.
 - **Config** (`packages/shared/config.ts`): `banglaclaw.yaml` + `BANGLACLAW_*` env overrides validated by a strict Zod schema. API keys and `DATABASE_URL` come only from env, and the strict schema rejects them in YAML. Relative paths (such as `skills.dirs`) resolve against `baseDir`, which is the config file's directory or else cwd. The logger writes redacted JSON to stderr, because stdout is reserved for streamed replies.
 
-Planned (docs/04, 05, 10): router/planner/verifier nodes, gateway (REST/SSE, auth, rate limiting), channels, auth/users, exposing BanglaClaw as an MCP server. Follow the layout in docs/19-development.md; `AGENT.md` §2 shows a different generic layout (`apps/api`, `packages/llm`, …) — prefer docs/19 and ask before diverging.
+Planned (docs/04, 05, 10, 11): channels (Telegram/WhatsApp/web) on top of the gateway, router/planner/verifier nodes, shared rate-limit store, key scopes, exposing BanglaClaw as an MCP server. Follow the layout in docs/19-development.md; `AGENT.md` §2 shows a different generic layout (`apps/api`, `packages/llm`, …) — prefer docs/19 and ask before diverging.
 
 ## Rules that matter here (from AGENT.md, docs/14)
 

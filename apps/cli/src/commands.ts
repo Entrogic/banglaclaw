@@ -4,7 +4,9 @@ import { createInterface } from "node:readline/promises";
 import { AgentRunError, type AgentRuntime } from "@banglaclaw/agent";
 import { requiredApiKeyEnv } from "@banglaclaw/providers";
 import { SessionManager, type RunRecord, type Session } from "@banglaclaw/session";
-import { BanglaClawError } from "@banglaclaw/shared";
+import { ApiKeyAuthenticator } from "@banglaclaw/auth";
+import { startGateway, type RunningGateway } from "@banglaclaw/gateway";
+import { BanglaClawError, createLogger, parseLogLevel } from "@banglaclaw/shared";
 import { AllowlistPolicy } from "@banglaclaw/tools";
 import type { McpManager, McpServerStatus } from "@banglaclaw/mcp";
 import { buildRegistry, connectMcp, createRuntime, load, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
@@ -317,6 +319,15 @@ storage:
 memory:
   maxHistoryMessages: 20
 
+gateway:
+  host: 127.0.0.1            # use 0.0.0.0 only behind a reverse proxy / firewall
+  port: 3000
+  corsOrigins: []            # e.g. [https://app.example.com]
+  maxInputChars: 8000
+  rateLimit:
+    requestsPerMinute: 60    # per API key
+    maxConcurrentRuns: 2     # per API key
+
 skills:
   dirs: [skills]
   maxActive: 2
@@ -449,4 +460,117 @@ export function describe(error: unknown): string {
   if (error instanceof BanglaClawError) return error.message;
   if (error instanceof AggregateError && error.errors.length > 0) return describe(error.errors[0]);
   return error instanceof Error ? error.message : String(error);
+}
+
+export async function serve(options: GlobalOptions & { port?: string; host?: string }): Promise<void> {
+  const bundle = await createRuntime(options);
+  const { services, mcp } = bundle;
+  const config = services.loaded.config;
+  const gatewayConfig = {
+    ...config.gateway,
+    ...(options.port !== undefined && { port: Number(options.port) }),
+    ...(options.host !== undefined && { host: options.host }),
+  };
+  if (!Number.isInteger(gatewayConfig.port) || gatewayConfig.port < 0 || gatewayConfig.port > 65_535) {
+    await services.close();
+    throw new BanglaClawError("INVALID_PORT", `Invalid port: ${options.port ?? ""}`);
+  }
+
+  const authenticator = new ApiKeyAuthenticator(services.auth);
+  let devToken: string | undefined;
+  if (!services.persistent) {
+    // Memory storage has no persistent keys: issue one for this process only.
+    devToken = (await authenticator.issueKey("dev", "temporary")).token;
+  }
+
+  let gateway: RunningGateway;
+  try {
+    gateway = await startGateway({
+      runtime: bundle.runtime,
+      sessions: services.sessions,
+      runs: services.runs,
+      auth: authenticator,
+      registry: bundle.registry,
+      policy: bundle.policy,
+      skills: bundle.skills,
+      agent: { name: config.agent.name, model: bundle.providerId },
+      config: gatewayConfig,
+      version: "0.4.0",
+      logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL, "info") }),
+    });
+  } catch (error) {
+    await services.close();
+    throw error;
+  }
+
+  console.log(`${green("✔")} BanglaClaw gateway listening on ${bold(gateway.url)} ${dim(`(${bundle.providerId}, ${services.persistent ? "postgres" : "memory"} storage)`)}`);
+  reportMcpFailures(mcp);
+  if (devToken !== undefined) {
+    console.log(yellow("! Memory storage: using a temporary API key valid until this process exits:"));
+    console.log(`  ${devToken}`);
+    console.log(dim("  Use postgres storage and `banglaclaw key create` for persistent keys."));
+  }
+  console.log(dim(`  curl -H "Authorization: Bearer <key>" -H "Content-Type: application/json" -d '{"text":"হ্যালো"}' ${gateway.url}/v1/agents/run`));
+
+  await new Promise<void>((resolve) => {
+    const shutdown = () => {
+      process.off("SIGINT", shutdown);
+      process.off("SIGTERM", shutdown);
+      console.log(dim("\nShutting down…"));
+      resolve();
+    };
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+  });
+  await gateway.close();
+  await services.close();
+}
+
+async function withPersistentAuth<T>(options: GlobalOptions, fn: (auth: ApiKeyAuthenticator, services: Services) => Promise<T>): Promise<T> {
+  const services = await openServices(options);
+  try {
+    if (!services.persistent) {
+      throw new BanglaClawError(
+        "STORAGE_REQUIRED",
+        "API keys persist only with postgres storage (set BANGLACLAW_STORAGE=postgres and DATABASE_URL). `banglaclaw serve` issues a temporary key in memory mode.",
+      );
+    }
+    return await fn(new ApiKeyAuthenticator(services.auth), services);
+  } finally {
+    await services.close();
+  }
+}
+
+export async function keyCreate(options: GlobalOptions & { user: string; name: string }): Promise<void> {
+  await withPersistentAuth(options, async (auth) => {
+    const issued = await auth.issueKey(options.user, options.name);
+    console.log(`${green("✔")} Created key ${bold(issued.key.id)} "${issued.key.name}" for user ${bold(issued.user.name)}`);
+    console.log(yellow("  Store this token now — it cannot be shown again:"));
+    console.log(`  ${issued.token}`);
+  });
+}
+
+export async function keyList(options: GlobalOptions & { user?: string }): Promise<void> {
+  await withPersistentAuth(options, async (auth) => {
+    const users = new Map((await auth.store.listUsers()).map((u) => [u.id, u]));
+    let userId: string | undefined;
+    if (options.user !== undefined) {
+      userId = (await auth.store.findUserByName(options.user))?.id;
+      if (userId === undefined) throw new BanglaClawError("USER_NOT_FOUND", `User not found: ${options.user}`);
+    }
+    const keys = await auth.store.listApiKeys(userId !== undefined ? { userId } : {});
+    if (keys.length === 0) console.log(dim("No API keys."));
+    for (const k of keys) {
+      const state = k.revokedAt !== undefined ? red("revoked") : green("active");
+      const used = k.lastUsedAt !== undefined ? `last used ${k.lastUsedAt.toISOString()}` : "never used";
+      console.log(`${bold(k.id)}  ${state.padEnd(8)} ${(users.get(k.userId)?.name ?? k.userId).padEnd(16)} ${k.name.padEnd(12)} ${dim(`created ${k.createdAt.toISOString()} · ${used}`)}`);
+    }
+  });
+}
+
+export async function keyRevoke(id: string, options: GlobalOptions): Promise<void> {
+  await withPersistentAuth(options, async (auth) => {
+    if (!(await auth.store.revokeApiKey(id))) throw new BanglaClawError("KEY_NOT_FOUND", `No active key with id ${id}`);
+    console.log(`${green("✔")} Revoked key ${id}`);
+  });
 }

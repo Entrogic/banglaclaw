@@ -24,7 +24,7 @@ export interface SessionStore {
   get(id: string): Promise<Session | undefined>;
   findByExternalId(channel: string, externalId: string): Promise<Session | undefined>;
   /** Most recently updated first. */
-  list(options?: { limit?: number; channel?: string }): Promise<Session[]>;
+  list(options?: { limit?: number; channel?: string; userId?: string }): Promise<Session[]>;
   /** Appends messages produced by a run, in order, and bumps updatedAt. */
   appendMessages(sessionId: string, runId: string, messages: BaseMessage[]): Promise<void>;
   /** The most recent `limit` messages, oldest first. */

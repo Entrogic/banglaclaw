@@ -1,0 +1,36 @@
+{
+  "name": "@banglaclaw/gateway",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "@banglaclaw/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@banglaclaw/agent": "workspace:*",
+    "@banglaclaw/auth": "workspace:*",
+    "@banglaclaw/session": "workspace:*",
+    "@banglaclaw/shared": "workspace:*",
+    "@banglaclaw/skills": "workspace:*",
+    "@banglaclaw/tools": "workspace:*",
+    "@hono/node-server": "^1.19.17",
+    "@hono/node-ws": "^1.3.1",
+    "@langchain/core": "^1.2.12",
+    "hono": "^4.13.9",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@banglaclaw/providers": "workspace:*",
+    "@types/ws": "^8.18.1",
+    "ws": "^8.21.3"
+  }
+}

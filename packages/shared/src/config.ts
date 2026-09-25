@@ -88,6 +88,25 @@ export const ConfigSchema = z.strictObject({
       maxActive: z.int().min(0).max(10).default(2),
     })
     .prefault({}),
+  gateway: z
+    .strictObject({
+      /** Bind address. Keep 127.0.0.1 unless the gateway sits behind a reverse proxy. */
+      host: z.string().min(1).default("127.0.0.1"),
+      port: z.int().min(0).max(65_535).default(3000),
+      /** Allowed browser origins for CORS; empty disables CORS. */
+      corsOrigins: z.array(z.string().min(1)).default([]),
+      /** Maximum characters per message. */
+      maxInputChars: z.int().min(1).max(100_000).default(8_000),
+      rateLimit: z
+        .strictObject({
+          /** Requests per API key per minute (all endpoints). */
+          requestsPerMinute: z.int().min(1).max(100_000).default(60),
+          /** Agent runs in flight per API key. */
+          maxConcurrentRuns: z.int().min(1).max(100).default(2),
+        })
+        .prefault({}),
+    })
+    .prefault({}),
   mcp: z
     .strictObject({
       /** Server name → connection. Names prefix tool names: <server>__<tool>. */
@@ -183,7 +202,20 @@ function applyEnvOverrides(input: Record<string, unknown>, env: NodeJS.ProcessEn
   const model = nonEmpty(env.BANGLACLAW_MODEL);
   const baseUrl = nonEmpty(env.BANGLACLAW_BASE_URL);
   const storage = nonEmpty(env.BANGLACLAW_STORAGE);
+  const gatewayPort = nonEmpty(env.BANGLACLAW_GATEWAY_PORT);
+  const gatewayHost = nonEmpty(env.BANGLACLAW_GATEWAY_HOST);
   let raw = input;
+  if (gatewayPort !== undefined || gatewayHost !== undefined) {
+    const current = isRecord(raw.gateway) ? raw.gateway : {};
+    raw = {
+      ...raw,
+      gateway: {
+        ...current,
+        ...(gatewayPort !== undefined && { port: Number(gatewayPort) }),
+        ...(gatewayHost !== undefined && { host: gatewayHost }),
+      },
+    };
+  }
   if (storage !== undefined) {
     const current = isRecord(raw.storage) ? raw.storage : {};
     raw = { ...raw, storage: { ...current, provider: storage } };

@@ -35,6 +35,17 @@ pnpm banglaclaw mcp list
 pnpm banglaclaw agent run "কুমিল্লা কোন বিভাগে?"
 ```
 
+HTTP gateway (see [API](docs/18-api.md)):
+
+```bash
+pnpm banglaclaw serve                     # memory storage: prints a temporary API key
+# with postgres storage: pnpm banglaclaw key create --user my-app
+curl -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+     -d '{"text":"২৫ * ৪ কত?"}' http://127.0.0.1:3000/v1/agents/run
+curl -N -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+     -d '{"text":"ekhon koyta baje?"}' "http://127.0.0.1:3000/v1/agents/run?stream=true"
+```
+
 Persistent sessions with PostgreSQL:
 
 ```bash
@@ -89,5 +100,6 @@ Pre-alpha. Implemented so far:
 - **v0.1 Agent Core**: TypeScript monorepo, LangGraph runtime, OpenAI-compatible and Anthropic providers, permission-checked tool calling, streaming, Bangla/Banglish/English detection, CLI.
 - **v0.2 State and Skills**: sessions, optional PostgreSQL persistence (Drizzle), short-term memory window, per-run LangGraph checkpoints, and SKILL.md skills.
 - **v0.3 MCP**: MCP client (stdio and Streamable HTTP), tool discovery into the permission-checked tool registry, and a bundled Bangladesh reference-data MCP server.
+- **v0.4 Gateway**: HTTP API (Hono) with REST, SSE and WebSocket streaming, API-key authentication with per-user isolation, and per-key rate limits.
 
-Next up is the Gateway (v0.4) — see the [roadmap](docs/20-roadmap.md).
+Next up is Channels (v0.5) — see the [roadmap](docs/20-roadmap.md).

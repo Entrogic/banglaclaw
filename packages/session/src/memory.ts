@@ -31,9 +31,10 @@ export class InMemorySessionStore implements SessionStore {
     return undefined;
   }
 
-  async list(options: { limit?: number; channel?: string } = {}): Promise<Session[]> {
+  async list(options: { limit?: number; channel?: string; userId?: string } = {}): Promise<Session[]> {
     return [...this.#sessions.values()]
       .filter((s) => options.channel === undefined || s.channel === options.channel)
+      .filter((s) => options.userId === undefined || s.userId === options.userId)
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .slice(0, options.limit ?? 50)
       .map((s) => ({ ...s }));

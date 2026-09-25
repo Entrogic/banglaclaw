@@ -39,10 +39,10 @@
 
 ## v0.4 — Gateway
 
-- [ ] REST API
-- [ ] WebSocket/SSE
-- [ ] Authentication
-- [ ] Rate limiting
+- [x] REST API
+- [x] WebSocket/SSE
+- [x] Authentication
+- [x] Rate limiting
 
 ## v0.5 — Channels
 

@@ -13,6 +13,9 @@ banglaclaw skill list                          # discovered skills, their tools 
 banglaclaw tool list                           # built-in + MCP tools, risk level, allowed/denied
 banglaclaw mcp list                            # connect to MCP servers; status and discovered tools
 banglaclaw db migrate | status                 # PostgreSQL schema + checkpoint tables (DATABASE_URL)
+banglaclaw serve [--port 3000] [--host …]      # HTTP gateway: REST, SSE, WebSocket (docs/18)
+banglaclaw key create --user <name> [--name]   # issue an API key (shown once; postgres storage)
+banglaclaw key list [--user <name>] | revoke <id>
 banglaclaw init [--force]                      # write banglaclaw.yaml
 banglaclaw doctor                              # Node, config, keys, tools, skills, storage
 ```

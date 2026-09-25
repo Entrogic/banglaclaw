@@ -36,6 +36,15 @@ skills:
   dirs: [skills]
   maxActive: 2
 
+gateway:
+  host: 127.0.0.1          # use 0.0.0.0 only behind a reverse proxy
+  port: 3000
+  corsOrigins: []          # allowed browser origins; empty = CORS off
+  maxInputChars: 8000
+  rateLimit:
+    requestsPerMinute: 60  # per API key
+    maxConcurrentRuns: 2   # per API key
+
 mcp:
   servers:
     bangladesh:
@@ -70,11 +79,12 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `BANGLACLAW_BASE_URL` | Overrides `models.default.baseUrl` |
 | `BANGLACLAW_CONFIG` | Config file path |
 | `BANGLACLAW_STORAGE` | Overrides `storage.provider` |
+| `BANGLACLAW_GATEWAY_PORT`, `BANGLACLAW_GATEWAY_HOST` | Override `gateway.port` / `gateway.host` |
 | `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |
 | `BANGLACLAW_LOG_LEVEL` | `debug` \| `info` \| `warn` (default) \| `error`; JSON logs go to stderr |
 
-A planned `gateway` section arrives with v0.4.
+
 
 ## Requirements
 

@@ -2,6 +2,7 @@ import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AgentRuntime } from "@banglaclaw/agent";
 import { FakeProvider } from "@banglaclaw/providers";
+import { ApiKeyAuthenticator } from "@banglaclaw/auth";
 import { SessionManager, type RunRecord } from "@banglaclaw/session";
 import { createLogger } from "@banglaclaw/shared";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
@@ -24,7 +25,9 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
   });
 
   beforeEach(async () => {
-    await storage.pool.query("TRUNCATE sessions, runs, messages, tool_calls, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE");
+    await storage.pool.query(
+      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
+    );
   });
 
   afterAll(async () => {
@@ -52,6 +55,24 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await storage.sessions.list({ channel: "cli" })).toHaveLength(1);
     expect(await storage.sessions.list()).toHaveLength(2);
     await expect(storage.sessions.create({ channel: "telegram", externalId: "42", agentId: "x" })).rejects.toThrow();
+  });
+
+  it("stores users and API keys, and scopes sessions to users", async () => {
+    const auth = new ApiKeyAuthenticator(storage.auth);
+    const issued = await auth.issueKey("shop-bot", "prod");
+    expect(await auth.authenticate(issued.token)).toMatchObject({ user: { name: "shop-bot" }, key: { name: "prod" } });
+    expect((await storage.auth.getApiKey(issued.key.id))?.lastUsedAt).toBeInstanceOf(Date);
+    await expect(storage.auth.createUser("shop-bot")).rejects.toThrow();
+
+    const other = await storage.auth.createUser("other");
+    await storage.sessions.create({ channel: "api", agentId: "a", userId: issued.user.id });
+    await storage.sessions.create({ channel: "api", agentId: "a", userId: other.id });
+    expect(await storage.sessions.list({ userId: issued.user.id })).toHaveLength(1);
+
+    expect(await storage.auth.revokeApiKey(issued.key.id)).toBe(true);
+    expect(await storage.auth.revokeApiKey(issued.key.id)).toBe(false);
+    expect(await auth.authenticate(issued.token)).toBeUndefined();
+    expect((await storage.auth.listUsers()).map((u) => u.name)).toEqual(["other", "shop-bot"]);
   });
 
   it("round-trips messages including tool calls, oldest first", async () => {

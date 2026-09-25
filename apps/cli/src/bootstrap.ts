@@ -1,10 +1,12 @@
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { AgentRuntime } from "@banglaclaw/agent";
+import { InMemoryAuthStore, type AuthStore } from "@banglaclaw/auth";
 import { McpManager } from "@banglaclaw/mcp";
 import { createProvider } from "@banglaclaw/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunStore, type SessionStore } from "@banglaclaw/session";
 import { ConfigError, createLogger, loadConfig, parseLogLevel, type LoadedConfig } from "@banglaclaw/shared";
 import { SkillSet, loadSkillsFromDirs } from "@banglaclaw/skills";
+import type { PermissionPolicy } from "@banglaclaw/tools";
 import { PostgresStorage } from "@banglaclaw/storage";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
 
@@ -43,6 +45,7 @@ export interface Services {
   loaded: LoadedConfig;
   sessions: SessionStore;
   runs: RunStore;
+  auth: AuthStore;
   /** Set when storage.provider is postgres. */
   postgres?: PostgresStorage;
   checkpointer?: BaseCheckpointSaver;
@@ -67,6 +70,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
       loaded,
       sessions: new InMemorySessionStore(),
       runs: new InMemoryRunStore(),
+      auth: new InMemoryAuthStore(),
       persistent: false,
       close: async () => {},
     };
@@ -86,6 +90,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
     loaded,
     sessions: postgres.sessions,
     runs: postgres.runs,
+    auth: postgres.auth,
     postgres,
     ...(loaded.config.storage.checkpoints && { checkpointer: postgres.checkpointer }),
     persistent: true,
@@ -94,7 +99,17 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
 }
 
 /** Wires config → provider, tools (built-in + MCP), policy, skills, storage → AgentRuntime. */
-export async function createRuntime(options: GlobalOptions): Promise<{ runtime: AgentRuntime; services: Services; mcp: McpManager }> {
+export interface RuntimeBundle {
+  runtime: AgentRuntime;
+  services: Services;
+  mcp: McpManager;
+  registry: ToolRegistry;
+  policy: PermissionPolicy;
+  skills: SkillSet;
+  providerId: string;
+}
+
+export async function createRuntime(options: GlobalOptions): Promise<RuntimeBundle> {
   const services = await openServices(options);
   let mcp: McpManager | undefined;
   try {
@@ -107,10 +122,13 @@ export async function createRuntime(options: GlobalOptions): Promise<{ runtime: 
       await connected.close();
       await closeStorage();
     };
+    const registry = buildRegistry(mcp);
+    const policy = new AllowlistPolicy(config.tools.allow);
+    const skills = loadSkills(services.loaded);
     const runtime = new AgentRuntime({
       provider,
-      registry: buildRegistry(mcp),
-      policy: new AllowlistPolicy(config.tools.allow),
+      registry,
+      policy,
       sessions: services.sessions,
       runs: services.runs,
       limits: { maxIterations: config.runtime.maxIterations, maxToolCalls: config.runtime.maxToolCalls },
@@ -118,12 +136,12 @@ export async function createRuntime(options: GlobalOptions): Promise<{ runtime: 
       timezone: config.timezone,
       agentName: config.agent.name,
       maxHistoryMessages: config.memory.maxHistoryMessages,
-      skills: loadSkills(services.loaded),
+      skills,
       maxActiveSkills: config.skills.maxActive,
       ...(services.checkpointer !== undefined && { checkpointer: services.checkpointer }),
       logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }),
     });
-    return { runtime, services, mcp };
+    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id };
   } catch (error) {
     await services.close();
     await mcp?.close();
