@@ -8,7 +8,8 @@
 
 ```text
 Telegram (polling | webhook) ─┐
-WhatsApp Cloud API (webhook) ─┼─→ ChannelRouter ─→ SessionStore (channel, conversationId) ─→ AgentRuntime
+WhatsApp Cloud API (webhook) ─┤
+Facebook Messenger (webhook) ─┼─→ ChannelRouter ─→ SessionStore (channel, conversationId) ─→ AgentRuntime
                               │     অ্যাক্সেস যাচাই, প্রতি চ্যাটে রেট লিমিট, /start /new,
 Web chat (/chat → /v1/ws) ────┘     কথোপকথনভিত্তিক ক্রম, typing, উত্তর ভাগ করা
    (গেটওয়ে API দিয়ে যায়)
@@ -89,13 +90,40 @@ channels:
     allowedNumbers: ["8801712345678"]
 ```
 
+## Facebook Messenger
+
+ফেসবুক পেজের জন্য। বাংলাদেশে অনেক দোকান ফেসবুক পেজ দিয়েই বিক্রি করে। Meta-র webhook মডেল WhatsApp-এর মতোই; সিগনেচার ও হ্যান্ডশেক কোড একই (`meta.ts`)।
+
+- শুধু webhook, ঠিকানা `https://<host>/channels/messenger/webhook`। Meta অ্যাপ ড্যাশবোর্ডে Messenger প্রোডাক্ট যোগ করুন, পেজ access token তৈরি করুন, callback URL ও verify token দিন, এবং পেজটিকে `messages` ও `messaging_postbacks`-এ subscribe করুন।
+- `GET` যাচাই হ্যান্ডশেক করে (`MESSENGER_VERIFY_TOKEN`); `POST` বডিতে `MESSENGER_APP_SECRET` দিয়ে তৈরি বৈধ `X-Hub-Signature-256` লাগে, না থাকলে 401।
+- কথোপকথন ও প্রেরকের id হলো page-scoped user id (PSID)। পেজের নিজের মেসেজের echo, delivery/read রসিদ এবং `pageId` ছাড়া অন্য পেজের ইভেন্ট গ্রহণ করে উপেক্ষা করা হয়।
+- বাটনের postback তার শিরোনাম হিসেবে আসে। **Get Started** বাটন (payload `GET_STARTED`) `/start`-এর মতো উত্তর পায়। লেখা ছাড়া শুধু ছবি/ফাইল এলে "শুধু টেক্সট" নোটিস যায়।
+- উত্তর যায় Send API দিয়ে (`POST /{graphApiVersion}/me/messages`), ২,০০০ অক্ষরে ভাগ করে, এজেন্ট কাজ করার সময় `typing_on` দেখিয়ে।
+- Messenger ব্যবহারকারীর শেষ মেসেজের ২৪ ঘণ্টার মধ্যেই উত্তর দিতে দেয়। হ্যান্ডঅফে অপারেটরের উত্তরে `humanAgentTag: true` দিলে `HUMAN_AGENT` ট্যাগ (৭ দিন) ব্যবহার হয়; এর জন্য অ্যাপের Meta-র `human_agent` অনুমতি লাগে।
+- পাবলিক পেজের জন্য `access: open` দিন (রেট লিমিট তবুও থাকে; প্রতিটি মেসেজে মডেলের খরচ হয়)। `allowlist`-এ PSID গেটওয়ের লগ থেকে নিন।
+
+```bash
+# .env
+MESSENGER_PAGE_ACCESS_TOKEN=EAAG...
+MESSENGER_APP_SECRET=...
+MESSENGER_VERIFY_TOKEN=যেকোনো-গোপন-লেখা
+```
+
+```yaml
+channels:
+  messenger:
+    enabled: true
+    pageId: "104512345678901"
+    access: open
+```
+
 ## ওয়েব
 
 গেটওয়ের `GET /chat` একটি স্বয়ংসম্পূর্ণ চ্যাট পেজ দেয়, কঠোর CSP সহ এবং কোনো বাইরের ফাইল ছাড়া। এটি একটি API key দিয়ে `/v1/ws`-এ সংযোগ করে; key ব্রাউজারের localStorage-এ থাকে, শেষ সেশন আবার চালু হয় এবং সেশনটি অনুসরণ করা হয়, ফলে হ্যান্ডঅফের সময় অপারেটরের উত্তর সাথে সাথে দেখা যায়। এটি ডেভেলপার ও ভেতরের ব্যবহারকারীদের জন্য। পাবলিক, বেনামি ওয়েবসাইট উইজেটের জন্য আলাদা ভিজিটর-অথেনটিকেশন মডেল দরকার, যা পরিকল্পনায় আছে।
 
 ## কনফিগারেশন
 
-দেখুন docs/16। সিক্রেট আসে শুধু এনভায়রনমেন্ট ভেরিয়েবল থেকে: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`। `banglaclaw serve` চালু চ্যানেলগুলো শুরু করে; `banglaclaw doctor` সেগুলো যাচাই করে (Telegram `getMe`)। কোনো চ্যানেল চালু থাকলে কিন্তু তার সিক্রেট না থাকলে `serve` শুরুতেই কনফিগ এরর দিয়ে থামে।
+দেখুন docs/16। সিক্রেট আসে শুধু এনভায়রনমেন্ট ভেরিয়েবল থেকে: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `MESSENGER_PAGE_ACCESS_TOKEN`, `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN`। `banglaclaw serve` চালু চ্যানেলগুলো শুরু করে; `banglaclaw doctor` সেগুলো যাচাই করে (Telegram `getMe`, token-এর পেছনের Messenger পেজ)। কোনো চ্যানেল চালু থাকলে কিন্তু তার সিক্রেট না থাকলে `serve` শুরুতেই কনফিগ এরর দিয়ে থামে।
 
 ## পরিকল্পনায় আছে
 

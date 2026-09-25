@@ -13,7 +13,7 @@ Before each run, the runtime loads the session's most recent messages and trims 
 | Session | Owner |
 |---|---|
 | Gateway API | `user:<userId>` |
-| Telegram / WhatsApp | `<channel>:<conversation id>` (stable across `/new`) |
+| Telegram / WhatsApp / Messenger | `<channel>:<conversation id>` (stable across `/new`) |
 | CLI | `cli:local` |
 
 - **Explicit writes.** The agent gets `remember`, `recall` and `forget` tools. The owner is derived server-side from the session, so the model can't touch another user's memories. `remember` refuses passwords, OTPs and PINs, merges near-duplicates (similarity ≥ 0.97) and enforces `maxPerOwner`.

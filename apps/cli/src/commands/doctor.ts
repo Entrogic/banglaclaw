@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { TelegramApi } from "@banglaclaw/channels";
+import { MessengerApi, TelegramApi } from "@banglaclaw/channels";
 import { requiredApiKeyEnv } from "@banglaclaw/providers";
 import { InMemorySessionStore } from "@banglaclaw/session";
 import { createLogger, type LoadedConfig } from "@banglaclaw/shared";
@@ -128,6 +128,25 @@ export async function collectChecks(options: GlobalOptions): Promise<Check[]> {
       secrets.whatsappVerifyToken === undefined && "WHATSAPP_VERIFY_TOKEN",
     ].filter(Boolean);
     add("Integrations", missing.length > 0 ? "fail" : "ok", missing.length > 0 ? `WhatsApp: missing ${missing.join(", ")}` : `WhatsApp configured (${wa.access})`);
+  }
+  const fb = config.channels.messenger;
+  if (fb.enabled) {
+    const missing = [
+      secrets.messengerPageAccessToken === undefined && "MESSENGER_PAGE_ACCESS_TOKEN",
+      secrets.messengerAppSecret === undefined && "MESSENGER_APP_SECRET",
+      secrets.messengerVerifyToken === undefined && "MESSENGER_VERIFY_TOKEN",
+    ].filter(Boolean);
+    if (missing.length > 0 || secrets.messengerPageAccessToken === undefined) add("Integrations", "fail", `Messenger: missing ${missing.join(", ")}`);
+    else {
+      try {
+        const page = await new MessengerApi({ pageAccessToken: secrets.messengerPageAccessToken, graphApiVersion: fb.graphApiVersion }).getPage();
+        const mismatch = fb.pageId !== undefined && fb.pageId !== page.id;
+        add("Integrations", mismatch ? "fail" : "ok", `Messenger page “${page.name}” (${page.id}, ${fb.access}${fb.access === "allowlist" ? `: ${fb.allowedUserIds.length} users` : ""})${mismatch ? ` — token is for another page than channels.messenger.pageId ${fb.pageId}` : ""}`);
+      } catch (error) {
+        add("Integrations", "fail", `Messenger: ${describe(error)}`);
+      }
+      if (fb.access === "allowlist" && fb.allowedUserIds.length === 0) add("Integrations", "warn", "Messenger allowlist is empty — nobody will be answered (use access: open for a public page)");
+    }
   }
 
   if (config.storage.provider === "memory") add("Storage", "ok", "memory (nothing persists between runs)");

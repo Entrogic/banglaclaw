@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 import type { AgentRuntime } from "@banglaclaw/agent";
-import { ChannelRouter, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel, splitMessage } from "@banglaclaw/channels";
+import { ChannelRouter, MessengerApi, MessengerChannel, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel, splitMessage } from "@banglaclaw/channels";
 import type { Deliver, SessionStore } from "@banglaclaw/session";
 import { ConfigError, type LoadedConfig, type Logger } from "@banglaclaw/shared";
 
@@ -26,6 +26,9 @@ export function createDeliver(loaded: LoadedConfig, logger: Logger): Deliver {
     wa.enabled && wa.phoneNumberId !== undefined && secrets.whatsappAccessToken !== undefined
       ? new WhatsAppApi({ accessToken: secrets.whatsappAccessToken, phoneNumberId: wa.phoneNumberId, graphApiVersion: wa.graphApiVersion })
       : undefined;
+  const fb = config.channels.messenger;
+  const messenger =
+    fb.enabled && secrets.messengerPageAccessToken !== undefined ? new MessengerApi({ pageAccessToken: secrets.messengerPageAccessToken, graphApiVersion: fb.graphApiVersion }) : undefined;
   return async (session, text) => {
     if (session.externalId === undefined) return false;
     try {
@@ -35,6 +38,10 @@ export function createDeliver(loaded: LoadedConfig, logger: Logger): Deliver {
       }
       if (session.channel === "whatsapp" && whatsapp !== undefined) {
         for (const chunk of splitMessage(text, 4096)) await whatsapp.sendText(session.externalId, chunk);
+        return true;
+      }
+      if (session.channel === "messenger" && messenger !== undefined) {
+        for (const chunk of splitMessage(text, 2000)) await messenger.sendText(session.externalId, chunk, { humanAgent: fb.humanAgentTag });
         return true;
       }
     } catch (error) {
@@ -111,6 +118,26 @@ export function setupChannels(loaded: LoadedConfig, runtime: AgentRuntime, sessi
     });
     routes.push(channel.webhookApp());
     summary.push("whatsapp: webhook at /channels/whatsapp/webhook (configure it in the Meta app dashboard)");
+  }
+
+  const fb = config.channels.messenger;
+  if (fb.enabled) {
+    const missing = [
+      secrets.messengerPageAccessToken === undefined && "MESSENGER_PAGE_ACCESS_TOKEN",
+      secrets.messengerAppSecret === undefined && "MESSENGER_APP_SECRET",
+      secrets.messengerVerifyToken === undefined && "MESSENGER_VERIFY_TOKEN",
+    ].filter((m): m is string => m !== false);
+    if (missing.length > 0) throw new ConfigError(`channels.messenger is enabled but missing: ${missing.join(", ")}`);
+    const channel = new MessengerChannel({
+      api: new MessengerApi({ pageAccessToken: secrets.messengerPageAccessToken as string, graphApiVersion: fb.graphApiVersion }),
+      router: makeRouter(fb.access, fb.allowedUserIds, fb.rateLimitPerMinute, "messenger"),
+      appSecret: secrets.messengerAppSecret as string,
+      verifyToken: secrets.messengerVerifyToken as string,
+      ...(fb.pageId !== undefined && { pageId: fb.pageId }),
+      logger,
+    });
+    routes.push(channel.webhookApp());
+    summary.push("messenger: webhook at /channels/messenger/webhook (subscribe the page to messages and messaging_postbacks)");
   }
 
   return {

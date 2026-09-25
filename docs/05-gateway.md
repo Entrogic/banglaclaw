@@ -30,6 +30,7 @@ Since v0.5 the gateway also mounts channel webhook routes (`deps.routes`), which
 ```text
 Telegram ─┐
 WhatsApp ─┤
+Messenger ┤
 Web ──────┼──→ Gateway → Session → Agent Runtime
 CLI ──────┤
 REST ─────┘

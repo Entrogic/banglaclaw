@@ -78,6 +78,6 @@
 - Per-tenant knowledge collections and document ACLs
 - Shared rate-limit store and session-event bus (Redis) for horizontally scaled gateways
 - Router/planner/verifier graph nodes; streaming replies by editing channel messages
-- Discord and Messenger channels, a public web widget with visitor sessions
+- Discord channel, a public web widget with visitor sessions (Facebook Messenger shipped after 1.1)
 - Voice notes (speech-to-text), images, DOCX and URL loaders
 - Publishing `@banglaclaw/*` packages to npm; MCP resources and prompts for the BanglaClaw MCP server

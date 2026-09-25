@@ -26,7 +26,7 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | DELETE | `/v1/memories/:id` | Delete one of the caller's memories (204) |
 | GET | `/v1/handoffs` | Operators: sessions waiting for a human (all users) |
 | GET | `/v1/handoffs/:id` | Operators: a handed-off session with its messages |
-| POST | `/v1/handoffs/:id/reply` | Operators: reply as a human `{ text }` → `{ delivered, runId }` (delivered through Telegram/WhatsApp) |
+| POST | `/v1/handoffs/:id/reply` | Operators: reply as a human `{ text }` → `{ delivered, runId }` (delivered through Telegram/WhatsApp/Messenger) |
 | POST | `/v1/handoffs/:id/release` | Operators: return the session to the bot (409 if it isn't handed off) |
 | GET | `/v1/audit?action=&limit=` | Admins: security audit log |
 | GET | `/v1/admin/stats?days=` | Admins: run analytics for the last `days` (1–90, default 7) |
@@ -93,7 +93,7 @@ event: ping              data: {}                  (every 25 s)
 ```
 
 - Only the session's owner can follow it. At most 10 event streams may be open per API key (429 `too_many_event_streams`).
-- `POST /v1/handoffs/:id/reply` reports `delivered: true` when the reply reached a connected follower or the session's platform (Telegram, WhatsApp). Replies are always stored, so a client that wasn't connected finds them in `/messages`.
+- `POST /v1/handoffs/:id/reply` reports `delivered: true` when the reply reached a connected follower or the session's platform (Telegram, WhatsApp, Messenger). Replies are always stored, so a client that wasn't connected finds them in `/messages`.
 - The web chat (`/chat`) follows its session automatically. With the SDK: `for await (const e of bc.sessions.events(id, { signal })) …`.
 - Events are published in the gateway process that handled the operator's request; horizontally scaled gateways need a shared bus (docs/20).
 

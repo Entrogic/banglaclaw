@@ -1,8 +1,8 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import { z } from "zod";
 import { createLogger, type Logger } from "@banglaclaw/shared";
 import type { ChannelAdapter, ChannelRouter, InboundMessage } from "./router.js";
+import { verifyHandshake, verifySignature } from "./meta.js";
 import type { FetchLike } from "./telegram.js";
 
 const WebhookSchema = z.object({
@@ -51,14 +51,6 @@ export class WhatsAppApi {
     });
     if (!res.ok) throw new WhatsAppApiError(res.status, (await res.text()).slice(0, 300));
   }
-}
-
-/** Verifies Meta's X-Hub-Signature-256 (HMAC-SHA256 of the raw body with the app secret). */
-export function verifySignature(rawBody: string, header: string | undefined, appSecret: string): boolean {
-  if (header === undefined || !header.startsWith("sha256=")) return false;
-  const expected = Buffer.from(createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex"));
-  const given = Buffer.from(header.slice("sha256=".length));
-  return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
 export function toInboundMessages(payload: WhatsAppWebhook, phoneNumberId?: string): InboundMessage[] {
@@ -112,15 +104,7 @@ export class WhatsAppChannel implements ChannelAdapter {
     const app = new Hono();
     const { verifyToken, appSecret, phoneNumberId, router } = this.options;
 
-    app.get(WHATSAPP_WEBHOOK_PATH, (c) => {
-      const mode = c.req.query("hub.mode");
-      const token = c.req.query("hub.verify_token") ?? "";
-      const challenge = c.req.query("hub.challenge") ?? "";
-      const a = Buffer.from(token);
-      const b = Buffer.from(verifyToken);
-      if (mode === "subscribe" && a.length === b.length && timingSafeEqual(a, b)) return c.text(challenge);
-      return c.text("Forbidden", 403);
-    });
+    app.get(WHATSAPP_WEBHOOK_PATH, (c) => verifyHandshake(c, verifyToken));
 
     app.post(WHATSAPP_WEBHOOK_PATH, async (c) => {
       const raw = await c.req.text();

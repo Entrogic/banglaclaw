@@ -6,7 +6,7 @@ import { Link, navigate } from "../router";
 
 const PAGE = 50;
 /** Built-in channels; others (plugins) appear once a listed session uses them. */
-const KNOWN_CHANNELS = ["api", "telegram", "whatsapp", "cli"];
+const KNOWN_CHANNELS = ["api", "telegram", "whatsapp", "messenger", "mcp", "cli"];
 
 export function Sessions() {
   const { client } = useAuth();

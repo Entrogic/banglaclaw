@@ -42,7 +42,7 @@ Security is a core architecture requirement, not a later feature.
   - binds to 127.0.0.1 by default — see docs/05
 - Channels:
   - allowlist access by default, per-chat rate limits, and rate-limited refusals
-  - Telegram webhook secret-token and WhatsApp `X-Hub-Signature-256` verification (timing-safe)
+  - Telegram webhook secret-token and WhatsApp/Messenger `X-Hub-Signature-256` verification (timing-safe)
   - tokens from the environment only, and never included in error messages
   - web chat served with a strict CSP — see docs/11
 - Knowledge and memory:

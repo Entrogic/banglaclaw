@@ -31,7 +31,7 @@ Behind nginx, Caddy or Cloudflare:
 
 - Set `gateway.trustProxy: true` so client IPs (for audit and rate limiting) come from `X-Forwarded-For`. Only do this when the proxy is the only way in.
 - Allow WebSocket upgrades on `/v1/ws` and disable response buffering for SSE (`/v1/agents/run?stream=true`, `/v1/sessions/:id/messages`).
-- Telegram webhook mode and WhatsApp need a public HTTPS URL that reaches `/channels/*`.
+- Telegram webhook mode, WhatsApp and Messenger need a public HTTPS URL that reaches `/channels/*`.
 
 Example Caddyfile:
 

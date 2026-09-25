@@ -52,7 +52,7 @@ packages/storage    Drizzle schema + migrations, Postgres stores, PostgresSaver 
 packages/mcp        MCP client manager, MCP tool wrapping (stdio + Streamable HTTP)
 packages/auth       users, API key generation/verification, AuthStore + in-memory store
 packages/gateway    Hono HTTP gateway: REST, SSE, WebSocket, rate limits, request ids, /chat page
-packages/channels   ChannelRouter + Telegram (polling/webhook) and WhatsApp Cloud API adapters
+packages/channels   ChannelRouter + Telegram (polling/webhook), WhatsApp Cloud API and Facebook Messenger adapters
 packages/knowledge  embeddings, vector stores (memory/Qdrant), chunking, loaders, KnowledgeBase, LongTermMemory
 packages/agents     AGENT.md specialist profiles (parse/load)
 packages/observability  OpenTelemetry setup (initTelemetry) and Prometheus Metrics

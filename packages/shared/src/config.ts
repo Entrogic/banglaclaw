@@ -76,6 +76,19 @@ export const WhatsAppChannelSchema = z.strictObject({
   rateLimitPerMinute: z.int().min(1).max(1_000).default(10),
 });
 
+export const MessengerChannelSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  /** Facebook page id; events for other pages of the same app are ignored. */
+  pageId: z.string().regex(/^\d+$/).optional(),
+  graphApiVersion: z.string().regex(/^v\d+\.\d+$/).default("v21.0"),
+  /** allowlist: only allowedUserIds (page-scoped ids, PSIDs) are answered. open: anyone (typical for a shop page). */
+  access: AccessSchema.default("allowlist"),
+  allowedUserIds: z.array(z.union([z.int(), z.string().regex(/^\d+$/)]).transform(String)).default([]),
+  rateLimitPerMinute: z.int().min(1).max(1_000).default(10),
+  /** Send operator replies with the HUMAN_AGENT tag (7-day window instead of 24 h; needs Meta's human_agent permission). */
+  humanAgentTag: z.boolean().default(false),
+});
+
 export const ConfigSchema = z.strictObject({
   agent: z.strictObject({ name: z.string().min(1).default("banglaclaw") }).prefault({}),
   models: z
@@ -182,6 +195,7 @@ export const ConfigSchema = z.strictObject({
     .strictObject({
       telegram: TelegramChannelSchema.prefault({}),
       whatsapp: WhatsAppChannelSchema.prefault({}),
+      messenger: MessengerChannelSchema.prefault({}),
       /** Serve the browser chat page at /chat on the gateway. */
       web: z.strictObject({ enabled: z.boolean().default(true) }).prefault({}),
     })
@@ -232,6 +246,10 @@ export interface Secrets {
   whatsappAppSecret?: string;
   /** Token echoed during webhook verification (hub.verify_token). */
   whatsappVerifyToken?: string;
+  messengerPageAccessToken?: string;
+  /** Meta app secret of the Messenger app (X-Hub-Signature-256). */
+  messengerAppSecret?: string;
+  messengerVerifyToken?: string;
   qdrantApiKey?: string;
   /** Overrides OPENAI_API_KEY for the embeddings endpoint. */
   embeddingsApiKey?: string;
@@ -310,6 +328,9 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
     ["whatsappAccessToken", "WHATSAPP_ACCESS_TOKEN"],
     ["whatsappAppSecret", "WHATSAPP_APP_SECRET"],
     ["whatsappVerifyToken", "WHATSAPP_VERIFY_TOKEN"],
+    ["messengerPageAccessToken", "MESSENGER_PAGE_ACCESS_TOKEN"],
+    ["messengerAppSecret", "MESSENGER_APP_SECRET"],
+    ["messengerVerifyToken", "MESSENGER_VERIFY_TOKEN"],
     ["qdrantApiKey", "QDRANT_API_KEY"],
     ["embeddingsApiKey", "EMBEDDINGS_API_KEY"],
     ["handoffWebhookUrl", "HANDOFF_WEBHOOK_URL"],

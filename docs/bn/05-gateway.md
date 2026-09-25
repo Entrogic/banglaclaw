@@ -77,6 +77,7 @@ pricing:                                     # ঐচ্ছিক: খরচে�
 ```text
 Telegram ─┐
 WhatsApp ─┤
+Messenger ┤
 Web ──────┼──→ Gateway → Session → Agent Runtime
 CLI ──────┤
 REST ─────┘

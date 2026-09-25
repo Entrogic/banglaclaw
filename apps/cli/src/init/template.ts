@@ -78,6 +78,13 @@ channels:
     access: allowlist
     allowedNumbers: []           # e.g. ["8801712345678"]
     rateLimitPerMinute: 10
+  messenger:
+    enabled: false               # needs MESSENGER_PAGE_ACCESS_TOKEN, MESSENGER_APP_SECRET, MESSENGER_VERIFY_TOKEN
+    # pageId: "104512345678901"  # your Facebook page id
+    access: allowlist            # open for a public shop page (every message costs model tokens)
+    allowedUserIds: []           # page-scoped user ids (PSIDs) from the gateway log
+    rateLimitPerMinute: 10
+    humanAgentTag: false         # operator replies up to 7 days (needs Meta's human_agent permission)
 
 plugins: []                      # e.g. [examples/plugins/bd-phone] — trusted code only (docs/23)
 

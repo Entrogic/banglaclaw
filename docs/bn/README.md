@@ -7,7 +7,7 @@
 | [05-gateway.md](05-gateway.md) | গেটওয়ে: HTTP/WebSocket API, অথেনটিকেশন, রেট লিমিট, অ্যাডমিন ড্যাশবোর্ড | [../05-gateway.md](../05-gateway.md) |
 | [08-skills.md](08-skills.md) | স্কিল: `SKILL.md` লেখা, ট্রিগার, লোডিং মডেল | [../08-skills.md](../08-skills.md) |
 | [10-mcp.md](10-mcp.md) | MCP: বাইরের MCP সার্ভার যুক্ত করা, নিরাপত্তা সীমা | [../10-mcp.md](../10-mcp.md) |
-| [11-channels.md](11-channels.md) | চ্যানেল: Telegram, WhatsApp, ওয়েব চ্যাট | [../11-channels.md](../11-channels.md) |
+| [11-channels.md](11-channels.md) | চ্যানেল: Telegram, WhatsApp, Messenger, ওয়েব চ্যাট | [../11-channels.md](../11-channels.md) |
 
 ## পরিভাষা
 

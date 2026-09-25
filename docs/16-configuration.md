@@ -75,6 +75,14 @@ channels:
     access: allowlist
     allowedNumbers: []       # e.g. ["8801712345678"]
     rateLimitPerMinute: 10
+  messenger:
+    enabled: false
+    # pageId: "104512345678901"
+    graphApiVersion: v21.0
+    access: allowlist        # open for a public page
+    allowedUserIds: []       # page-scoped user ids (PSIDs)
+    rateLimitPerMinute: 10
+    humanAgentTag: false     # operator replies with the HUMAN_AGENT tag (7-day window)
 
 agents:
   dirs: [agents]           # <dir>/<name>/AGENT.md specialists (examples/agents)
@@ -140,6 +148,7 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp channel secrets |
 | `QDRANT_URL`, `QDRANT_API_KEY` | Override `knowledge.vectorStoreUrl`; Qdrant API key |
 | `EMBEDDINGS_API_KEY` | Embeddings key (defaults to `OPENAI_API_KEY`) |
+| `MESSENGER_PAGE_ACCESS_TOKEN`, `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN` | Facebook Messenger channel (docs/11) |
 | `METRICS_TOKEN` | Bearer token required for `GET /metrics` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` (+ standard `OTEL_*`) | Enables OpenTelemetry trace export (docs/15) |
 | `HANDOFF_WEBHOOK_URL` | Receives `POST {event: "handoff", sessionId, channel, reason, at}` |
