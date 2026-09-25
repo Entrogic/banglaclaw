@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# BanglaClaw production image: gateway + channels + CLI (banglaclaw serve).
+# BanglaClaw production image: gateway + channels + CLI (banglaclaw serve) + admin dashboard (/admin).
 #   docker build -t banglaclaw .
 #   docker run -p 3000:3000 --env-file .env banglaclaw
 
@@ -21,6 +21,7 @@ COPY --from=build /out ./
 COPY --from=build /out-mcp ./mcp-servers/bangladesh
 COPY --from=build /repo/skills ./skills
 COPY --from=build /repo/examples ./examples
+COPY --from=build /repo/apps/dashboard/dist ./dashboard
 COPY docker/banglaclaw.docker.yaml ./banglaclaw.yaml
 RUN ln -s /app/dist/index.js /usr/local/bin/banglaclaw && chmod +x /app/dist/index.js
 USER node

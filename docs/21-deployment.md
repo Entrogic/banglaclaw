@@ -2,7 +2,7 @@
 
 ## Docker (recommended)
 
-The repository `Dockerfile` builds a production image with a multi-stage build, a production-only install (`pnpm deploy`), the non-root `node` user and a healthcheck. The image contains the CLI, gateway and channels, the bundled skills, examples, and the Bangladesh MCP server.
+The repository `Dockerfile` builds a production image with a multi-stage build, a production-only install (`pnpm deploy`), the non-root `node` user and a healthcheck. The image contains the CLI, gateway and channels, the admin dashboard, the bundled skills, examples, and the Bangladesh MCP server.
 
 ```bash
 cp .env.example .env            # set OPENAI_API_KEY (or ANTHROPIC_API_KEY), POSTGRES_PASSWORD, channel tokens…
@@ -14,7 +14,7 @@ docker compose -f docker/compose.prod.yaml run --rm banglaclaw key create --user
 
 The stack runs BanglaClaw, PostgreSQL 17 and Qdrant. The gateway publishes on `127.0.0.1:3000` only; put a TLS-terminating reverse proxy in front of it.
 
-The image ships `docker/banglaclaw.docker.yaml` as `/app/banglaclaw.yaml` (postgres storage, gateway on `0.0.0.0:3000`, web chat on). Mount your own config over it:
+The image ships `docker/banglaclaw.docker.yaml` as `/app/banglaclaw.yaml` (postgres storage, gateway on `0.0.0.0:3000`, web chat on, admin dashboard at `/admin`). Mount your own config over it:
 
 ```yaml
 services:
@@ -76,7 +76,7 @@ Run it under systemd or PM2 with `Restart=always`. `serve` shuts down gracefully
 - [ ] Secrets only in the environment: `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`, `DATABASE_URL`, channel tokens, `METRICS_TOKEN`
 - [ ] Gateway reachable only through TLS; `trustProxy` set correctly
 - [ ] `tools.allow` reviewed; channel access lists set (`access: allowlist`)
-- [ ] An admin key for the audit log; an operator key if handoff is enabled
+- [ ] An admin key for the audit log and the dashboard at `/admin`; an operator key if handoff is enabled
 - [ ] `/metrics` scraped (with `METRICS_TOKEN`), tracing endpoint set if used
 - [ ] Postgres and Qdrant backups (docs/22)
 - [ ] `banglaclaw doctor` passes inside the container

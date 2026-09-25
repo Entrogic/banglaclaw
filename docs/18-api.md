@@ -129,4 +129,8 @@ for await (const e of bc.sessions.stream(sessionId, "ar 20%?")) if (e.event === 
 
 When `pricing` lists a provider id (for example `openai-compatible:gpt-4o-mini`), its `byProvider` entry gets `costUsd` and the response gets `totalCostUsd`. Both are estimates from token counts. Providers without a price get no cost.
 
+### Dashboard
+
+`apps/dashboard` (Vite + React, ADR-0011) is the web UI for these endpoints: overview charts, a sessions browser with transcripts and runs, and API-key management. `pnpm build` writes it to `apps/dashboard/dist`; set `gateway.dashboardDir` to that directory (the Docker image does) and open `/admin/`. It signs in with an admin key kept in `sessionStorage` for that tab only, and a 401 on any call signs out. For UI work, `pnpm --filter @banglaclaw/dashboard demo` starts a gateway with seeded in-memory data and prints an admin key, and `pnpm --filter @banglaclaw/dashboard dev` serves the page with hot reload at `http://localhost:5173/admin/`, proxying `/v1` to it (or to `BANGLACLAW_GATEWAY_URL`).
+
 Key creation and revocation through `/v1/admin/keys` are audited (`key.created`, `key.revoked` with `via: "api"`), the same as the CLI `key` commands. `POST` routes need the `run` scope.

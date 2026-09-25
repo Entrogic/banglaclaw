@@ -9,5 +9,8 @@
     "apps/*/src",
     "mcp-servers/*/src",
     "mcp-servers/*/test"
+  ],
+  "exclude": [
+    "apps/dashboard"
   ]
 }

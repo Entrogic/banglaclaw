@@ -9,7 +9,11 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
   - `GET /v1/admin/sessions[/:id]`: sessions of all users, searchable
   - `/v1/admin/keys`: list, issue and revoke API keys (audited)
 - `RunStore.stats()` (SQL aggregation in Postgres). `SessionStore.list()` now takes `query`, and `InMemoryRunStore` takes the session store for channel breakdowns.
-- `gateway.dashboardDir` serves a built admin dashboard at `/admin`.
+- **Admin dashboard** (`apps/dashboard`, served at `/admin` when `gateway.dashboardDir` is set; included in the Docker image):
+  - overview with runs and tokens per day, runs by channel, model and agent, top tools and estimated cost
+  - sessions browser (search, status and channel filters) with transcripts and runs
+  - API keys: issue (token shown once), list and revoke
+  - `pnpm --filter @banglaclaw/dashboard demo` for UI work with seeded data
 - `@banglaclaw/client` covers the admin endpoints.
 
 ## 1.1.0 — Professional CLI

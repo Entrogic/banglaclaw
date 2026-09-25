@@ -22,7 +22,7 @@ The Gateway is the transport and orchestration boundary between channels and the
 
 Client disconnects (SSE) and socket closes (WS) abort in-flight runs. See docs/18 for the API.
 
-Since v0.5 the gateway also mounts channel webhook routes (`deps.routes`), which verify their own signatures instead of using API keys, and serves the web chat page at `/chat` (`deps.webChat`). See docs/11.
+Since v0.5 the gateway also mounts channel webhook routes (`deps.routes`), which verify their own signatures instead of using API keys, and serves the web chat page at `/chat` (`deps.webChat`). See docs/11. With `gateway.dashboardDir` set it also serves the built admin dashboard (`apps/dashboard`) at `/admin` with a strict CSP; the page itself is public static files and every call it makes goes to `/v1/admin` with an admin key.
 
 ## Flow
 
