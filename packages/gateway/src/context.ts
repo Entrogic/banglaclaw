@@ -34,6 +34,12 @@ export interface GatewayDeps {
   audit?: AuditStore;
   /** Prometheus metrics served at GET /metrics (bearer `token` required when set). */
   metrics?: GatewayMetrics;
+  /** Built dashboard (apps/dashboard/dist) served at /admin. */
+  dashboardDir?: string;
+  /** USD per 1M tokens by provider id, for cost estimates in /v1/admin/stats. */
+  pricing?: Record<string, { input: number; output: number }>;
+  /** Timezone for daily analytics buckets. */
+  timezone?: string;
   logger?: Logger;
 }
 

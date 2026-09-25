@@ -39,7 +39,8 @@ export interface SessionStore {
   get(id: string): Promise<Session | undefined>;
   findByExternalId(channel: string, externalId: string): Promise<Session | undefined>;
   /** Most recently updated first. */
-  list(options?: { limit?: number; channel?: string; userId?: string; status?: SessionStatus }): Promise<Session[]>;
+  /** `query` matches a session id prefix or part of the external id. */
+  list(options?: { limit?: number; channel?: string; userId?: string; status?: SessionStatus; query?: string }): Promise<Session[]>;
   /** Updates routing/handoff state. Entering "handoff" stamps handoffAt; leaving clears reason and time. */
   update(id: string, patch: SessionPatch): Promise<Session | undefined>;
   /** Appends messages produced by a run, in order, and bumps updatedAt. */

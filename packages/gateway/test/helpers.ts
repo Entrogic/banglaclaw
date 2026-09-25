@@ -36,7 +36,7 @@ export class GatedProvider implements ModelProvider {
 
 export async function makeDeps(options: { script?: ScriptedTurn[]; provider?: ModelProvider; config?: Partial<GatewayConfig> } = {}) {
   const sessions = new InMemorySessionStore();
-  const runs = new InMemoryRunStore();
+  const runs = new InMemoryRunStore(sessions);
   const registry = new ToolRegistry();
   for (const tool of builtinTools) registry.register(tool);
   const policy = new AllowlistPolicy(["calculator"]);

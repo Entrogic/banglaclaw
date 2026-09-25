@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **Version 1.0.0**: all roadmap milestones (v0.1–v1.0) are implemented; see CHANGELOG.md and docs/20-roadmap.md ("After 1.0" lists ideas). The `/v1` HTTP API is stable and changes must be additive (docs/18). Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
+BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **Version 1.1.0** (1.1 added the professional CLI: Ink chat, `init` wizard, `--json`): all roadmap milestones (v0.1–v1.0) are implemented; see CHANGELOG.md and docs/20-roadmap.md ("After 1.0" lists ideas). The `/v1` HTTP API is stable and changes must be additive (docs/18). Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
 
 ## Commands
 
@@ -58,6 +58,7 @@ What exists:
   - **OpenAPI.** `packages/gateway/src/openapi.ts` must document every route; a contract test compares it with `app.routes`. `@banglaclaw/client` is the typed SDK (its tests run against `createGatewayApp` through `app.request`).
   - **Plugins** (docs/23). `@banglaclaw/plugin-sdk` (`definePlugin`, `defineTool`, `z`); `apps/cli/src/plugins.ts` loads `plugins:` (paths relative to the config, or package names). Plugins are trusted in-process code.
   - **Docker.** `Dockerfile` (pnpm deploy, non-root, healthcheck on `$BANGLACLAW_GATEWAY_PORT`), `docker/compose.prod.yaml`, `docker/banglaclaw.docker.yaml`. CI is `.github/workflows/ci.yml`. The version constant lives in `apps/cli/src/version.ts`.
+- **Admin API** (`packages/gateway/src/admin.ts`, docs/18): `/v1/admin/{stats,sessions,keys}` (admin role) plus `dashboardRoutes` serving `gateway.dashboardDir` at `/admin` with a strict CSP. Stats come from `RunStore.stats()`, which aggregates in SQL in Postgres and uses `computeStats` in `session/src/stats.ts` in memory. Both exclude `agent: "human"` runs and control tools. `InMemoryRunStore` takes the `InMemorySessionStore` for channel breakdowns. Costs come from `pricing` (USD per 1M tokens, keyed by provider id).
 - **Multi-agent + handoff** (docs/04, ADR-0009):
   - `packages/agents` parses `AGENT.md` files.
   - `buildAgentGraph({team})` builds a per-agent view: the prompt uses `teamRole()`, tools are the profile subset (the supervisor gets unclaimed tools plus `transfer_to_*`), and a scoped policy enforces each agent's tools.

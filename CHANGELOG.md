@@ -2,6 +2,16 @@
 
 All notable changes to BanglaClaw. The project follows [Semantic Versioning](https://semver.org); the `/v1` HTTP API is stable from 1.0.0 (docs/18).
 
+## Unreleased
+
+- **Admin API** (admin role, docs/18):
+  - `GET /v1/admin/stats`: run analytics with daily buckets in `timezone`, per-channel, provider and agent breakdowns, top tools, and cost estimates from the new `pricing` config
+  - `GET /v1/admin/sessions[/:id]`: sessions of all users, searchable
+  - `/v1/admin/keys`: list, issue and revoke API keys (audited)
+- `RunStore.stats()` (SQL aggregation in Postgres). `SessionStore.list()` now takes `query`, and `InMemoryRunStore` takes the session store for channel breakdowns.
+- `gateway.dashboardDir` serves a built admin dashboard at `/admin`.
+- `@banglaclaw/client` covers the admin endpoints.
+
 ## 1.1.0 — Professional CLI
 
 - **`banglaclaw chat` is a full-screen Ink UI** with:

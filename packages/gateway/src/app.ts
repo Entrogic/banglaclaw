@@ -16,6 +16,7 @@ import { GatewayContext, type GatewayDeps } from "./context.js";
 import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
 import { respondWithRun } from "./run.js";
 import { createSessionBody, limitQuery, messageBody, runBody } from "./schemas.js";
+import { adminRoutes, dashboardRoutes } from "./admin.js";
 import { openApiSpec } from "./openapi.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
 import { WEB_CHAT_CSP, WEB_CHAT_HTML } from "./web-chat.js";
@@ -146,6 +147,7 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   }
 
   for (const routes of deps.routes ?? []) app.route("/", routes);
+  if (deps.dashboardDir !== undefined) app.route("/", dashboardRoutes(deps.dashboardDir));
 
   if (upgradeWebSocket !== undefined) {
     // Authenticated inside the protocol (browsers cannot set headers on WebSocket upgrades).
@@ -341,6 +343,8 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
     const session = await handoffCall(() => desk.release(c.req.param("id"), c.get("principal").user.name));
     return c.json({ session: sessionJson(session) });
   });
+
+  v1.route("/admin", adminRoutes(deps, { requireRole, audit: (c, e) => audit(c as Context<Env>, e), parseJson }));
 
   v1.get("/audit", async (c) => {
     requireRole(c, "admin");

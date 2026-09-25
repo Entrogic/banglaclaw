@@ -28,8 +28,15 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | POST | `/v1/handoffs/:id/reply` | Operators: reply as a human `{ text }` → `{ delivered, runId }` (delivered through Telegram/WhatsApp) |
 | POST | `/v1/handoffs/:id/release` | Operators: return the session to the bot (409 if it isn't handed off) |
 | GET | `/v1/audit?action=&limit=` | Admins: security audit log |
+| GET | `/v1/admin/stats?days=` | Admins: run analytics for the last `days` (1–90, default 7) |
+| GET | `/v1/admin/sessions?status=&channel=&q=&limit=` | Admins: sessions of all users with owner and message count; `q` matches an id prefix or part of the external id |
+| GET | `/v1/admin/sessions/:id` | Admins: any session with its messages and runs |
+| GET | `/v1/admin/keys` | Admins: all API keys (never the hash) |
+| POST | `/v1/admin/keys` | Admins: issue a key `{ user, name?, role?, scopes? }` → `{ key, token }` (201); the token is shown once |
+| POST | `/v1/admin/keys/:id/revoke` | Admins: revoke a key (409 for the key making the request) |
 | GET | `/v1/openapi.json` | OpenAPI 3.1 spec (no auth) |
 | GET | `/metrics` | Prometheus metrics (no API key; `METRICS_TOKEN` if set) |
+| GET | `/admin/` | Admin dashboard static files when `gateway.dashboardDir` is set (no API key; the page calls `/v1/admin` with an admin key) |
 | GET | `/v1/ws` | WebSocket (see below) |
 
 - `externalId` is the channel-native conversation id (for example a chat id). It is namespaced per user, so two API users never share or discover each other's sessions.
@@ -107,6 +114,19 @@ for await (const e of bc.sessions.stream(sessionId, "ar 20%?")) if (e.event === 
 ## Authentication and limits
 
 - Keys have **scopes**: `read` (GET endpoints) and `run` (agent runs and other writes). The default is both; `key create --scopes read` makes a read-only key. Missing scope → 403 `insufficient_scope`.
-- Users have a `role`: `user` (default), `operator` (may use `/v1/handoffs`) or `admin` (operator rights plus `GET /v1/audit`). Create operators with `banglaclaw key create --user <name> --role operator`.
+- Users have a `role`: `user` (default), `operator` (may use `/v1/handoffs`) or `admin` (operator rights plus `GET /v1/audit` and `/v1/admin`). Create operators with `banglaclaw key create --user <name> --role operator`.
 - API keys look like `bck_<id>_<secret>`. Only a SHA-256 hash of the secret is stored. Create keys with `banglaclaw key create --user <name>` (postgres storage). In memory mode, `serve` prints a temporary key.
 - Per API key: a token-bucket rate limit (`gateway.rateLimit.requestsPerMinute`, reported in `X-RateLimit-Limit` / `X-RateLimit-Remaining`) and a cap on concurrent runs (`maxConcurrentRuns`). Limits are per process; a shared store is needed for multiple instances.
+
+## Admin analytics
+
+`GET /v1/admin/stats` aggregates the persisted runs, so it agrees with `/metrics` and the database. Operator replies and messages stored while a session is handed off are not counted as runs. The response has:
+
+- `totals`: runs by status, handoffs, input and output tokens, average duration and distinct sessions
+- `daily`: one zero-filled entry per day, bucketed in the configured `timezone`
+- `byChannel`, `byProvider` and `byAgent` breakdowns
+- `topTools`: the 10 most-called tools with failure counts (the `transfer_to_*` and `request_human` control tools are excluded)
+
+When `pricing` lists a provider id (for example `openai-compatible:gpt-4o-mini`), its `byProvider` entry gets `costUsd` and the response gets `totalCostUsd`. Both are estimates from token counts. Providers without a price get no cost.
+
+Key creation and revocation through `/v1/admin/keys` are audited (`key.created`, `key.revoked` with `via: "api"`), the same as the CLI `key` commands. `POST` routes need the `run` scope.

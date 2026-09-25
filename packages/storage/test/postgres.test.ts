@@ -151,6 +151,28 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await storage.runs.get("nope")).toBeUndefined();
   });
 
+  it("aggregates run stats and searches sessions in SQL", async () => {
+    const tg = await storage.sessions.create({ channel: "telegram", externalId: "8801712345678", agentId: "a" });
+    const api = await storage.sessions.create({ channel: "api", agentId: "a" });
+    const tool = (name: string, status: "ok" | "error") => ({ runId: "", toolCallId: crypto.randomUUID(), tool: name, input: {}, status, durationMs: 1 });
+    const at = (iso: string) => ({ startedAt: new Date(iso), finishedAt: new Date(iso) });
+    await storage.runs.save(baseRun(tg.id, { ...at("2026-09-20T10:00:00Z"), usage: { inputTokens: 100, outputTokens: 10 }, agent: "sales", toolCalls: [tool("calculator", "ok"), tool("transfer_to_sales", "ok")] }));
+    await storage.runs.save(baseRun(tg.id, { ...at("2026-09-21T10:00:00Z"), status: "error", durationMs: 3000, toolCalls: [tool("calculator", "error")] }));
+    await storage.runs.save(baseRun(api.id, { ...at("2026-09-21T11:00:00Z"), status: "handoff", usage: { inputTokens: 50, outputTokens: 5 } }));
+    await storage.runs.save(baseRun(api.id, { ...at("2026-09-21T12:00:00Z"), agent: "human", provider: "operator:karim" }));
+
+    const s = await storage.runs.stats({ since: new Date("2026-09-20T00:00:00Z"), until: new Date("2026-09-21T23:00:00Z"), timezone: "UTC" });
+    expect(s.totals).toMatchObject({ runs: 3, completed: 1, errors: 1, handoffs: 1, inputTokens: 150, outputTokens: 15, sessions: 2 });
+    expect(s.daily.map((d) => [d.date, d.runs, d.errors])).toEqual([["2026-09-20", 1, 0], ["2026-09-21", 2, 1]]);
+    expect(s.byChannel).toEqual([{ channel: "telegram", runs: 2 }, { channel: "api", runs: 1 }]);
+    expect(s.topTools).toEqual([{ tool: "calculator", calls: 2, failures: 1 }]);
+    expect(s.byAgent.map((a) => a.agent).sort()).toEqual(["banglaclaw", "sales"]);
+
+    expect((await storage.sessions.list({ query: "8801712" })).map((x) => x.id)).toEqual([tg.id]);
+    expect((await storage.sessions.list({ query: tg.id.slice(0, 8) })).map((x) => x.id)).toEqual([tg.id]);
+    expect(await storage.sessions.list({ query: "100%_" })).toEqual([]);
+  });
+
   it("runs the agent end-to-end with persistent history and checkpoints", async () => {
     const registry = new ToolRegistry();
     for (const tool of builtinTools) registry.register(tool);

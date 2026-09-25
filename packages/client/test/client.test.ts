@@ -12,7 +12,7 @@ import { BanglaClawApiError, BanglaClawClient, parseSSE, type StreamEvent } from
 async function setup() {
   const silent = createLogger({ write: () => {} });
   const sessions = new InMemorySessionStore();
-  const runs = new InMemoryRunStore();
+  const runs = new InMemoryRunStore(sessions);
   const registry = new ToolRegistry();
   for (const tool of builtinTools) registry.register(tool);
   const policy = new AllowlistPolicy(["calculator"]);
@@ -24,13 +24,18 @@ async function setup() {
   const runtime = new AgentRuntime({ provider, registry, policy, sessions, runs, limits: { maxIterations: 4, maxToolCalls: 4 }, timeoutMs: 5_000, timezone: "Asia/Dhaka", logger: silent });
   const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
   const { token } = await auth.issueKey("sdk-user");
+  const { token: adminToken } = await auth.issueKey("sdk-admin", "admin", "admin");
   const app = createGatewayApp({
     runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: true, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
     version: "1.0.0", logger: silent,
   });
   const fetchViaApp = async (url: string, init?: RequestInit) => app.request(url.replace("http://gateway.test", ""), init);
-  return { client: new BanglaClawClient({ baseUrl: "http://gateway.test/", apiKey: token, fetch: fetchViaApp }), fetchViaApp };
+  return {
+    client: new BanglaClawClient({ baseUrl: "http://gateway.test/", apiKey: token, fetch: fetchViaApp }),
+    admin: new BanglaClawClient({ baseUrl: "http://gateway.test", apiKey: adminToken, fetch: fetchViaApp }),
+    fetchViaApp,
+  };
 }
 
 describe("BanglaClawClient", () => {
@@ -53,6 +58,22 @@ describe("BanglaClawClient", () => {
     expect((await client.sessions.list()).sessions[0]?.id).toBe(sessionId);
     const { runs } = await client.sessions.runs(sessionId);
     expect((await client.runs.get(runs[0]?.id ?? "")).run.id).toBe(runs[0]?.id);
+  });
+
+  it("covers the admin API", async () => {
+    const { client, admin } = await setup();
+    await client.run("hello");
+    const stats = await admin.admin.stats({ days: 2 });
+    expect(stats.totals.runs).toBe(1);
+    expect(stats.daily).toHaveLength(2);
+    const { sessions } = await admin.admin.sessions();
+    expect(sessions[0]).toMatchObject({ userName: "sdk-user", messageCount: 4 });
+    expect((await admin.admin.session(sessions[0]?.id ?? "")).runs).toHaveLength(1);
+    const { key, token } = await admin.admin.createKey({ user: "bot", scopes: ["read"] });
+    expect(token).toMatch(/^bck_/);
+    expect((await admin.admin.keys()).keys.map((k) => k.id)).toContain(key.id);
+    expect(await admin.admin.revokeKey(key.id)).toEqual({ revoked: key.id });
+    await expect(client.admin.stats()).rejects.toMatchObject({ status: 403 });
   });
 
   it("raises typed API errors", async () => {

@@ -53,6 +53,7 @@ gateway:
   port: 3000
   corsOrigins: []            # e.g. [https://app.example.com]
   maxInputChars: 8000
+  # dashboardDir: apps/dashboard/dist   # built admin dashboard served at /admin (admin API key)
   rateLimit:
     requestsPerMinute: 60    # per API key
     maxConcurrentRuns: 2     # per API key
@@ -86,6 +87,11 @@ channels:
     rateLimitPerMinute: 10
 
 plugins: []                      # e.g. [examples/plugins/bd-phone] — trusted code only (docs/23)
+
+# USD per 1M tokens by provider id (as shown in /v1/admin/stats), for cost estimates.
+pricing: {}
+# pricing:
+#   "openai-compatible:gpt-4o-mini": { input: 0.15, output: 0.6 }
 
 mcp:
   servers:

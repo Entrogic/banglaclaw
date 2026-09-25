@@ -1,4 +1,4 @@
-import type { AuditEvent, KnowledgeHit, Me, Memory, Message, Run, RunResponse, Session, StreamEvent } from "./types.js";
+import type { AdminKey, AdminSession, AdminStats, AuditEvent, KnowledgeHit, Me, Memory, Message, Run, RunResponse, Session, StreamEvent } from "./types.js";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -160,6 +160,19 @@ export class BanglaClawClient {
     get: (id: string): Promise<{ session: Session; messages: Message[] }> => this.#json("GET", `/v1/handoffs/${enc(id)}`),
     reply: (id: string, text: string): Promise<{ delivered: boolean; runId: string }> => this.#json("POST", `/v1/handoffs/${enc(id)}/reply`, { text }),
     release: (id: string): Promise<{ session: Session }> => this.#json("POST", `/v1/handoffs/${enc(id)}/release`, {}),
+  };
+
+  /** Admin role required. */
+  readonly admin = {
+    stats: (options: { days?: number } = {}): Promise<AdminStats> => this.#json("GET", `/v1/admin/stats${query(options)}`),
+    sessions: (options: { limit?: number; status?: "active" | "handoff"; channel?: string; q?: string } = {}): Promise<{ sessions: AdminSession[] }> =>
+      this.#json("GET", `/v1/admin/sessions${query(options)}`),
+    session: (id: string, options: { limit?: number } = {}): Promise<{ session: Session; messages: Message[]; runs: Run[] }> =>
+      this.#json("GET", `/v1/admin/sessions/${enc(id)}${query(options)}`),
+    keys: (): Promise<{ keys: AdminKey[] }> => this.#json("GET", "/v1/admin/keys"),
+    createKey: (body: { user: string; name?: string; role?: "user" | "operator" | "admin"; scopes?: ("read" | "run")[] }): Promise<{ key: Omit<AdminKey, "status" | "createdAt">; token: string }> =>
+      this.#json("POST", "/v1/admin/keys", body),
+    revokeKey: (id: string): Promise<{ revoked: string }> => this.#json("POST", `/v1/admin/keys/${enc(id)}/revoke`, {}),
   };
 
   /** Admin role required. */

@@ -47,7 +47,7 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
     },
     servers: [{ url: "/" }],
     security: [{ bearerAuth: [] }],
-    tags: [{ name: "agent" }, { name: "sessions" }, { name: "knowledge" }, { name: "operators" }, { name: "system" }],
+    tags: [{ name: "agent" }, { name: "sessions" }, { name: "knowledge" }, { name: "operators" }, { name: "admin" }, { name: "system" }],
     paths: {
       "/health": { get: { tags: ["system"], security: [], summary: "Liveness check", responses: { "200": json({ type: "object", properties: { status: str, version: str } }) } } },
       "/metrics": { get: { tags: ["system"], security: [], summary: "Prometheus metrics (bearer METRICS_TOKEN when configured)", responses: { "200": { description: "Prometheus text format", content: { "text/plain": { schema: str } } } } } },
@@ -77,6 +77,35 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
       "/v1/handoffs/{id}/reply": { post: { tags: ["operators"], summary: "Reply as a human operator", parameters: [idParam("id")], requestBody: body(messageBody(options.maxInputChars)), responses: { "200": json({ type: "object", properties: { delivered: { type: "boolean" }, runId: str } }), ...errors(400, 401, 403, 404, 409) } } },
       "/v1/handoffs/{id}/release": { post: { tags: ["operators"], summary: "Return the session to the bot", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { session: ref("Session") } }), ...errors(401, 403, 404, 409) } } },
       "/v1/audit": { get: { tags: ["operators"], summary: "Security audit log (admin role)", parameters: [{ name: "action", in: "query", schema: str }, limitParam(1000, 100)], responses: { "200": json({ type: "object", properties: { events: { type: "array", items: ref("AuditEvent") } } }), ...errors(401, 403, 404) } } },
+      "/v1/admin/stats": {
+        get: {
+          tags: ["admin"], summary: "Analytics: totals, daily series, channels, providers (with estimated cost), agents, top tools (admin role)",
+          parameters: [{ name: "days", in: "query", schema: { type: "integer", minimum: 1, maximum: 90, default: 7 } }],
+          responses: { "200": json(ref("AdminStats")), ...errors(401, 403) },
+        },
+      },
+      "/v1/admin/sessions": {
+        get: {
+          tags: ["admin"], summary: "All sessions across users and channels (admin role)",
+          parameters: [limitParam(200, 50), { name: "status", in: "query", schema: { enum: ["active", "handoff"] } }, { name: "channel", in: "query", schema: str }, { name: "q", in: "query", description: "Session id prefix or external id", schema: str }],
+          responses: { "200": json({ type: "object", properties: { sessions: { type: "array", items: ref("AdminSession") } } }), ...errors(400, 401, 403) },
+        },
+      },
+      "/v1/admin/sessions/{id}": {
+        get: { tags: ["admin"], summary: "Any session with messages and runs (admin role)", parameters: [idParam("id"), limitParam(500, 100)], responses: { "200": json({ type: "object", properties: { session: ref("Session"), messages: { type: "array", items: ref("Message") }, runs: { type: "array", items: ref("Run") } } }), ...errors(401, 403, 404) } },
+      },
+      "/v1/admin/keys": {
+        get: { tags: ["admin"], summary: "API keys (admin role)", responses: { "200": json({ type: "object", properties: { keys: { type: "array", items: ref("AdminKey") } } }), ...errors(401, 403) } },
+        post: {
+          tags: ["admin"], summary: "Create an API key; the token is returned once (admin role)",
+          requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["user"], properties: { user: str, name: str, role: { enum: ["user", "operator", "admin"] }, scopes: { type: "array", items: { enum: ["read", "run"] } } } } } } },
+          responses: { "201": json({ type: "object", properties: { key: { type: "object" }, token: str } }, "Created"), ...errors(400, 401, 403) },
+        },
+      },
+      "/v1/admin/keys/{id}/revoke": {
+        post: { tags: ["admin"], summary: "Revoke an API key (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { revoked: str } }), ...errors(401, 403, 404, 409) } },
+      },
+      "/admin/{path}": { get: { tags: ["system"], security: [], summary: "Admin dashboard (static web app, when built)", parameters: [idParam("path")], responses: { "200": { description: "HTML/JS/CSS" } } } },
       "/v1/ws": { get: { tags: ["agent"], security: [], summary: "WebSocket upgrade; authenticate with a first {type:\"auth\"} message (see docs/18)", responses: { "101": { description: "Switching protocols" } } } },
     },
     components: {
@@ -111,6 +140,20 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
         KnowledgeHit: { type: "object", properties: { source: str, title: str, chunkIndex: { type: "integer" }, score: { type: "number" }, text: str } },
         KnowledgeDocument: { type: "object", properties: { documentId: str, source: str, title: str, chunkCount: { type: "integer" }, ingestedAt: time } },
         Memory: { type: "object", properties: { id: str, text: str, createdAt: time } },
+        AdminSession: { allOf: [ref("Session"), { type: "object", properties: { userId: str, userName: str, messageCount: { type: "integer" } } }] },
+        AdminKey: { type: "object", properties: { id: str, name: str, scopes: { type: "array", items: str }, user: str, role: str, status: { enum: ["active", "revoked"] }, createdAt: time, lastUsedAt: time, revokedAt: time } },
+        AdminStats: {
+          type: "object",
+          properties: {
+            days: { type: "integer" }, timezone: str, since: time, until: time, totalCostUsd: { type: "number" },
+            totals: { type: "object", properties: Object.fromEntries(["runs", "completed", "errors", "limited", "aborted", "handoffs", "inputTokens", "outputTokens", "avgDurationMs", "sessions"].map((k) => [k, { type: "integer" }])) },
+            daily: { type: "array", items: { type: "object", properties: { date: str, runs: { type: "integer" }, errors: { type: "integer" }, handoffs: { type: "integer" }, inputTokens: { type: "integer" }, outputTokens: { type: "integer" } } } },
+            byChannel: { type: "array", items: { type: "object", properties: { channel: str, runs: { type: "integer" } } } },
+            byProvider: { type: "array", items: { type: "object", properties: { provider: str, runs: { type: "integer" }, inputTokens: { type: "integer" }, outputTokens: { type: "integer" }, costUsd: { type: "number" } } } },
+            byAgent: { type: "array", items: { type: "object", properties: { agent: str, runs: { type: "integer" } } } },
+            topTools: { type: "array", items: { type: "object", properties: { tool: str, calls: { type: "integer" }, failures: { type: "integer" } } } },
+          },
+        },
         AuditEvent: { type: "object", properties: { id: str, at: time, action: str, outcome: { enum: ["success", "failure", "denied"] }, actorId: str, actorName: str, target: str, ip: str, requestId: str, metadata: { type: "object" } } },
       },
     },

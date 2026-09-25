@@ -296,7 +296,7 @@ describe("OpenAPI", () => {
     const { Metrics } = await import("@banglaclaw/observability");
     const { deps } = await makeDeps();
     const upgrade = (() => () => new Response()) as never;
-    const app = createGatewayApp({ ...deps, metrics: new Metrics({ defaultMetrics: false }) }, upgrade);
+    const app = createGatewayApp({ ...deps, metrics: new Metrics({ defaultMetrics: false }), dashboardDir: "/nonexistent" }, upgrade);
     const res = await app.request("/v1/openapi.json");
     expect(res.status).toBe(200);
     const spec = (await res.json()) as { openapi: string; paths: Record<string, Record<string, unknown>> };
@@ -304,11 +304,80 @@ describe("OpenAPI", () => {
 
     const registered = new Set(
       app.routes
-        .filter((r) => r.method !== "ALL" && r.path !== "/*" && !r.path.startsWith("/channels") && r.path !== "/chat")
+        .filter((r) => r.method !== "ALL" && r.path !== "/*" && !r.path.startsWith("/channels") && r.path !== "/chat" && r.path !== "/admin" && !r.path.endsWith("/*"))
         .map((r) => `${r.method.toLowerCase()} ${r.path.replace(/:(\w+)/g, "{$1}")}`),
     );
-    const documented = new Set(Object.entries(spec.paths).flatMap(([path, ops]) => Object.keys(ops).map((m) => `${m} ${path}`)));
+    const documented = new Set(Object.entries(spec.paths).filter(([path]) => path !== "/admin/{path}").flatMap(([path, ops]) => Object.keys(ops).map((m) => `${m} ${path}`)));
     expect([...registered].filter((r) => !documented.has(r))).toEqual([]);
     expect([...documented].filter((d) => !registered.has(d))).toEqual([]);
+  });
+});
+
+describe("admin API and dashboard", () => {
+  it("serves analytics with cost estimates, all-user sessions and key management to admins only", async () => {
+    const { InMemoryAuditStore } = await import("@banglaclaw/shared");
+    const { deps, alice, bob } = await makeDeps({ script: [{ content: "hi", usage: { input: 1_000_000, output: 500_000 } }] });
+    const audit = new InMemoryAuditStore();
+    const app = createGatewayApp({ ...deps, audit, pricing: { "fake:scripted": { input: 0.15, output: 0.6 } }, timezone: "Asia/Dhaka" });
+    const admin = (await deps.auth.issueKey("root", "console", "admin")).token;
+    const ops = (await deps.auth.issueKey("ops", "console", "operator")).token;
+
+    const { sessionId } = (await (await app.request("/v1/agents/run", json(alice, { text: "hello" }))).json()) as { sessionId: string };
+    await app.request("/v1/sessions", json(bob, { externalId: "8801712345678" }));
+
+    for (const token of [alice, ops]) expect((await app.request("/v1/admin/stats", get(token))).status).toBe(403);
+
+    const stats = (await (await app.request("/v1/admin/stats?days=3", get(admin))).json()) as { days: number; timezone: string; totals: { runs: number; inputTokens: number }; daily: unknown[]; byProvider: { costUsd?: number }[]; totalCostUsd: number; byChannel: { channel: string }[] };
+    expect(stats).toMatchObject({ days: 3, timezone: "Asia/Dhaka", totals: { runs: 1, inputTokens: 1_000_000 } });
+    expect(stats.daily).toHaveLength(3);
+    expect(stats.byProvider[0]?.costUsd).toBe(0.45);
+    expect(stats.totalCostUsd).toBe(0.45);
+    expect(stats.byChannel).toEqual([{ channel: "api", runs: 1 }]);
+
+    const all = (await (await app.request("/v1/admin/sessions", get(admin))).json()) as { sessions: { id: string; userName?: string; messageCount: number }[] };
+    expect(all.sessions.map((s) => s.userName).sort()).toEqual(["alice", "bob"]);
+    const found = (await (await app.request("/v1/admin/sessions?q=8801712", get(admin))).json()) as { sessions: { externalId?: string }[] };
+    expect(found.sessions).toEqual([expect.objectContaining({ externalId: "8801712345678" })]);
+    const detail = (await (await app.request(`/v1/admin/sessions/${sessionId}`, get(admin))).json()) as { messages: unknown[]; runs: unknown[] };
+    expect(detail.messages).toHaveLength(2);
+    expect(detail.runs).toHaveLength(1);
+
+    const created = await app.request("/v1/admin/keys", json(admin, { user: "dashboard-bot", scopes: ["read"] }));
+    expect(created.status).toBe(201);
+    const { key, token } = (await created.json()) as { key: { id: string; scopes: string[] }; token: string };
+    expect(key.scopes).toEqual(["read"]);
+    expect((await app.request("/v1/me", get(token))).status).toBe(200);
+    const keys = (await (await app.request("/v1/admin/keys", get(admin))).json()) as { keys: { id: string; status: string }[] };
+    expect(keys.keys.find((k) => k.id === key.id)?.status).toBe("active");
+    expect(JSON.stringify(keys)).not.toContain("hash");
+    expect((await app.request(`/v1/admin/keys/${key.id}/revoke`, json(admin, {}))).status).toBe(200);
+    expect((await app.request("/v1/me", get(token))).status).toBe(401);
+    const adminKeyId = ((await (await app.request("/v1/me", get(admin))).json()) as { key: { id: string } }).key.id;
+    expect((await app.request(`/v1/admin/keys/${adminKeyId}/revoke`, json(admin, {}))).status).toBe(409);
+    expect((await audit.list({ action: "key.created" })).map((e) => e.metadata?.via)).toContain("api");
+  });
+
+  it("serves the dashboard with SPA fallback, caching and CSP, and blocks path traversal", async () => {
+    const { mkdirSync, mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const dir = mkdtempSync(join(tmpdir(), "banglaclaw-dash-"));
+    mkdirSync(join(dir, "assets"));
+    writeFileSync(join(dir, "index.html"), "<!doctype html><div id=root></div>");
+    writeFileSync(join(dir, "assets", "app-abc123.js"), "console.log(1)");
+    const { deps } = await makeDeps();
+    const app = createGatewayApp({ ...deps, dashboardDir: dir });
+
+    expect((await app.request("/admin")).status).toBe(301);
+    const index = await app.request("/admin/");
+    expect(await index.text()).toContain("id=root");
+    expect(index.headers.get("content-security-policy")).toContain("script-src 'self'");
+    expect(index.headers.get("cache-control")).toBe("no-cache");
+    const asset = await app.request("/admin/assets/app-abc123.js");
+    expect(asset.headers.get("content-type")).toContain("javascript");
+    expect(asset.headers.get("cache-control")).toContain("immutable");
+    expect(await (await app.request("/admin/conversations/123")).text()).toContain("id=root");
+    expect((await app.request("/admin/missing.js")).status).toBe(404);
+    expect((await app.request("/admin/..%2f..%2fetc%2fpasswd")).status).toBe(404);
   });
 });

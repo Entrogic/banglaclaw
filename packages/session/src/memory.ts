@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { RunRecord, RunStore } from "./run.js";
+import type { RunRecord, RunStats, RunStore, StatsQuery } from "./run.js";
+import { computeStats } from "./stats.js";
 import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "./session.js";
 
 /** Process-local session store (storage.provider: memory). */
@@ -31,8 +32,10 @@ export class InMemorySessionStore implements SessionStore {
     return undefined;
   }
 
-  async list(options: { limit?: number; channel?: string; userId?: string; status?: SessionStatus } = {}): Promise<Session[]> {
+  async list(options: { limit?: number; channel?: string; userId?: string; status?: SessionStatus; query?: string } = {}): Promise<Session[]> {
+    const q = options.query?.trim().toLowerCase();
     return [...this.#sessions.values()]
+      .filter((s) => q === undefined || q === "" || s.id.startsWith(q) || (s.externalId?.toLowerCase().includes(q) ?? false))
       .filter((s) => options.channel === undefined || s.channel === options.channel)
       .filter((s) => options.status === undefined || s.status === options.status)
       .filter((s) => options.userId === undefined || s.userId === options.userId)
@@ -96,6 +99,15 @@ function applyPatch(s: Session, patch: SessionPatch): void {
 
 export class InMemoryRunStore implements RunStore {
   readonly #runs = new Map<string, RunRecord>();
+
+  /** `sessions` lets stats break runs down by channel. */
+  constructor(private readonly sessions?: InMemorySessionStore) {}
+
+  async stats(query: StatsQuery): Promise<RunStats> {
+    const channels = new Map<string, string>();
+    for (const s of (await this.sessions?.list({ limit: Number.MAX_SAFE_INTEGER })) ?? []) channels.set(s.id, s.channel);
+    return computeStats([...this.#runs.values()], query, (id) => channels.get(id) ?? "unknown");
+  }
 
   async save(record: RunRecord): Promise<void> {
     this.#runs.set(record.id, structuredClone(record));

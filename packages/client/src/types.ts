@@ -107,3 +107,35 @@ export interface AuditEvent {
   requestId?: string;
   metadata?: Record<string, unknown>;
 }
+
+export interface AdminStats {
+  days: number;
+  timezone: string;
+  since: string;
+  until: string;
+  totalCostUsd?: number;
+  totals: { runs: number; completed: number; errors: number; limited: number; aborted: number; handoffs: number; inputTokens: number; outputTokens: number; avgDurationMs: number; sessions: number };
+  daily: { date: string; runs: number; errors: number; handoffs: number; inputTokens: number; outputTokens: number }[];
+  byChannel: { channel: string; runs: number }[];
+  byProvider: { provider: string; runs: number; inputTokens: number; outputTokens: number; costUsd?: number }[];
+  byAgent: { agent: string; runs: number }[];
+  topTools: { tool: string; calls: number; failures: number }[];
+}
+
+export interface AdminSession extends Session {
+  userId?: string;
+  userName?: string;
+  messageCount: number;
+}
+
+export interface AdminKey {
+  id: string;
+  name: string;
+  scopes: ("read" | "run")[];
+  user: string;
+  role: "user" | "operator" | "admin";
+  status: "active" | "revoked";
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+}

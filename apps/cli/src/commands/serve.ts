@@ -1,7 +1,9 @@
+import { existsSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { ApiKeyAuthenticator } from "@banglaclaw/auth";
 import { startGateway, type RunningGateway } from "@banglaclaw/gateway";
 import { Metrics } from "@banglaclaw/observability";
-import { BanglaClawError, createLogger, parseLogLevel } from "@banglaclaw/shared";
+import { BanglaClawError, ConfigError, createLogger, parseLogLevel } from "@banglaclaw/shared";
 import { createRuntime, type GlobalOptions } from "../bootstrap.js";
 import { createDeliver, setupChannels } from "../channels.js";
 import { print, printAlways, warn } from "../ui/output.js";
@@ -24,10 +26,14 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   let gateway: RunningGateway;
   let channels: ReturnType<typeof setupChannels>;
   let devToken: string | undefined;
+  const dashboardDir = config.gateway.dashboardDir === undefined ? undefined : resolve(services.loaded.baseDir, config.gateway.dashboardDir);
   try {
     if (!Number.isInteger(gatewayConfig.port) || gatewayConfig.port < 0 || gatewayConfig.port > 65_535) throw new BanglaClawError("INVALID_PORT", `Invalid port: ${options.port ?? ""}`);
     await prepareKnowledge(bundle.knowledge, true);
     channels = setupChannels(services.loaded, bundle.runtime, services.sessions, logger);
+    if (dashboardDir !== undefined && !existsSync(join(dashboardDir, "index.html"))) {
+      throw new ConfigError(`gateway.dashboardDir has no index.html: ${dashboardDir}`);
+    }
     const authenticator = new ApiKeyAuthenticator(services.auth);
     // Memory storage has no persistent keys: issue one for this process only.
     if (!services.persistent) devToken = (await authenticator.issueKey("dev", "temporary")).token;
@@ -49,6 +55,9 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
       deliver: createDeliver(services.loaded, logger),
       audit: services.audit,
+      pricing: config.pricing,
+      timezone: config.timezone,
+      ...(dashboardDir !== undefined && { dashboardDir }),
       ...(config.gateway.metrics && { metrics: Object.assign(metrics, services.loaded.secrets.metricsToken !== undefined ? { token: services.loaded.secrets.metricsToken } : {}) }),
     });
   } catch (error) {
@@ -72,6 +81,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
     ["Storage", services.persistent ? "postgres" : c.yellow("memory (not persisted)")],
   ];
   if (config.channels.web.enabled) rows.push(["Web chat", `${gateway.url}/chat`]);
+  if (dashboardDir !== undefined) rows.push(["Admin", `${gateway.url}/admin/ ${c.dim("(admin API key)")}`]);
   if (config.gateway.metrics) rows.push(["Metrics", `${gateway.url}/metrics${services.loaded.secrets.metricsToken !== undefined ? c.dim(" (METRICS_TOKEN)") : ""}`]);
   if (bundle.profiles.length > 0) rows.push(["Agents", `supervisor → ${bundle.profiles.map((p) => p.name).join(", ")}`]);
   if (bundle.plugins.length > 0) rows.push(["Plugins", bundle.plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(", ")]);

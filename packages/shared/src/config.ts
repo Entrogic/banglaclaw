@@ -166,6 +166,8 @@ export const ConfigSchema = z.strictObject({
       trustProxy: z.boolean().default(false),
       /** Serve Prometheus metrics at GET /metrics (protect with METRICS_TOKEN or the network). */
       metrics: z.boolean().default(true),
+      /** Built admin dashboard directory served at /admin (relative to the config file). Unset: no dashboard page. */
+      dashboardDir: z.string().min(1).optional(),
       rateLimit: z
         .strictObject({
           /** Requests per API key per minute (all endpoints). */
@@ -198,6 +200,8 @@ export const ConfigSchema = z.strictObject({
       enabled: z.boolean().default(false),
     })
     .prefault({}),
+  /** USD per 1M tokens by provider id ("openai-compatible:gpt-4o-mini"), for cost estimates in the dashboard. */
+  pricing: z.record(z.string().min(1), z.strictObject({ input: z.number().min(0), output: z.number().min(0) })).default({}),
   /** Plugin modules: paths relative to the config file ("./plugins/x") or installed package names. Trusted code only. */
   plugins: z.array(z.string().min(1)).default([]),
   mcp: z

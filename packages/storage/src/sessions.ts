@@ -1,4 +1,4 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages, type BaseMessage } from "@langchain/core/messages";
 import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "@banglaclaw/session";
 import type { Database } from "./db.js";
@@ -73,7 +73,8 @@ export class PostgresSessionStore implements SessionStore {
     return row === undefined ? undefined : toSession(row);
   }
 
-  async list(options: { limit?: number; channel?: string; userId?: string; status?: SessionStatus } = {}): Promise<Session[]> {
+  async list(options: { limit?: number; channel?: string; userId?: string; status?: SessionStatus; query?: string } = {}): Promise<Session[]> {
+    const q = options.query?.trim().replace(/[%_\\]/g, (m) => `\\${m}`);
     const rows = await this.db
       .select()
       .from(sessions)
@@ -82,6 +83,7 @@ export class PostgresSessionStore implements SessionStore {
           options.channel !== undefined ? eq(sessions.channel, options.channel) : undefined,
           options.userId !== undefined ? eq(sessions.userId, options.userId) : undefined,
           options.status !== undefined ? eq(sessions.status, options.status) : undefined,
+          q !== undefined && q !== "" ? or(ilike(sql`${sessions.id}::text`, `${q}%`), ilike(sessions.externalId, `%${q}%`)) : undefined,
         ),
       )
       .orderBy(desc(sessions.updatedAt))

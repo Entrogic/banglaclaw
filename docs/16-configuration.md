@@ -89,12 +89,17 @@ gateway:
   corsOrigins: []          # allowed browser origins; empty = CORS off
   trustProxy: false        # client IP from X-Forwarded-For (only behind a trusted proxy)
   metrics: true            # GET /metrics (protect with METRICS_TOKEN)
+  # dashboardDir: apps/dashboard/dist   # built admin dashboard served at /admin
   maxInputChars: 8000
   rateLimit:
     requestsPerMinute: 60  # per API key
     maxConcurrentRuns: 2   # per API key
 
 plugins: []                # e.g. [examples/plugins/bd-phone] — docs/23
+
+pricing: {}                # USD per 1M tokens by provider id, for /v1/admin/stats cost estimates
+# pricing:
+#   "openai-compatible:gpt-4o-mini": { input: 0.15, output: 0.6 }
 
 mcp:
   servers:

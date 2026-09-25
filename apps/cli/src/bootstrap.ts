@@ -91,10 +91,11 @@ export function openPostgres(loaded: LoadedConfig): PostgresStorage {
 export async function openServices(options: GlobalOptions): Promise<Services> {
   const loaded = load(options);
   if (loaded.config.storage.provider === "memory") {
+    const sessions = new InMemorySessionStore();
     return {
       loaded,
-      sessions: new InMemorySessionStore(),
-      runs: new InMemoryRunStore(),
+      sessions,
+      runs: new InMemoryRunStore(sessions),
       auth: new InMemoryAuthStore(),
       audit: new InMemoryAuditStore(),
       persistent: false,
