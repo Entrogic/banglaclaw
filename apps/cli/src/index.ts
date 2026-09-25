@@ -18,7 +18,10 @@ import {
   skillList,
   toolList,
 } from "./commands.js";
+import { loadDotEnv } from "./env.js";
 import { red } from "./render.js";
+
+loadDotEnv();
 
 const program = new Command()
   .name("banglaclaw")

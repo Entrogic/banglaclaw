@@ -14,7 +14,7 @@ pnpm workspaces + Turborepo. Never use npm or yarn. Node 22+.
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # pre-PR gate
 pnpm banglaclaw <cmd>          # CLI from source: chat | agent run | session | run | skill list | tool list | mcp list | db migrate | init | doctor
-pnpm dev                       # chat REPL with tsx watch
+pnpm dev                       # chat REPL from source (no watch mode: tsx watch restarts on Enter)
 pnpm --filter @banglaclaw/agent test language              # one test file (name filter)
 pnpm --filter @banglaclaw/agent exec vitest run -t "maxIterations"   # one test by name
 pnpm --filter @banglaclaw/<pkg> add <dep>
@@ -26,7 +26,7 @@ TEST_DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw_te
 BANGLACLAW_STORAGE=postgres DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw pnpm banglaclaw db migrate
 ```
 
-Live model runs need `OPENAI_API_KEY` or `BANGLACLAW_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`, or `BANGLACLAW_BASE_URL` pointing at a keyless OpenAI-compatible server (Ollama/vLLM). Tests never hit the network.
+The CLI loads `./.env` at startup (`apps/cli/src/env.ts`; shell variables win). Live model runs need `OPENAI_API_KEY` or `BANGLACLAW_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`, or `BANGLACLAW_BASE_URL` pointing at a keyless OpenAI-compatible server (Ollama/vLLM). Tests never hit the network.
 
 ## Monorepo mechanics
 

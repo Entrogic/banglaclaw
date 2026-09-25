@@ -61,6 +61,8 @@ Unknown keys are rejected, which also prevents API keys from being written into 
 
 ## Environment variables
 
+The CLI loads `./.env` (see `.env.example`) at startup. Variables already exported in the shell take precedence over the file.
+
 | Variable | Purpose |
 |---|---|
 | `BANGLACLAW_PROVIDER` | Overrides `models.default.provider` (clears a file `model`/`baseUrl` written for another provider) |

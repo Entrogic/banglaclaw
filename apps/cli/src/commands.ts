@@ -65,6 +65,8 @@ export async function chat(options: SessionOption): Promise<void> {
   });
   const render = createRenderer();
   const rl = createInterface({ input: process.stdin, output: process.stdout });
+  // rl.question() never settles once stdin ends (Ctrl+D, closed pipe), so race it against close.
+  const closed = new Promise<null>((resolve) => rl.once("close", () => resolve(null)));
 
   let active: AbortController | undefined;
   rl.on("SIGINT", () => {
@@ -85,12 +87,14 @@ export async function chat(options: SessionOption): Promise<void> {
 
   try {
     for (;;) {
-      let input: string;
+      let answer: string | null;
       try {
-        input = (await rl.question(green("› "))).trim();
+        answer = await Promise.race([rl.question(green("› ")), closed]);
       } catch {
-        break; // readline closed (Ctrl+C / Ctrl+D)
+        answer = null;
       }
+      if (answer === null) break; // readline closed (Ctrl+C / Ctrl+D / end of input)
+      const input = answer.trim();
       if (input === "") continue;
       if (input === "/exit" || input === "/quit") break;
       if (input === "/session") {
@@ -367,6 +371,7 @@ export async function doctor(options: GlobalOptions): Promise<void> {
   }
   const { config, secrets, source } = loaded;
   ok(source !== undefined ? `Config loaded from ${source}` : "No banglaclaw.yaml found — using defaults (run `banglaclaw init`)");
+  if (existsSync(resolve(".env"))) ok(`Environment file loaded: ${resolve(".env")} (shell variables take precedence)`);
 
   const model = config.models.default;
   ok(`Model: ${model.provider}:${model.model}${model.baseUrl !== undefined ? ` @ ${model.baseUrl}` : ""}`);

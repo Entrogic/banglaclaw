@@ -10,8 +10,8 @@ Requires Node.js 22+ and pnpm.
 
 ```bash
 pnpm install
-cp .env.example .env              # optional reference; export the variables in your shell
-export OPENAI_API_KEY=sk-...      # or: export BANGLACLAW_PROVIDER=anthropic ANTHROPIC_API_KEY=...
+cp .env.example .env              # then set OPENAI_API_KEY (or BANGLACLAW_PROVIDER=anthropic + ANTHROPIC_API_KEY)
+                                  # the CLI loads ./.env automatically; exported shell variables take precedence
 
 pnpm banglaclaw doctor            # check config and keys
 pnpm banglaclaw chat              # interactive chat
