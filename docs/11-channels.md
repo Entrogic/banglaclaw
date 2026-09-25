@@ -33,7 +33,7 @@ interface ChannelAdapter {
 3. **Commands.** `/start` sends a welcome; `/new` (or `/reset`) detaches the conversation from its session so the next message starts fresh. The old session is kept.
 4. **Session.** Keyed by `(channel, conversationId)`, then the agent runs. Replies are split at paragraph, line or word boundaries to fit the platform limit.
 5. **Ordering.** Messages in one conversation are processed strictly in order; different conversations run concurrently.
-6. **Errors.** Failures send a localised "try again" message. Non-text messages (photos, voice) get a "text only" notice.
+6. **Errors.** Failures send a localised "try again" message. Non-text messages (photos, stickers) get a "text only" notice, and voice notes too unless `voice` is enabled (below).
 
 Notices are localised in Bangla, Banglish and English using `detectLanguage`.
 
@@ -70,6 +70,26 @@ channels:
     enabled: true
     pageId: "104512345678901"
     access: open
+```
+
+## Voice notes
+
+Many people in Bangladesh send voice messages instead of typing Bangla on a phone. With `voice.enabled`, voice notes and audio messages on Telegram, WhatsApp and Messenger are transcribed and then answered like text:
+
+1. The access check and rate limit run first; audio from senders who aren't allowed is never downloaded.
+2. Voice notes longer than `voice.maxSeconds` (default 120, when the platform reports the length) are refused before download with a localised "too long" notice.
+3. The audio is downloaded (Telegram `getFile`; the WhatsApp Media API with the access token; the https URL of a Messenger attachment), up to 25 MB.
+4. It is transcribed by an OpenAI-compatible `POST /audio/transcriptions` endpoint (`voice.model`, default `whisper-1`; `voice.baseUrl` for a self-hosted server) with the `voice.language` hint (default `bn`, or `auto`).
+5. The transcript becomes the user's message: the agent sees it, it is stored in the session, and the reply goes back as text. An empty or failed transcription gets a "couldn't understand, please type" notice.
+
+`TRANSCRIPTION_API_KEY` overrides `OPENAI_API_KEY` for this endpoint. The `Transcriber` interface lives in `shared` and `OpenAICompatibleTranscriber` in `providers`, so channels stay provider-independent.
+
+```yaml
+voice:
+  enabled: true
+  model: whisper-1        # or gpt-4o-mini-transcribe
+  language: bn
+  maxSeconds: 120
 ```
 
 ## Web

@@ -149,6 +149,17 @@ export async function collectChecks(options: GlobalOptions): Promise<Check[]> {
     }
   }
 
+  if (config.voice.enabled) {
+    const keyed = secrets.transcriptionApiKey !== undefined || secrets.openaiApiKey !== undefined || config.voice.baseUrl !== undefined;
+    add(
+      "Integrations",
+      keyed ? "ok" : "fail",
+      keyed
+        ? `Voice notes: ${config.voice.model}${config.voice.baseUrl !== undefined ? ` @ ${config.voice.baseUrl}` : ""}, language ${config.voice.language}, up to ${config.voice.maxSeconds} s`
+        : "Voice notes: set OPENAI_API_KEY or TRANSCRIPTION_API_KEY (or voice.baseUrl)",
+    );
+  }
+
   if (config.storage.provider === "memory") add("Storage", "ok", "memory (nothing persists between runs)");
   else {
     try {

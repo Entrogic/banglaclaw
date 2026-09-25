@@ -4,3 +4,4 @@ export * from "./logger.js";
 export * from "./config.js";
 export * from "./rate-limit.js";
 export * from "./audit.js";
+export * from "./transcription.js";

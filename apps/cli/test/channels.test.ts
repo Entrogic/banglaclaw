@@ -7,7 +7,7 @@ import { FakeProvider } from "@banglaclaw/providers";
 import { InMemoryRunStore, InMemorySessionStore, type Session } from "@banglaclaw/session";
 import { ConfigError, createLogger, loadConfig } from "@banglaclaw/shared";
 import { AllowlistPolicy, ToolRegistry } from "@banglaclaw/tools";
-import { createDeliver, setupChannels } from "../src/channels.js";
+import { createDeliver, createTranscriber, setupChannels } from "../src/channels.js";
 
 const silent = createLogger({ write: () => {} });
 const MESSENGER_ENV = { MESSENGER_PAGE_ACCESS_TOKEN: "page-token", MESSENGER_APP_SECRET: "secret", MESSENGER_VERIFY_TOKEN: "verify-me" };
@@ -61,3 +61,21 @@ describe("Messenger channel wiring", () => {
     expect(await deliver({ ...session, channel: "api" }, "x")).toBe(false);
   });
 });
+
+describe("voice wiring", () => {
+  const yaml = "voice:\n  enabled: true\nchannels:\n  messenger:\n    enabled: true\n    access: open\n";
+
+  it("needs a transcription key unless a keyless base URL is set", () => {
+    expect(() => createTranscriber(loaded(yaml, MESSENGER_ENV))).toThrow(/TRANSCRIPTION_API_KEY/);
+    expect(createTranscriber(loaded(yaml, { ...MESSENGER_ENV, OPENAI_API_KEY: "sk-x" }))?.id).toBe("openai-compatible:whisper-1");
+    expect(createTranscriber(loaded("voice:\n  enabled: true\n  model: large-v3\n  baseUrl: http://localhost:8000/v1\n", {}))?.id).toBe("openai-compatible:large-v3");
+    expect(createTranscriber(loaded("{}", {}))).toBeUndefined();
+  });
+
+  it("gives channel routers the transcriber and reports it at startup", () => {
+    const { rt, sessions } = runtime();
+    const setup = setupChannels(loaded(yaml, { ...MESSENGER_ENV, TRANSCRIPTION_API_KEY: "sk-t" }), rt, sessions, silent);
+    expect(setup.summary).toContain("voice notes: openai-compatible:whisper-1 (up to 120 s)");
+  });
+});
+

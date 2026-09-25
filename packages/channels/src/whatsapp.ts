@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { createLogger, type Logger } from "@banglaclaw/shared";
+import { audioFilename, createLogger, type AudioInput, type Logger } from "@banglaclaw/shared";
 import type { ChannelAdapter, ChannelRouter, InboundMessage } from "./router.js";
 import { verifyHandshake, verifySignature } from "./meta.js";
 import type { FetchLike } from "./telegram.js";
@@ -14,7 +14,17 @@ const WebhookSchema = z.object({
           value: z.object({
             metadata: z.object({ phone_number_id: z.string() }).optional(),
             contacts: z.array(z.object({ wa_id: z.string(), profile: z.object({ name: z.string() }).optional() })).optional(),
-            messages: z.array(z.object({ from: z.string(), id: z.string(), type: z.string(), text: z.object({ body: z.string() }).optional() })).optional(),
+            messages: z
+              .array(
+                z.object({
+                  from: z.string(),
+                  id: z.string(),
+                  type: z.string(),
+                  text: z.object({ body: z.string() }).optional(),
+                  audio: z.object({ id: z.string(), mime_type: z.string().optional() }).optional(),
+                }),
+              )
+              .optional(),
           }),
         }),
       ),
@@ -51,9 +61,23 @@ export class WhatsAppApi {
     });
     if (!res.ok) throw new WhatsAppApiError(res.status, (await res.text()).slice(0, 300));
   }
+
+  /** Downloads media (voice notes) by id: the Media API returns a short-lived URL that needs the same token. */
+  async downloadMedia(mediaId: string): Promise<AudioInput> {
+    const { graphApiVersion, accessToken } = this.options;
+    const auth = { Authorization: `Bearer ${accessToken}` };
+    const meta = await this.#fetch(`${this.#baseUrl}/${graphApiVersion}/${encodeURIComponent(mediaId)}`, { headers: auth });
+    if (!meta.ok) throw new WhatsAppApiError(meta.status, (await meta.text()).slice(0, 300));
+    const info = z.object({ url: z.url(), mime_type: z.string(), file_size: z.number().optional() }).parse(await meta.json());
+    if (info.file_size !== undefined && info.file_size > 25 * 1024 * 1024) throw new Error("media is larger than 25 MB");
+    const res = await this.#fetch(info.url, { headers: auth });
+    if (!res.ok) throw new WhatsAppApiError(res.status, "media download failed");
+    return { data: new Uint8Array(await res.arrayBuffer()), mimeType: info.mime_type, filename: audioFilename(info.mime_type) };
+  }
 }
 
-export function toInboundMessages(payload: WhatsAppWebhook, phoneNumberId?: string): InboundMessage[] {
+/** With `api`, voice notes and audio messages carry a lazy download for transcription. */
+export function toInboundMessages(payload: WhatsAppWebhook, phoneNumberId?: string, api?: WhatsAppApi): InboundMessage[] {
   const out: InboundMessage[] = [];
   for (const entry of payload.entry) {
     for (const change of entry.changes) {
@@ -62,11 +86,13 @@ export function toInboundMessages(payload: WhatsAppWebhook, phoneNumberId?: stri
       if (phoneNumberId !== undefined && value.metadata !== undefined && value.metadata.phone_number_id !== phoneNumberId) continue;
       for (const m of value.messages ?? []) {
         const name = value.contacts?.find((c) => c.wa_id === m.from)?.profile?.name;
+        const audioId = m.type === "audio" ? m.audio?.id : undefined;
         out.push({
           conversationId: m.from,
           senderId: m.from,
           ...(name !== undefined && { senderName: name }),
           ...(m.type === "text" && m.text !== undefined && { text: m.text.body }),
+          ...(audioId !== undefined && api !== undefined && { audio: { download: () => api.downloadMedia(audioId) } }),
         });
       }
     }
@@ -120,7 +146,7 @@ export class WhatsAppChannel implements ChannelAdapter {
       }
       const parsed = WebhookSchema.safeParse(json);
       if (parsed.success) {
-        for (const inbound of toInboundMessages(parsed.data, phoneNumberId)) void router.handle(this, inbound);
+        for (const inbound of toInboundMessages(parsed.data, phoneNumberId, this.options.api)) void router.handle(this, inbound);
       }
       // Status updates (delivered/read) and unknown payloads are acknowledged so Meta doesn't retry.
       return c.text("ok");

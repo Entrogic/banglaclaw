@@ -3,11 +3,11 @@ import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@banglaclaw
 import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
 import { createLogger } from "@banglaclaw/shared";
 import { AllowlistPolicy, ToolRegistry } from "@banglaclaw/tools";
-import { ChannelRouter, type AccessPolicy, type ChannelAdapter } from "../src/index.js";
+import { ChannelRouter, type AccessPolicy, type ChannelAdapter, type VoiceOptions } from "../src/index.js";
 
 export const silent = createLogger({ write: () => {} });
 
-export function makeRouter(options: { script?: ScriptedTurn[]; provider?: ModelProvider; access?: AccessPolicy; rateLimitPerMinute?: number } = {}) {
+export function makeRouter(options: { script?: ScriptedTurn[]; provider?: ModelProvider; access?: AccessPolicy; rateLimitPerMinute?: number; voice?: VoiceOptions } = {}) {
   const sessions = new InMemorySessionStore();
   const fake = new FakeProvider(options.script ?? [{ content: "reply" }]);
   const provider = options.provider ?? fake;
@@ -20,6 +20,7 @@ export function makeRouter(options: { script?: ScriptedTurn[]; provider?: ModelP
     access: options.access ?? { access: "allowlist", allowed: ["100"] },
     rateLimitPerMinute: options.rateLimitPerMinute ?? 100,
     logger: silent,
+    ...(options.voice !== undefined && { voice: options.voice }),
   });
   return { router, sessions, provider: fake };
 }

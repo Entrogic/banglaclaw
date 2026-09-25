@@ -79,5 +79,5 @@
 - Shared rate-limit store and session-event bus (Redis) for horizontally scaled gateways
 - Router/planner/verifier graph nodes; streaming replies by editing channel messages
 - Discord channel, a public web widget with visitor sessions (Facebook Messenger shipped after 1.1)
-- Voice notes (speech-to-text), images, sitemap crawling (DOCX and URL loaders shipped after 1.1)
+- Images, sitemap crawling, spoken replies (voice notes, DOCX and URL loaders shipped after 1.1)
 - Publishing `@banglaclaw/*` packages to npm; MCP resources and prompts for the BanglaClaw MCP server

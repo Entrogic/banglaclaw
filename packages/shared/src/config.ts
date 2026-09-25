@@ -141,6 +141,19 @@ export const ConfigSchema = z.strictObject({
       baseUrl: z.url().optional(),
     })
     .prefault({}),
+  /** Voice notes on channels: transcribed with an OpenAI-compatible /audio/transcriptions endpoint, then answered like text. */
+  voice: z
+    .strictObject({
+      enabled: z.boolean().default(false),
+      model: z.string().min(1).default("whisper-1"),
+      /** Self-hosted or other OpenAI-compatible speech-to-text server; default OpenAI. */
+      baseUrl: z.url().optional(),
+      /** ISO-639-1 hint for the recogniser ("bn" improves Bangla), or "auto" to let it detect the language. */
+      language: z.union([z.string().regex(/^[a-z]{2}$/), z.literal("auto")]).default("bn"),
+      /** Longer voice notes are refused before they are downloaded. */
+      maxSeconds: z.int().min(5).max(600).default(120),
+    })
+    .prefault({}),
   knowledge: z
     .strictObject({
       enabled: z.boolean().default(false),
@@ -253,6 +266,8 @@ export interface Secrets {
   qdrantApiKey?: string;
   /** Overrides OPENAI_API_KEY for the embeddings endpoint. */
   embeddingsApiKey?: string;
+  /** Overrides OPENAI_API_KEY for voice transcription. */
+  transcriptionApiKey?: string;
   /** POSTed a JSON notification whenever a session is handed to a human. */
   handoffWebhookUrl?: string;
   /** Bearer token required to scrape GET /metrics (optional). */
@@ -333,6 +348,7 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
     ["messengerVerifyToken", "MESSENGER_VERIFY_TOKEN"],
     ["qdrantApiKey", "QDRANT_API_KEY"],
     ["embeddingsApiKey", "EMBEDDINGS_API_KEY"],
+    ["transcriptionApiKey", "TRANSCRIPTION_API_KEY"],
     ["handoffWebhookUrl", "HANDOFF_WEBHOOK_URL"],
     ["metricsToken", "METRICS_TOKEN"],
   ];

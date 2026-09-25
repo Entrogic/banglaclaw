@@ -1,6 +1,6 @@
 import { AgentRunError, detectLanguage, type AgentRuntime } from "@banglaclaw/agent";
 import type { SessionStore } from "@banglaclaw/session";
-import { RateLimiter, createLogger, type Logger } from "@banglaclaw/shared";
+import { RateLimiter, createLogger, type AudioInput, type Logger, type Transcriber } from "@banglaclaw/shared";
 import { notice } from "./messages.js";
 import { splitMessage } from "./text.js";
 
@@ -13,6 +13,24 @@ export interface InboundMessage {
   senderName?: string;
   /** undefined for non-text messages (photos, voice, stickers…). */
   text?: string;
+  /** A voice note or audio file; downloaded only when voice is enabled and the sender passed the checks. */
+  audio?: InboundAudio;
+}
+
+export interface InboundAudio {
+  /** Length reported by the platform, when it does. */
+  durationSeconds?: number;
+  download(): Promise<AudioInput>;
+}
+
+/** Voice notes (docs/11): transcribed, then answered like text. */
+export interface VoiceOptions {
+  transcriber: Transcriber;
+  /** Recogniser language hint, e.g. "bn"; undefined lets it detect. */
+  language?: string;
+  maxSeconds: number;
+  /** Largest audio accepted after download (OpenAI's limit is 25 MB). */
+  maxBytes?: number;
 }
 
 /** Outbound side of a platform adapter. */
@@ -38,9 +56,11 @@ export interface ChannelRouterOptions {
   access: AccessPolicy;
   rateLimitPerMinute: number;
   logger?: Logger;
+  voice?: VoiceOptions;
 }
 
 const TYPING_INTERVAL_MS = 4_000;
+const DEFAULT_MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 /**
  * Turns platform messages into agent runs (docs/11): access check → rate limit → commands
@@ -91,8 +111,9 @@ export class ChannelRouter {
 
   async #process(adapter: ChannelAdapter, message: InboundMessage): Promise<void> {
     const log = this.#logger.child({ channel: adapter.name, conversationId: message.conversationId, senderId: message.senderId });
-    const text = message.text?.trim() ?? "";
-    const language = detectLanguage(text);
+    let text = message.text?.trim() ?? "";
+    // Messages without text (voice, photos) get Bangla notices until a transcript says otherwise.
+    let language = text === "" ? "bn" : detectLanguage(text);
 
     if (!this.isAllowed(message.senderId)) {
       log.warn("message from sender not in allowlist");
@@ -105,20 +126,20 @@ export class ChannelRouter {
       log.warn("channel rate limit exceeded");
       return this.#reply(adapter, message.conversationId, notice("rateLimited", language));
     }
-    if (text === "") return this.#reply(adapter, message.conversationId, notice("textOnly", "bn"));
+    const voice = this.#options.voice;
+    const spoken = text === "" && message.audio !== undefined && voice !== undefined;
+    if (text === "" && !spoken) return this.#reply(adapter, message.conversationId, notice(voice !== undefined ? "textOrVoice" : "textOnly", "bn"));
 
     const { sessions, runtime, agentName } = this.#options;
-    const command = text.split(/\s+/)[0]?.toLowerCase().replace(/@.*$/, "");
-    if (command === "/start") return this.#reply(adapter, message.conversationId, notice("welcome", "bn"));
-    if (command === "/new" || command === "/reset") {
-      const current = await sessions.findByExternalId(adapter.name, message.conversationId);
-      if (current !== undefined) await sessions.detachExternalId(current.id);
-      return this.#reply(adapter, message.conversationId, notice("newSession", language));
+    if (!spoken) {
+      const command = text.split(/\s+/)[0]?.toLowerCase().replace(/@.*$/, "");
+      if (command === "/start") return this.#reply(adapter, message.conversationId, notice("welcome", "bn"));
+      if (command === "/new" || command === "/reset") {
+        const current = await sessions.findByExternalId(adapter.name, message.conversationId);
+        if (current !== undefined) await sessions.detachExternalId(current.id);
+        return this.#reply(adapter, message.conversationId, notice("newSession", language));
+      }
     }
-
-    const session =
-      (await sessions.findByExternalId(adapter.name, message.conversationId)) ??
-      (await sessions.create({ channel: adapter.name, externalId: message.conversationId, agentId: agentName }));
 
     const typing = adapter.typing?.bind(adapter);
     let timer: NodeJS.Timeout | undefined;
@@ -128,6 +149,15 @@ export class ChannelRouter {
       timer = setInterval(tick, TYPING_INTERVAL_MS);
     }
     try {
+      if (spoken && message.audio !== undefined && voice !== undefined) {
+        const transcript = await this.#transcribe(message.audio, voice, log);
+        if (transcript.kind !== "ok") return await this.#reply(adapter, message.conversationId, notice(transcript.kind === "tooLong" ? "voiceTooLong" : "voiceFailed", "bn"));
+        text = transcript.text;
+        language = detectLanguage(text);
+      }
+      const session =
+        (await sessions.findByExternalId(adapter.name, message.conversationId)) ??
+        (await sessions.create({ channel: adapter.name, externalId: message.conversationId, agentId: agentName }));
       const record = await runtime.run(text, { sessionId: session.id });
       // Handed-off sessions: the message is stored for the operator and the bot stays silent.
       if (record.status === "handoff" && record.output === undefined) return;
@@ -138,6 +168,23 @@ export class ChannelRouter {
       await this.#reply(adapter, message.conversationId, notice("failed", language));
     } finally {
       clearInterval(timer);
+    }
+  }
+
+  async #transcribe(audio: InboundAudio, voice: VoiceOptions, log: Logger): Promise<{ kind: "ok"; text: string } | { kind: "tooLong" | "failed" }> {
+    if (audio.durationSeconds !== undefined && audio.durationSeconds > voice.maxSeconds) {
+      log.info("voice note too long", { seconds: audio.durationSeconds });
+      return { kind: "tooLong" };
+    }
+    try {
+      const input = await audio.download();
+      if (input.data.byteLength > (voice.maxBytes ?? DEFAULT_MAX_AUDIO_BYTES)) return { kind: "tooLong" };
+      const text = (await voice.transcriber.transcribe(input, voice.language !== undefined ? { language: voice.language } : {})).trim();
+      log.info("voice note transcribed", { bytes: input.data.byteLength, chars: text.length });
+      return text === "" ? { kind: "failed" } : { kind: "ok", text };
+    } catch (error) {
+      log.error("voice note transcription failed", { error });
+      return { kind: "failed" };
     }
   }
 }

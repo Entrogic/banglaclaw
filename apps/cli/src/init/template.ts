@@ -33,6 +33,13 @@ embeddings:
   model: text-embedding-3-small  # uses OPENAI_API_KEY (or EMBEDDINGS_API_KEY)
   # baseUrl: http://localhost:11434/v1   # e.g. Ollama with model: bge-m3
 
+voice:                           # voice notes on Telegram, WhatsApp and Messenger
+  enabled: false                 # transcribe, then answer like text (uses OPENAI_API_KEY or TRANSCRIPTION_API_KEY)
+  model: whisper-1               # or gpt-4o-mini-transcribe
+  # baseUrl: http://localhost:8000/v1   # any OpenAI-compatible /audio/transcriptions server
+  language: bn                   # recogniser hint; "auto" to detect
+  maxSeconds: 120                # longer voice notes are refused before download
+
 knowledge:
   enabled: false                 # search_knowledge tool (RAG over your documents)
   vectorStore: memory            # memory (rebuilt on start) | qdrant (persistent)

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { createLogger, type Logger } from "@banglaclaw/shared";
+import { audioFilename, createLogger, type AudioInput, type Logger } from "@banglaclaw/shared";
 import { verifyHandshake, verifySignature } from "./meta.js";
 import type { ChannelAdapter, ChannelRouter, InboundMessage } from "./router.js";
 import type { FetchLike } from "./telegram.js";
@@ -13,7 +13,7 @@ const MessagingSchema = z.object({
       mid: z.string().optional(),
       text: z.string().optional(),
       is_echo: z.boolean().optional(),
-      attachments: z.array(z.unknown()).optional(),
+      attachments: z.array(z.object({ type: z.string(), payload: z.object({ url: z.string().optional() }).nullish() })).optional(),
       quick_reply: z.object({ payload: z.string() }).optional(),
     })
     .optional(),
@@ -59,6 +59,16 @@ export class MessengerApi {
     });
   }
 
+  /** Downloads an attachment (voice clip) from the URL in the webhook. */
+  async downloadAttachment(url: string): Promise<AudioInput> {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") throw new Error("attachment URL is not https");
+    const res = await this.#fetch(url);
+    if (!res.ok) throw new MessengerApiError(res.status, "attachment download failed");
+    const mimeType = res.headers.get("content-type")?.split(";")[0]?.trim() || "audio/mp4";
+    return { data: new Uint8Array(await res.arrayBuffer()), mimeType, filename: audioFilename(mimeType) };
+  }
+
   async typing(psid: string): Promise<void> {
     await this.#send({ recipient: { id: psid }, sender_action: "typing_on" });
   }
@@ -87,7 +97,7 @@ export class MessengerApi {
  * receipts and events for other pages are dropped. Postbacks (buttons) arrive as their title, and
  * the Get Started button as /start.
  */
-export function toMessengerInbound(payload: MessengerWebhook, pageId?: string): InboundMessage[] {
+export function toMessengerInbound(payload: MessengerWebhook, pageId?: string, api?: MessengerApi): InboundMessage[] {
   if (payload.object !== "page") return [];
   const out: InboundMessage[] = [];
   for (const entry of payload.entry) {
@@ -96,7 +106,13 @@ export function toMessengerInbound(payload: MessengerWebhook, pageId?: string): 
       const psid = event.sender.id;
       if (event.message !== undefined) {
         if (event.message.is_echo === true) continue;
-        out.push({ conversationId: psid, senderId: psid, ...(event.message.text !== undefined && event.message.text !== "" && { text: event.message.text }) });
+        const clip = event.message.attachments?.find((a) => a.type === "audio")?.payload?.url;
+        out.push({
+          conversationId: psid,
+          senderId: psid,
+          ...(event.message.text !== undefined && event.message.text !== "" && { text: event.message.text }),
+          ...(clip !== undefined && api !== undefined && { audio: { download: () => api.downloadAttachment(clip) } }),
+        });
       } else if (event.postback !== undefined) {
         const text = event.postback.payload === GET_STARTED_PAYLOAD ? "/start" : (event.postback.title ?? event.postback.payload);
         if (text !== undefined && text !== "") out.push({ conversationId: psid, senderId: psid, text });
@@ -157,7 +173,7 @@ export class MessengerChannel implements ChannelAdapter {
       }
       const parsed = WebhookSchema.safeParse(json);
       if (parsed.success) {
-        for (const inbound of toMessengerInbound(parsed.data, pageId)) void router.handle(this, inbound);
+        for (const inbound of toMessengerInbound(parsed.data, pageId, this.options.api)) void router.handle(this, inbound);
       }
       // Receipts, echoes and unknown payloads are acknowledged so Meta doesn't retry them.
       return c.text("EVENT_RECEIVED");

@@ -19,6 +19,7 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
   - API keys: issue (token shown once), list and revoke
   - `pnpm --filter @banglaclaw/dashboard demo` for UI work with seeded data
 - `@banglaclaw/client` covers the admin endpoints.
+- **Voice notes:** Telegram, WhatsApp and Messenger voice messages are transcribed (OpenAI-compatible `/audio/transcriptions`, `voice.*` config, Bangla hint by default) and answered like text; downloads happen only after the access and rate checks, long notes are refused before download, and failures get localised notices (docs/11).
 - **DOCX and URL knowledge sources:** `.docx` files (read with Node's zlib, no new dependency, zip-bomb guarded) and `http(s)://` URLs (HTML, text, markdown, PDF, DOCX by content type; 20 s, 10 MB) in `knowledge.sources` and `kb ingest` (docs/07).
 - **Facebook Messenger channel** (`channels.messenger`): signed webhook with the Get Started button as /start, replies split at 2,000 characters with a typing indicator, page filter, allowlist or open access, operator replies (optionally with the HUMAN_AGENT tag), and a `doctor` check of the page behind the token. Meta signature and handshake code is shared with WhatsApp (docs/11).
 - **BanglaClaw as an MCP server:** `banglaclaw mcp serve` (stdio) offers `ask` (the agent, with per-conversation history, skills, tools and permission policy) and read-only `search_knowledge`, for Claude Desktop, Cursor, Claude Code and other MCP clients (docs/10).

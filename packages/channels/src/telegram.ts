@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
-import { createLogger, type Logger } from "@banglaclaw/shared";
+import { audioFilename, createLogger, type AudioInput, type Logger } from "@banglaclaw/shared";
 import type { ChannelAdapter, ChannelRouter, InboundMessage } from "./router.js";
 
 const UpdateSchema = z.object({
@@ -12,9 +12,15 @@ const UpdateSchema = z.object({
       chat: z.object({ id: z.number(), type: z.string() }),
       from: z.object({ id: z.number(), first_name: z.string().optional(), username: z.string().optional(), is_bot: z.boolean().optional() }).optional(),
       text: z.string().optional(),
+      /** Voice note (recorded in Telegram) or an audio file. */
+      voice: z.object({ file_id: z.string(), duration: z.number(), mime_type: z.string().optional(), file_size: z.number().optional() }).optional(),
+      audio: z.object({ file_id: z.string(), duration: z.number(), mime_type: z.string().optional(), file_size: z.number().optional() }).optional(),
     })
     .optional(),
 });
+
+/** Bots may download files up to 20 MB (Bot API limit). */
+const MAX_TELEGRAM_FILE_BYTES = 20 * 1024 * 1024;
 export type TelegramUpdate = z.infer<typeof UpdateSchema>;
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -85,6 +91,15 @@ export class TelegramApi {
     return this.call("sendMessage", { chat_id: chatId, text, link_preview_options: { is_disabled: true } });
   }
 
+  /** Downloads a file by id (getFile, then the file URL). */
+  async downloadFile(fileId: string, mimeType: string): Promise<AudioInput> {
+    const file = z.object({ file_path: z.string(), file_size: z.number().optional() }).parse(await this.call<unknown>("getFile", { file_id: fileId }));
+    if (file.file_size !== undefined && file.file_size > MAX_TELEGRAM_FILE_BYTES) throw new Error("file is larger than 20 MB");
+    const res = await this.#fetch(`${this.#baseUrl}/file/bot${this.#token}/${file.file_path}`);
+    if (!res.ok) throw new TelegramApiError("getFile", res.status, "download failed");
+    return { data: new Uint8Array(await res.arrayBuffer()), mimeType, filename: audioFilename(mimeType) };
+  }
+
   sendChatAction(chatId: string, action = "typing") {
     return this.call("sendChatAction", { chat_id: chatId, action });
   }
@@ -98,15 +113,23 @@ export class TelegramApi {
   }
 }
 
-/** Normalises a Telegram update. Only private chats with a human sender are handled in v0.5. */
-export function toInbound(update: TelegramUpdate): InboundMessage | undefined {
+/**
+ * Normalises a Telegram update. Only private chats with a human sender are handled. With `api`,
+ * voice notes and audio files carry a lazy download for transcription.
+ */
+export function toInbound(update: TelegramUpdate, api?: TelegramApi): InboundMessage | undefined {
   const m = update.message;
   if (m === undefined || m.from === undefined || m.from.is_bot === true || m.chat.type !== "private") return undefined;
+  const sound = m.voice ?? m.audio;
   return {
     conversationId: String(m.chat.id),
     senderId: String(m.from.id),
     ...(m.from.username !== undefined || m.from.first_name !== undefined ? { senderName: m.from.username ?? m.from.first_name } : {}),
     ...(m.text !== undefined && { text: m.text }),
+    ...(sound !== undefined &&
+      api !== undefined && {
+        audio: { durationSeconds: sound.duration, download: () => api.downloadFile(sound.file_id, sound.mime_type ?? "audio/ogg") },
+      }),
   };
 }
 
@@ -144,7 +167,7 @@ export class TelegramChannel implements ChannelAdapter {
 
   /** Dispatches one update without awaiting the agent (webhooks must answer fast). */
   dispatch(update: TelegramUpdate): void {
-    const inbound = toInbound(update);
+    const inbound = toInbound(update, this.#options.api);
     if (inbound === undefined) {
       this.#logger.debug("ignoring unsupported update", { updateId: update.update_id });
       return;

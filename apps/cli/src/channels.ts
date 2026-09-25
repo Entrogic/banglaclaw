@@ -1,8 +1,9 @@
 import type { Hono } from "hono";
 import type { AgentRuntime } from "@banglaclaw/agent";
 import { ChannelRouter, MessengerApi, MessengerChannel, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel, splitMessage } from "@banglaclaw/channels";
+import { OpenAICompatibleTranscriber } from "@banglaclaw/providers";
 import type { Deliver, SessionStore } from "@banglaclaw/session";
-import { ConfigError, type LoadedConfig, type Logger } from "@banglaclaw/shared";
+import { ConfigError, type LoadedConfig, type Logger, type Transcriber } from "@banglaclaw/shared";
 
 export interface ChannelSetup {
   routes: Hono[];
@@ -51,6 +52,21 @@ export function createDeliver(loaded: LoadedConfig, logger: Logger): Deliver {
   };
 }
 
+/** Speech-to-text for voice notes (config `voice`), or undefined when voice is off. Throws ConfigError without a key. */
+export function createTranscriber(loaded: LoadedConfig): Transcriber | undefined {
+  const { config, secrets } = loaded;
+  if (!config.voice.enabled) return undefined;
+  const apiKey = secrets.transcriptionApiKey ?? secrets.openaiApiKey;
+  if (apiKey === undefined && config.voice.baseUrl === undefined) {
+    throw new ConfigError("voice.enabled needs OPENAI_API_KEY or TRANSCRIPTION_API_KEY (or voice.baseUrl for a keyless local server)");
+  }
+  return new OpenAICompatibleTranscriber({
+    model: config.voice.model,
+    ...(apiKey !== undefined && { apiKey }),
+    ...(config.voice.baseUrl !== undefined && { baseUrl: config.voice.baseUrl }),
+  });
+}
+
 /** Builds the enabled channels from config (docs/11). Throws ConfigError for missing secrets. */
 export function setupChannels(loaded: LoadedConfig, runtime: AgentRuntime, sessions: SessionStore, logger: Logger): ChannelSetup {
   const { config, secrets } = loaded;
@@ -61,11 +77,19 @@ export function setupChannels(loaded: LoadedConfig, runtime: AgentRuntime, sessi
   const stoppers: (() => Promise<void>)[] = [];
   const routers: ChannelRouter[] = [];
 
+  const channelsOn = config.channels.telegram.enabled || config.channels.whatsapp.enabled || config.channels.messenger.enabled;
+  const transcriber = channelsOn ? createTranscriber(loaded) : undefined;
+  const voice =
+    transcriber === undefined
+      ? undefined
+      : { transcriber, maxSeconds: config.voice.maxSeconds, ...(config.voice.language !== "auto" && { language: config.voice.language }) };
+  if (voice !== undefined) summary.push(`voice notes: ${transcriber?.id ?? ""} (up to ${config.voice.maxSeconds} s)`);
+
   const makeRouter = (access: "allowlist" | "open", allowed: string[], rateLimitPerMinute: number, name: string) => {
     if (access === "allowlist" && allowed.length === 0) {
       warnings.push(`${name}: allowlist is empty, so nobody will be answered. Message the bot, copy "senderId" from the gateway log, and add it to the allowlist.`);
     }
-    const router = new ChannelRouter({ runtime, sessions, agentName: config.agent.name, access: { access, allowed }, rateLimitPerMinute, logger });
+    const router = new ChannelRouter({ runtime, sessions, agentName: config.agent.name, access: { access, allowed }, rateLimitPerMinute, logger, ...(voice !== undefined && { voice }) });
     routers.push(router);
     return router;
   };

@@ -1,6 +1,6 @@
 import type { Language } from "@banglaclaw/shared";
 
-export type NoticeKey = "welcome" | "newSession" | "notAllowed" | "rateLimited" | "failed" | "textOnly";
+export type NoticeKey = "welcome" | "newSession" | "notAllowed" | "rateLimited" | "failed" | "textOnly" | "textOrVoice" | "voiceTooLong" | "voiceFailed";
 
 const NOTICES: Record<NoticeKey, Record<Language, string>> = {
   welcome: {
@@ -32,6 +32,21 @@ const NOTICES: Record<NoticeKey, Record<Language, string>> = {
     bn: "আপাতত শুধু লেখা বার্তা বুঝতে পারি।",
     "bn-en": "Apatoto shudhu text message bujhte pari.",
     en: "For now I can only read text messages.",
+  },
+  textOrVoice: {
+    bn: "আপাতত শুধু লেখা বা ভয়েস বার্তা বুঝতে পারি।",
+    "bn-en": "Apatoto shudhu text ba voice message bujhte pari.",
+    en: "For now I can only understand text and voice messages.",
+  },
+  voiceTooLong: {
+    bn: "ভয়েস বার্তাটি অনেক লম্বা। ছোট করে আবার পাঠান, অথবা লিখে পাঠান।",
+    "bn-en": "Voice message ta onek lomba. Choto kore abar pathan, othoba likhe pathan.",
+    en: "That voice message is too long. Please send a shorter one or type your message.",
+  },
+  voiceFailed: {
+    bn: "দুঃখিত, ভয়েস বার্তাটি বুঝতে পারিনি। অনুগ্রহ করে আবার বলুন বা লিখে পাঠান।",
+    "bn-en": "Sorry, voice message ta bujhte parini. Abar bolun ba likhe pathan.",
+    en: "Sorry, I couldn't understand that voice message. Please try again or type it.",
   },
 };
 

@@ -43,6 +43,13 @@ embeddings:
   # dimensions: 512
   # baseUrl: http://localhost:11434/v1
 
+voice:                     # voice notes on channels (docs/11)
+  enabled: false
+  model: whisper-1         # OpenAI-compatible /audio/transcriptions
+  # baseUrl: http://localhost:8000/v1
+  language: bn             # hint, or auto
+  maxSeconds: 120
+
 knowledge:
   enabled: false           # search_knowledge tool
   vectorStore: memory      # memory | qdrant
@@ -148,6 +155,7 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp channel secrets |
 | `QDRANT_URL`, `QDRANT_API_KEY` | Override `knowledge.vectorStoreUrl`; Qdrant API key |
 | `EMBEDDINGS_API_KEY` | Embeddings key (defaults to `OPENAI_API_KEY`) |
+| `TRANSCRIPTION_API_KEY` | Voice-note transcription key (defaults to `OPENAI_API_KEY`) |
 | `MESSENGER_PAGE_ACCESS_TOKEN`, `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN` | Facebook Messenger channel (docs/11) |
 | `METRICS_TOKEN` | Bearer token required for `GET /metrics` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` (+ standard `OTEL_*`) | Enables OpenTelemetry trace export (docs/15) |
