@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BanglaClawClient, FetchLike, Me } from "@banglaclaw/client";
 import { AuthContext, createClient, keyStore, useAuth, verifyAdmin, type Auth } from "./api";
+import { useAsync } from "./api";
+import { useInterval } from "./components";
+import { Agent } from "./pages/Agent";
+import { Audit } from "./pages/Audit";
+import { Handoffs } from "./pages/Handoffs";
 import { Keys } from "./pages/Keys";
+import { Knowledge } from "./pages/Knowledge";
 import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
 import { SessionDetail } from "./pages/SessionDetail";
@@ -13,7 +19,11 @@ type State = { phase: "checking" } | { phase: "signed-out"; notice?: string } | 
 const NAV = [
   { to: "/", label: "Overview" },
   { to: "/sessions", label: "Sessions" },
+  { to: "/handoffs", label: "Handoffs" },
+  { to: "/agent", label: "Agent" },
+  { to: "/knowledge", label: "Knowledge" },
   { to: "/keys", label: "API keys" },
+  { to: "/audit", label: "Audit log" },
 ] as const;
 
 export function App({ fetch: fetchImpl }: { fetch?: FetchLike } = {}) {
@@ -66,34 +76,53 @@ export function App({ fetch: fetchImpl }: { fetch?: FetchLike } = {}) {
 
 function Shell() {
   const path = usePath();
-  const sessionMatch = /^\/sessions\/([^/]+)\/?$/.exec(path);
-  const section = sessionMatch !== null ? "/sessions" : path.replace(/\/+$/, "") || "/";
+  // "/sessions/<id>" and "/handoffs/<id>" belong to their list's section.
+  const match = /^(\/[^/]+)\/([^/]+)\/?$/.exec(path);
+  const section = match?.[1] ?? (path.replace(/\/+$/, "") || "/");
+  const itemId = match?.[2] === undefined ? undefined : decodeURIComponent(match[2]);
   const title = NAV.find((n) => n.to === section)?.label ?? "Not found";
+  const sessionDetail = section === "/sessions" && itemId !== undefined;
 
   useEffect(() => {
-    document.title = `${sessionMatch !== null ? "Session" : title} · BanglaClaw Admin`;
-  }, [title, sessionMatch]);
+    document.title = `${sessionDetail ? "Session" : title} · BanglaClaw Admin`;
+  }, [title, sessionDetail]);
 
   let page;
-  if (sessionMatch?.[1] !== undefined) page = <SessionDetail id={decodeURIComponent(sessionMatch[1])} />;
+  if (sessionDetail) page = <SessionDetail id={itemId} />;
+  else if (section === "/handoffs") page = <Handoffs {...(itemId !== undefined && { id: itemId })} />;
+  else if (itemId !== undefined) page = <NotFound />;
   else if (section === "/") page = <Overview />;
   else if (section === "/sessions") page = <Sessions />;
+  else if (section === "/agent") page = <Agent />;
+  else if (section === "/knowledge") page = <Knowledge />;
   else if (section === "/keys") page = <Keys />;
-  else page = <p className="muted">This page does not exist. <Link to="/">Go to the overview</Link>.</p>;
+  else if (section === "/audit") page = <Audit />;
+  else page = <NotFound />;
 
   return (
     <div className="shell">
       <Header current={section} />
       <main className="content">
-        {sessionMatch === null && <h2 className="page-title">{title}</h2>}
+        {!sessionDetail && <h2 className="page-title">{title}</h2>}
         {page}
       </main>
     </div>
   );
 }
 
+function NotFound() {
+  return (
+    <p className="muted">
+      This page does not exist. <Link to="/">Go to the overview</Link>.
+    </p>
+  );
+}
+
 function Header({ current }: { current: string }) {
-  const { me, signOut } = useAuth();
+  const { client, me, signOut } = useAuth();
+  // Waiting handoffs, shown as a count on the nav item.
+  const waiting = useAsync(() => client.handoffs.list({ limit: 200 }).then((r) => r.handoffs.length), [client, current]);
+  useInterval(waiting.reload, 30_000);
   return (
     <header className="topbar">
       <div className="brand">
@@ -103,6 +132,11 @@ function Header({ current }: { current: string }) {
         {NAV.map((n) => (
           <Link key={n.to} to={n.to} className={n.to === current ? "active" : undefined}>
             {n.label}
+            {n.to === "/handoffs" && waiting.data !== undefined && waiting.data > 0 && (
+              <span className="count" aria-label={`${waiting.data} waiting`}>
+                {waiting.data}
+              </span>
+            )}
           </Link>
         ))}
       </nav>

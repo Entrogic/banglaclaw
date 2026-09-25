@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAsync, useAuth } from "../api";
+import { StatusBadge } from "../components";
 import { fmtInt, fmtRelative, shortId } from "../format";
 import { Link, navigate } from "../router";
 
@@ -103,17 +104,5 @@ export function Sessions() {
         </div>
       )}
     </>
-  );
-}
-
-/** Session or run status with an icon, so the color never carries the meaning alone. */
-export function StatusBadge({ status, kind = "session" }: { status: string; kind?: "session" | "run" }) {
-  const label = status === "handoff" ? (kind === "session" ? "Waiting for a human" : "Handed off") : status.charAt(0).toUpperCase() + status.slice(1);
-  const tone = status === "handoff" || status === "limited" || status === "aborted" ? "warning" : status === "error" ? "critical" : status === "completed" || status === "active" ? "good" : "neutral";
-  const icon = tone === "good" ? "✓" : tone === "critical" ? "✕" : tone === "warning" ? "!" : "•";
-  return (
-    <span className={`badge ${tone}`}>
-      <span aria-hidden="true">{icon}</span> {label}
-    </span>
   );
 }

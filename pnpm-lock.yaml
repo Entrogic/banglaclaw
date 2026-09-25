@@ -300,6 +300,9 @@ importers:
       '@banglaclaw/gateway':
         specifier: workspace:*
         version: link:../../packages/gateway
+      '@banglaclaw/knowledge':
+        specifier: workspace:*
+        version: link:../../packages/knowledge
       '@banglaclaw/providers':
         specifier: workspace:*
         version: link:../../packages/providers

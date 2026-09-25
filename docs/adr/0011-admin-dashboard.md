@@ -10,7 +10,7 @@ Operators need to see usage (runs, errors, tokens, cost), browse conversations a
 
 ## Decision
 
-- **Data comes only from `/v1/admin`** (admin role). Aggregation happens in `RunStore.stats()`, in SQL for Postgres, so the dashboard, `/metrics` and the database agree.
+- **Data comes only from the `/v1` API** as an admin: `/v1/admin` plus the existing handoff, audit, agent, tool, skill and knowledge endpoints. The dashboard needs no endpoints of its own. Aggregation happens in `RunStore.stats()`, in SQL for Postgres, so the dashboard, `/metrics` and the database agree.
 - **`apps/dashboard` is a Vite + React + TypeScript SPA** built to static files. React is already a dependency (the Ink chat). It uses `@banglaclaw/client` and no chart or UI library; the charts are small SVG components.
 - **The gateway serves the build as static files at `/admin`** only when `gateway.dashboardDir` is set, with a strict CSP (`script-src 'self'`, `connect-src 'self'`) and immutable caching for hashed assets. The files are public; all data needs an API key.
 - **Sign-in is an admin API key** kept in `sessionStorage` (cleared when the tab closes). There are no cookies, so there is no CSRF surface, and any 401 signs out.

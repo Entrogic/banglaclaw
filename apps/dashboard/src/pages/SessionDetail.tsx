@@ -1,8 +1,8 @@
-import type { Message, Run } from "@banglaclaw/client";
+import type { Run } from "@banglaclaw/client";
 import { useAsync, useAuth } from "../api";
 import { fmtDateTime, fmtDuration, fmtInt } from "../format";
 import { Link } from "../router";
-import { StatusBadge } from "./Sessions";
+import { StatusBadge, Transcript } from "../components";
 
 export function SessionDetail({ id }: { id: string }) {
   const { client } = useAuth();
@@ -25,6 +25,12 @@ export function SessionDetail({ id }: { id: string }) {
               <dd>
                 <StatusBadge status={data.session.status} />
                 {data.session.handoffReason !== undefined && <span className="muted"> — {data.session.handoffReason}</span>}
+                {data.session.status === "handoff" && (
+                  <>
+                    {" "}
+                    <Link to={`/handoffs/${data.session.id}`}>Reply as operator →</Link>
+                  </>
+                )}
               </dd>
               <dt>Channel</dt>
               <dd>{data.session.channel}</dd>
@@ -55,29 +61,6 @@ export function SessionDetail({ id }: { id: string }) {
         </>
       )}
     </>
-  );
-}
-
-const ROLE_LABEL: Record<Message["role"], string> = { user: "User", assistant: "Assistant", operator: "Operator", tool: "Tool", system: "System" };
-
-function Transcript({ messages }: { messages: Message[] }) {
-  return (
-    <ol className="transcript">
-      {messages.map((m, i) => (
-        <li key={i} className={`msg ${m.role}`}>
-          <div className="msg-role">{ROLE_LABEL[m.role]}</div>
-          {m.content !== "" && <div className="msg-body">{m.content}</div>}
-          {m.toolCalls?.map((call, k) => (
-            <details key={call.id ?? k} className="tool-call">
-              <summary>
-                Calls <span className="mono">{call.name}</span>
-              </summary>
-              <pre className="code">{JSON.stringify(call.args, null, 2)}</pre>
-            </details>
-          ))}
-        </li>
-      ))}
-    </ol>
   );
 }
 

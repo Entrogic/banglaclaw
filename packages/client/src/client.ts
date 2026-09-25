@@ -157,7 +157,7 @@ export class BanglaClawClient {
   /** Operator role required. */
   readonly handoffs = {
     list: (options: { limit?: number } = {}): Promise<{ handoffs: Session[] }> => this.#json("GET", `/v1/handoffs${query(options)}`),
-    get: (id: string): Promise<{ session: Session; messages: Message[] }> => this.#json("GET", `/v1/handoffs/${enc(id)}`),
+    get: (id: string, options: { limit?: number } = {}): Promise<{ session: Session; messages: Message[] }> => this.#json("GET", `/v1/handoffs/${enc(id)}${query(options)}`),
     reply: (id: string, text: string): Promise<{ delivered: boolean; runId: string }> => this.#json("POST", `/v1/handoffs/${enc(id)}/reply`, { text }),
     release: (id: string): Promise<{ session: Session }> => this.#json("POST", `/v1/handoffs/${enc(id)}/release`, {}),
   };

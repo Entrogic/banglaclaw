@@ -21,6 +21,7 @@
     "@banglaclaw/agent": "workspace:*",
     "@banglaclaw/auth": "workspace:*",
     "@banglaclaw/gateway": "workspace:*",
+    "@banglaclaw/knowledge": "workspace:*",
     "@banglaclaw/providers": "workspace:*",
     "@banglaclaw/session": "workspace:*",
     "@banglaclaw/shared": "workspace:*",

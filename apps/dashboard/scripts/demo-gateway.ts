@@ -9,10 +9,11 @@ import { fileURLToPath } from "node:url";
 import { AgentRuntime } from "@banglaclaw/agent";
 import { ApiKeyAuthenticator, InMemoryAuthStore } from "@banglaclaw/auth";
 import { startGateway } from "@banglaclaw/gateway";
+import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@banglaclaw/knowledge";
 import { FakeProvider } from "@banglaclaw/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
-import { SkillSet } from "@banglaclaw/skills";
+import { InMemoryAuditStore, createLogger } from "@banglaclaw/shared";
+import { SkillSet, loadSkillsFromDirs } from "@banglaclaw/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
 
 const DAY = 86_400_000;
@@ -76,6 +77,15 @@ for (let day = 29; day >= 0; day--) {
   }
 }
 
+// Knowledge base with offline hash embeddings, and a few audit events.
+const kb = new KnowledgeBase({ store: new InMemoryVectorStore(), embedder: new HashEmbedder(), collection: "demo", chunkSize: 600, chunkOverlap: 60 });
+await kb.ingestText({ source: "policies/returns.md", title: "ফেরত ও রিফান্ড নীতি", text: "পণ্য হাতে পাওয়ার ৭ দিনের মধ্যে ফেরত দেওয়া যায়। ত্রুটিপূর্ণ বা ভুল পণ্যের ক্ষেত্রে ডেলিভারি চার্জ আমরা বহন করি। রিফান্ড ৫-৭ কর্মদিবসে bKash বা ব্যাংকে পাঠানো হয়।" });
+await kb.ingestText({ source: "policies/delivery.md", title: "Delivery", text: "Delivery inside Dhaka takes 1-2 days and costs ৳60. Outside Dhaka it takes 3-5 days and costs ৳120. Cash on delivery is available everywhere." });
+const audit = new InMemoryAuditStore();
+await audit.record({ action: "auth.failed", outcome: "failure", ip: "203.0.113.7", target: "GET /v1/sessions", at: new Date(Date.now() - 3 * 3_600_000) });
+await audit.record({ action: "tool.denied", outcome: "denied", actorId: "system", target: "shell_exec", metadata: { reason: "not in tools.allow" }, at: new Date(Date.now() - 2 * 3_600_000) });
+await audit.record({ action: "handoff.requested", outcome: "success", actorId: "system", target: ids[1] ?? "", metadata: { reason: "Customer asked for a refund" }, at: new Date(Date.now() - 3_600_000) });
+
 const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
 const admin = await auth.issueKey("demo-admin", "laptop", "admin");
 await auth.issueKey("shop-bot", "production", "user");
@@ -84,9 +94,10 @@ const dist = fileURLToPath(new URL("../dist", import.meta.url));
 const port = Number(process.env.PORT ?? 3000);
 
 const gateway = await startGateway({
-  runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
+  runtime, sessions, runs, auth, registry, policy, skills: new SkillSet(loadSkillsFromDirs(["skills"], fileURLToPath(new URL("../../..", import.meta.url)))), agent: { name: "banglaclaw", model: provider.id },
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 8000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 600, maxConcurrentRuns: 2 } },
-  version: "demo", logger, timezone: "Asia/Dhaka",
+  version: "demo", logger, timezone: "Asia/Dhaka", audit,
+  knowledge: { kb, searchLimit: 5, minScore: 0 },
   pricing: { "openai-compatible:gpt-4o-mini": { input: 0.15, output: 0.6 }, "anthropic:claude-sonnet-5": { input: 3, output: 15 } },
   ...(existsSync(`${dist}/index.html`) && { dashboardDir: dist }),
 });

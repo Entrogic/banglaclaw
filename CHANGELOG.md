@@ -12,6 +12,10 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 - **Admin dashboard** (`apps/dashboard`, served at `/admin` when `gateway.dashboardDir` is set; included in the Docker image):
   - overview with runs and tokens per day, runs by channel, model and agent, top tools and estimated cost
   - sessions browser (search, status and channel filters) with transcripts and runs
+  - handoff queue: read the conversation, reply as operator, release to the bot; a waiting count in the nav
+  - agent: model, tools with risk and allowlist result, skills with triggers
+  - knowledge: ingested documents and a search tester
+  - audit log with an action filter
   - API keys: issue (token shown once), list and revoke
   - `pnpm --filter @banglaclaw/dashboard demo` for UI work with seeded data
 - `@banglaclaw/client` covers the admin endpoints.

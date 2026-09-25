@@ -6,7 +6,7 @@ import { BanglaClawClient } from "@banglaclaw/client";
 import { createGatewayApp } from "@banglaclaw/gateway";
 import { FakeProvider } from "@banglaclaw/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
+import { InMemoryAuditStore, createLogger } from "@banglaclaw/shared";
 import { SkillSet } from "@banglaclaw/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
 import { App } from "../src/App";
@@ -21,18 +21,19 @@ async function setup() {
   const policy = new AllowlistPolicy(["calculator"]);
   const provider = new FakeProvider([{ toolCalls: [{ name: "calculator", args: { expression: "6*7" } }] }, { content: "৪২", usage: { input: 120, output: 8 } }]);
   const runtime = new AgentRuntime({ provider, registry, policy, sessions, runs, limits: { maxIterations: 4, maxToolCalls: 4 }, timeoutMs: 5_000, timezone: "Asia/Dhaka", logger: silent });
+  const audit = new InMemoryAuditStore();
   const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
   const user = await auth.issueKey("shop-bot");
   const admin = await auth.issueKey("ops", "laptop", "admin");
   const app = createGatewayApp({
     runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
-    version: "test", logger: silent, timezone: "Asia/Dhaka", pricing: { [provider.id]: { input: 1, output: 2 } },
+    version: "test", logger: silent, timezone: "Asia/Dhaka", audit, pricing: { [provider.id]: { input: 1, output: 2 } },
   });
   const fetchViaApp = async (url: string, init?: RequestInit) => app.request(url.replace(window.location.origin, ""), init);
   const client = new BanglaClawClient({ baseUrl: window.location.origin, apiKey: user.token, fetch: fetchViaApp });
   const { sessionId } = await client.run("৬ গুণ ৭ কত?", { externalId: "chat-77" });
-  return { fetchViaApp, userToken: user.token, adminToken: admin.token, sessionId };
+  return { fetchViaApp, userToken: user.token, adminToken: admin.token, sessionId, sessions, audit };
 }
 
 async function signIn(token: string) {
@@ -123,5 +124,52 @@ describe("dashboard", () => {
     await screen.findByLabelText("API key");
     expect(await screen.findByText(/not valid or has been revoked|rejected/)).toBeTruthy();
     expect(sessionStorage.length).toBe(0);
+  });
+
+  it("answers and releases a handoff from the queue", async () => {
+    const { fetchViaApp, adminToken, sessionId, sessions } = await setup();
+    await sessions.update(sessionId, { status: "handoff", handoffReason: "Wants a refund" });
+    sessionStorage.setItem("banglaclaw.adminKey", adminToken);
+    window.history.replaceState(null, "", "/admin/handoffs");
+    render(<App fetch={fetchViaApp} />);
+
+    expect(await screen.findByLabelText("1 waiting")).toBeTruthy();
+    fireEvent.click(await screen.findByText("Wants a refund"));
+    const box = await screen.findByLabelText("Reply as operator");
+    expect(window.location.pathname).toBe(`/admin/handoffs/${sessionId}`);
+
+    fireEvent.change(box, { target: { value: "আপনার রিফান্ড প্রক্রিয়াধীন।" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    // API sessions have no push delivery: the reply is stored for the client to read.
+    expect(await screen.findByText(/Saved to the conversation/)).toBeTruthy();
+    expect(await screen.findByText("আপনার রিফান্ড প্রক্রিয়াধীন।")).toBeTruthy();
+    expect(screen.getByText("Operator")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Release…" }));
+    fireEvent.click(screen.getByRole("button", { name: "Return to bot" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/admin/handoffs"));
+    expect(await screen.findByText(/Nobody is waiting/)).toBeTruthy();
+    expect((await sessions.get(sessionId))?.status).toBe("active");
+  });
+
+  it("shows tools, skills, the audit log and a disabled knowledge base", async () => {
+    const { fetchViaApp, adminToken, audit } = await setup();
+    await audit.record({ action: "tool.denied", outcome: "denied", actorId: "system", target: "shell_exec", metadata: { reason: "not allowed" } });
+    sessionStorage.setItem("banglaclaw.adminKey", adminToken);
+    window.history.replaceState(null, "", "/admin/agent");
+    render(<App fetch={fetchViaApp} />);
+
+    const calculator = (await screen.findByText("calculator")).closest("tr");
+    expect(calculator?.textContent).toContain("✓ Allowed");
+    expect(screen.getByText("current_datetime").closest("tr")?.textContent).toContain("✕ Denied");
+
+    fireEvent.click(screen.getByRole("link", { name: "Knowledge" }));
+    expect(await screen.findByText(/knowledge base is not enabled/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("link", { name: "Audit log" }));
+    const row = (await screen.findByText("shell_exec")).closest("tr");
+    expect(row?.textContent).toContain("tool.denied");
+    expect(row?.textContent).toContain("Denied");
+    expect(row?.textContent).toContain("reason=not allowed");
   });
 });
