@@ -8,6 +8,7 @@ import type { SkillSet } from "@banglaclaw/skills";
 import type { PermissionPolicy, ToolRegistry } from "@banglaclaw/tools";
 import { HttpError } from "./errors.js";
 import { scopedExternalId } from "./serialize.js";
+import { SessionEvents } from "./session-events.js";
 
 export type GatewayConfig = BanglaClawConfig["gateway"];
 
@@ -28,7 +29,7 @@ export interface GatewayDeps {
   webChat?: boolean;
   knowledge?: { kb: KnowledgeBase; searchLimit: number; minScore: number };
   memory?: LongTermMemory;
-  /** Delivers operator replies to channel users (Telegram, WhatsApp). */
+  /** Delivers operator replies to channel users (Telegram, WhatsApp). API clients get them as session events. */
   deliver?: Deliver;
   /** Security audit log; admins read it at GET /v1/audit. */
   audit?: AuditStore;
@@ -52,11 +53,18 @@ export interface GatewayMetrics {
 }
 
 export const API_CHANNEL = "api";
+/** Limits for session event subscriptions: SSE streams per API key, subscriptions per WebSocket. */
+export const MAX_EVENT_STREAMS_PER_KEY = 10;
+export const MAX_SUBSCRIPTIONS_PER_SOCKET = 20;
 
 /** Shared per-gateway state used by the REST and WebSocket handlers. */
 export class GatewayContext {
   readonly rate: RateLimiter;
   readonly concurrency: ConcurrencyLimiter;
+  /** Operator replies and releases, pushed to clients subscribed over WebSocket or SSE. */
+  readonly events = new SessionEvents();
+  /** Open SSE event streams per API key. */
+  readonly eventStreams = new ConcurrencyLimiter(MAX_EVENT_STREAMS_PER_KEY);
 
   constructor(readonly deps: GatewayDeps) {
     this.rate = new RateLimiter(deps.config.rateLimit.requestsPerMinute);

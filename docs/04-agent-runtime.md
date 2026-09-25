@@ -54,7 +54,7 @@ With `handoff.enabled`, every agent can call `request_human` with a reason:
 2. The session is set to `status: handoff` (with the reason and time), and `HANDOFF_WEBHOOK_URL` is notified if set.
 3. While handed off, user messages are stored for the operator. The bot doesn't call the model or reply (`RunRecord.status = handoff`, `agent = human`), and channels stay silent.
 4. Operators (users with `role: operator`) work the queue through `/v1/handoffs` or `banglaclaw handoff list | show | reply | release`.
-5. Replies are stored as assistant messages tagged `response_metadata.operator`, audited as runs, and delivered through the session's channel (Telegram, WhatsApp). API sessions read them from the messages endpoint.
+5. Replies are stored as assistant messages tagged `response_metadata.operator`, audited as runs, and delivered through the session's channel (Telegram, WhatsApp). API and web-chat clients that follow the session (WebSocket `subscribe` or `GET /v1/sessions/:id/events`, docs/18) receive them live; others read them from the messages endpoint.
 6. `release` returns the session to the supervisor.
 
 Smaller models sometimes claim to "transfer" or "escalate" in text without calling the tool. The prompts forbid this, but only the tool calls actually change state.

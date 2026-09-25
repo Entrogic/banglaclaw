@@ -3,7 +3,7 @@ import { z } from "zod";
 import { AgentRunError } from "@banglaclaw/agent";
 import type { Principal } from "@banglaclaw/auth";
 import type { Logger } from "@banglaclaw/shared";
-import type { GatewayContext } from "./context.js";
+import { MAX_SUBSCRIPTIONS_PER_SOCKET, type GatewayContext } from "./context.js";
 import { HttpError, toHttpError } from "./errors.js";
 import { runJson } from "./serialize.js";
 
@@ -21,6 +21,8 @@ function clientMessage(maxInputChars: number) {
       externalId: z.string().min(1).max(200).optional(),
     }),
     z.strictObject({ type: z.literal("cancel"), ref: z.string().min(1).max(100) }),
+    z.strictObject({ type: z.literal("subscribe"), sessionId: z.uuid() }),
+    z.strictObject({ type: z.literal("unsubscribe"), sessionId: z.uuid() }),
     z.strictObject({ type: z.literal("ping") }),
   ]);
 }
@@ -30,7 +32,9 @@ function clientMessage(maxInputChars: number) {
  *   → {type:"auth", apiKey}                       unless an Authorization header was sent on upgrade
  *   → {type:"run", ref?, text, sessionId?, externalId?}
  *   → {type:"cancel", ref} | {type:"ping"}
+ *   → {type:"subscribe", sessionId} | {type:"unsubscribe", sessionId}   session events (operator replies, releases)
  *   ← {type:"ready", user} | {type:"event", ref, event} | {type:"done", ref, sessionId, run}
+ *   ← {type:"subscribed", sessionId} | {type:"session_event", sessionId, event}
  *   ← {type:"error", ref?, error:{code, message}} | {type:"pong"}
  * Close codes: 4401 unauthenticated, 1009 message too large.
  */
@@ -42,6 +46,7 @@ export function websocketHandler(gw: GatewayContext, upgradeWebSocket: UpgradeWe
     let principal: Principal | undefined;
     let authTimer: NodeJS.Timeout | undefined;
     const runs = new Map<string, AbortController>();
+    const subscriptions = new Map<string, () => void>();
     let counter = 0;
 
     const send = (ws: WSContext, message: unknown) => {
@@ -91,6 +96,22 @@ export function websocketHandler(gw: GatewayContext, upgradeWebSocket: UpgradeWe
       }
     };
 
+    const subscribe = async (ws: WSContext, who: Principal, sessionId: string) => {
+      if (subscriptions.has(sessionId)) return send(ws, { type: "subscribed", sessionId });
+      if (!who.key.scopes.includes("read")) return sendError(ws, new HttpError(403, "insufficient_scope", 'This API key lacks the "read" scope'));
+      if (subscriptions.size >= MAX_SUBSCRIPTIONS_PER_SOCKET) {
+        return sendError(ws, new HttpError(429, "too_many_subscriptions", `At most ${MAX_SUBSCRIPTIONS_PER_SOCKET} sessions per connection`));
+      }
+      try {
+        await gw.ownedSession(who, sessionId);
+      } catch (error) {
+        return sendError(ws, toHttpError(error));
+      }
+      if (subscriptions.has(sessionId) || ws.readyState !== 1) return;
+      subscriptions.set(sessionId, gw.events.subscribe(sessionId, (event) => send(ws, { type: "session_event", sessionId, event })));
+      send(ws, { type: "subscribed", sessionId });
+    };
+
     return {
       onOpen(_evt, ws) {
         if (headerToken !== undefined) {
@@ -124,12 +145,20 @@ export function websocketHandler(gw: GatewayContext, upgradeWebSocket: UpgradeWe
           runs.get(msg.ref)?.abort();
           return;
         }
+        if (msg.type === "subscribe") return void subscribe(ws, principal, msg.sessionId);
+        if (msg.type === "unsubscribe") {
+          subscriptions.get(msg.sessionId)?.();
+          subscriptions.delete(msg.sessionId);
+          return;
+        }
         void startRun(ws, principal, msg).catch((error: unknown) => logger.error("websocket run failed", { error }));
       },
       onClose() {
         clearTimeout(authTimer);
         for (const controller of runs.values()) controller.abort();
         runs.clear();
+        for (const unsubscribe of subscriptions.values()) unsubscribe();
+        subscriptions.clear();
       },
     };
   });

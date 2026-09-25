@@ -76,6 +76,11 @@ export type StreamEvent =
   | { event: "error"; data: { runId?: string; message: string; code?: string } }
   | { event: "done"; data: { sessionId: string; run: Run } };
 
+/** Pushed while following a session (GET /v1/sessions/:id/events or WebSocket subscribe). */
+export type SessionEvent =
+  | { type: "operator_message"; sessionId: string; text: string; at: string }
+  | { type: "handoff_released"; sessionId: string; at: string };
+
 export interface Me {
   user: { id: string; name: string; role: "user" | "operator" | "admin" };
   key: { id: string; name: string; scopes: ("read" | "run")[]; createdAt: string };

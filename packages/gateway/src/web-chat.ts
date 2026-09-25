@@ -1,6 +1,7 @@
 /**
  * Self-contained browser chat (channels.web). Talks to /v1/ws with the user's API key, which is
- * kept in localStorage. No external assets, so a strict CSP applies.
+ * kept in localStorage. It subscribes to its session so operator replies during a handoff appear
+ * live. No external assets, so a strict CSP applies.
  */
 export const WEB_CHAT_CSP =
   "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
@@ -27,6 +28,8 @@ export const WEB_CHAT_HTML = `<!doctype html>
   .msg { padding:10px 14px; border-radius:14px; max-width:85%; white-space:pre-wrap; overflow-wrap:anywhere; }
   .user { align-self:flex-end; background:var(--user); color:var(--user-text); border-bottom-right-radius:4px; }
   .assistant { align-self:flex-start; background:var(--panel); border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .operator { align-self:flex-start; background:var(--panel); border:1px solid var(--accent); border-bottom-left-radius:4px; }
+  .operator::before { content:"👤 "; }
   .tool { align-self:flex-start; font-size:13px; color:var(--muted); font-family:ui-monospace, monospace; }
   .error { align-self:center; color:#dc2626; font-size:14px; }
   form { display:flex; gap:8px; padding:12px 16px; border-top:1px solid var(--border); background:var(--panel); max-width:820px; width:100%; margin:0 auto; }
@@ -48,10 +51,17 @@ export const WEB_CHAT_HTML = `<!doctype html>
 (() => {
   const $ = (id) => document.getElementById(id);
   const store = { get: (k) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
-  let ws, sessionId = store.get("bc.session"), current = null, counter = 0;
+  let ws, sessionId = store.get("bc.session"), subscribed = null, current = null, counter = 0;
   $("key").value = store.get("bc.key") || "";
 
   const add = (cls, text) => { const el = document.createElement("div"); el.className = "msg " + cls; el.textContent = text; $("log").append(el); el.scrollIntoView({ block: "end" }); return el; };
+  // Follow the current session so operator replies (handoff) arrive without a new message.
+  const follow = () => {
+    if (!ws || ws.readyState !== 1 || subscribed === sessionId) return;
+    if (subscribed) ws.send(JSON.stringify({ type: "unsubscribe", sessionId: subscribed }));
+    subscribed = sessionId;
+    if (sessionId) ws.send(JSON.stringify({ type: "subscribe", sessionId }));
+  };
   const setReady = (ready, label) => { $("status").textContent = label; $("input").disabled = !ready; $("send").disabled = !ready; if (ready) $("input").focus(); };
 
   function connect() {
@@ -62,10 +72,15 @@ export const WEB_CHAT_HTML = `<!doctype html>
     ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/v1/ws");
     setReady(false, "connecting…");
     ws.onopen = () => ws.send(JSON.stringify({ type: "auth", apiKey: key }));
-    ws.onclose = (e) => setReady(false, e.code === 4401 ? "invalid API key" : "disconnected");
+    ws.onclose = (e) => { subscribed = null; setReady(false, e.code === 4401 ? "invalid API key" : "disconnected"); };
     ws.onmessage = (e) => {
       const m = JSON.parse(e.data);
-      if (m.type === "ready") setReady(true, "connected as " + m.user.name);
+      if (m.type === "ready") { setReady(true, "connected as " + m.user.name); follow(); }
+      else if (m.type === "session_event") {
+        if (m.sessionId !== sessionId) return;
+        if (m.event.type === "operator_message") { add("operator", m.event.text); current = null; }
+        else if (m.event.type === "handoff_released") add("tool", "🤖 back to the assistant");
+      }
       else if (m.type === "event") {
         const ev = m.event;
         if (ev.type === "token") { current = current || add("assistant", ""); current.textContent += ev.text; current.scrollIntoView({ block: "end" }); }
@@ -73,16 +88,19 @@ export const WEB_CHAT_HTML = `<!doctype html>
         else if (ev.type === "agent_transfer") { add("tool", "↪ " + ev.to); current = null; }
         else if (ev.type === "handoff") { add("tool", ev.pending ? "⏳ waiting for a human operator" : "👤 handed to a human: " + ev.reason); current = null; }
       } else if (m.type === "done") {
-        sessionId = m.sessionId; store.set("bc.session", sessionId);
+        sessionId = m.sessionId; store.set("bc.session", sessionId); follow();
         if (m.run.status !== "completed" && m.run.status !== "limited") add("error", m.run.error || m.run.status);
         current = null; setReady(true, $("status").textContent);
+      } else if (m.type === "error" && !m.ref && m.error.code === "session_not_found") {
+        // The saved session belongs to another key or no longer exists: start fresh quietly.
+        sessionId = null; subscribed = null; store.set("bc.session", null);
       } else if (m.type === "error") { add("error", m.error.message); current = null; setReady(true, $("status").textContent); }
     };
   }
 
   $("connect").onclick = connect;
   $("key").onkeydown = (e) => { if (e.key === "Enter") connect(); };
-  $("new").onclick = () => { sessionId = null; store.set("bc.session", null); $("log").replaceChildren(); add("tool", "— new conversation —"); };
+  $("new").onclick = () => { sessionId = null; store.set("bc.session", null); follow(); $("log").replaceChildren(); add("tool", "— new conversation —"); };
   $("input").oninput = (e) => { e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; };
   $("input").onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("form").requestSubmit(); } };
   $("form").onsubmit = (e) => {

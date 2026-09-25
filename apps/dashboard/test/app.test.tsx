@@ -140,8 +140,8 @@ describe("dashboard", () => {
 
     fireEvent.change(box, { target: { value: "আপনার রিফান্ড প্রক্রিয়াধীন।" } });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    // API sessions have no push delivery: the reply is stored for the client to read.
-    expect(await screen.findByText(/Saved to the conversation/)).toBeTruthy();
+    // Nobody follows this API session, so the reply is stored for the client to read later.
+    expect(await screen.findByText(/Saved to the conversation, but not delivered/)).toBeTruthy();
     expect(await screen.findByText("আপনার রিফান্ড প্রক্রিয়াধীন।")).toBeTruthy();
     expect(screen.getByText("Operator")).toBeTruthy();
 

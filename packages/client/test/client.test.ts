@@ -35,6 +35,7 @@ async function setup() {
     client: new BanglaClawClient({ baseUrl: "http://gateway.test/", apiKey: token, fetch: fetchViaApp }),
     admin: new BanglaClawClient({ baseUrl: "http://gateway.test", apiKey: adminToken, fetch: fetchViaApp }),
     fetchViaApp,
+    sessions,
   };
 }
 
@@ -98,4 +99,22 @@ describe("BanglaClawClient", () => {
     for await (const e of parseSSE(body)) out.push(e);
     expect(out).toEqual([{ event: "token", data: '{"text":"a"}' }, { event: "done", data: "{}" }]);
   });
+
+  it("follows a session's operator replies with sessions.events()", async () => {
+    const { client, admin, sessions } = await setup();
+    const { session } = await client.sessions.create();
+    await sessions.update(session.id, { status: "handoff" });
+    const controller = new AbortController();
+    const events = client.sessions.events(session.id, { signal: controller.signal });
+    const first = events.next();
+    // The subscription is live once the stream has opened; retry the reply until it is pushed.
+    await expect.poll(async () => (await admin.handoffs.reply(session.id, "Hello from ops")).delivered).toBe(true);
+    expect((await first).value).toMatchObject({ type: "operator_message", sessionId: session.id, text: "Hello from ops" });
+    controller.abort();
+    expect((await events.next()).done).toBe(true);
+    await expect(async () => {
+      for await (const _ of admin.sessions.events(session.id)) break;
+    }).rejects.toMatchObject({ status: 404, code: "session_not_found" });
+  });
 });
+

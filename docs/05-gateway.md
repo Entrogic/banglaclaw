@@ -16,6 +16,7 @@ The Gateway is the transport and orchestration boundary between channels and the
 | Session resolution | Explicit `sessionId`, the user's `externalId`, or a new `api` session |
 | Agent dispatch | `AgentRuntime.run()`, shared across requests |
 | Streaming | SSE on the run endpoints; WebSocket at `/v1/ws` with multiple runs and cancellation |
+| Session events | Operator replies and handoff releases pushed to clients following a session (WebSocket `subscribe` or SSE `/v1/sessions/:id/events`), via an in-process `SessionEvents` bus |
 | Rate limiting | Per-key token bucket plus a per-key concurrent-run cap (in process) |
 | Request IDs | `X-Request-Id` accepted or generated, echoed, logged and included in errors |
 | Error mapping | A consistent error body; provider failures → 502, timeouts → 504; internals never leak |
@@ -40,6 +41,6 @@ A channel must not contain agent reasoning logic.
 
 ## Planned
 
-- Shared rate-limit store (Redis) for horizontal scaling
+- Shared rate-limit store and session-event bus (Redis) for horizontal scaling
 - Per-key tool allowlists (key scopes `read`/`run` shipped in v1.0)
 - A dedicated `apps/gateway` entry point; today the CLI hosts it (`banglaclaw serve`)

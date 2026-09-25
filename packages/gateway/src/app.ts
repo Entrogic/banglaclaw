@@ -10,10 +10,11 @@ import type { z } from "zod";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { hasRole, type Principal } from "@banglaclaw/auth";
 import { ownerForUser } from "@banglaclaw/knowledge";
-import { HandoffDesk, HandoffError } from "@banglaclaw/session";
+import { HandoffDesk, HandoffError, type Deliver } from "@banglaclaw/session";
 import { RateLimiter, auditRecorder, createLogger, type AuditAction, type Logger, type NewAuditEvent } from "@banglaclaw/shared";
 import { GatewayContext, type GatewayDeps } from "./context.js";
 import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
+import { respondWithSessionEvents } from "./events.js";
 import { respondWithRun } from "./run.js";
 import { createSessionBody, limitQuery, messageBody, runBody } from "./schemas.js";
 import { adminRoutes, dashboardRoutes } from "./admin.js";
@@ -257,6 +258,12 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
     return c.json({ runs: (await deps.runs.listBySession(session.id, { limit })).map(runJson) });
   });
 
+  v1.get("/sessions/:id/events", async (c) => {
+    const principal = c.get("principal");
+    const session = await gw.ownedSession(principal, c.req.param("id"));
+    return respondWithSessionEvents(c, gw, principal, session);
+  });
+
   v1.get("/runs/:id", async (c) => {
     const run = await deps.runs.get(c.req.param("id"));
     if (run !== undefined) {
@@ -295,7 +302,13 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   });
 
   // Human handoff queue — operators only (users.role = operator); they may read any user's handed-off session.
-  const desk = new HandoffDesk(deps.sessions, deps.runs, deps.deliver, recordAudit);
+  // Operator replies go to subscribed API clients (WebSocket/SSE) and to the session's platform (Telegram, WhatsApp).
+  const deliver: Deliver = async (session, text) => {
+    const pushed = gw.events.publish({ type: "operator_message", sessionId: session.id, text, at: new Date().toISOString() }) > 0;
+    const sent = deps.deliver !== undefined ? await deps.deliver(session, text) : false;
+    return sent || pushed;
+  };
+  const desk = new HandoffDesk(deps.sessions, deps.runs, deliver, recordAudit);
   const requireRole = (c: Context<Env>, role: "operator" | "admin") => {
     const principal = c.get("principal");
     if (!hasRole(principal.user, role)) {
@@ -341,6 +354,7 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   v1.post("/handoffs/:id/release", async (c) => {
     operatorOnly(c.get("principal"), c);
     const session = await handoffCall(() => desk.release(c.req.param("id"), c.get("principal").user.name));
+    gw.events.publish({ type: "handoff_released", sessionId: session.id, at: new Date().toISOString() });
     return c.json({ session: sessionJson(session) });
   });
 

@@ -67,6 +67,14 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
         post: { tags: ["sessions"], summary: "Send a message (runs the agent)", parameters: [idParam("id"), streamParam], requestBody: body(messageBody(options.maxInputChars)), responses: runResponses },
       },
       "/v1/sessions/{id}/runs": { get: { tags: ["sessions"], summary: "Runs of a session", parameters: [idParam("id"), limitParam(100, 20)], responses: { "200": json({ type: "object", properties: { runs: { type: "array", items: ref("Run") } } }), ...errors(401, 404) } } },
+      "/v1/sessions/{id}/events": {
+        get: {
+          tags: ["sessions"],
+          summary: "Server-Sent Events for a session: `ready`, then `operator_message` and `handoff_released` as they happen (`ping` every 25 s)",
+          parameters: [idParam("id")],
+          responses: { "200": { description: "SSE stream of SessionEvent objects", content: { "text/event-stream": { schema: ref("SessionEvent") } } }, ...errors(401, 404, 429) },
+        },
+      },
       "/v1/runs/{id}": { get: { tags: ["sessions"], summary: "One run", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { run: ref("Run") } }), ...errors(401, 404) } } },
       "/v1/knowledge/search": { get: { tags: ["knowledge"], summary: "Search the knowledge base", parameters: [{ name: "q", in: "query", required: true, schema: { type: "string", maxLength: 500 } }, limitParam(20, 5)], responses: { "200": json({ type: "object", properties: { results: { type: "array", items: ref("KnowledgeHit") } } }), ...errors(400, 401, 404) } } },
       "/v1/knowledge/documents": { get: { tags: ["knowledge"], summary: "Ingested documents", responses: { "200": json({ type: "object", properties: { documents: { type: "array", items: ref("KnowledgeDocument") } } }), ...errors(401, 404) } } },
@@ -106,7 +114,7 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
         post: { tags: ["admin"], summary: "Revoke an API key (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { revoked: str } }), ...errors(401, 403, 404, 409) } },
       },
       "/admin/{path}": { get: { tags: ["system"], security: [], summary: "Admin dashboard (static web app, when built)", parameters: [idParam("path")], responses: { "200": { description: "HTML/JS/CSS" } } } },
-      "/v1/ws": { get: { tags: ["agent"], security: [], summary: "WebSocket upgrade; authenticate with a first {type:\"auth\"} message (see docs/18)", responses: { "101": { description: "Switching protocols" } } } },
+      "/v1/ws": { get: { tags: ["agent"], security: [], summary: "WebSocket upgrade; authenticate with a first {type:\"auth\"} message, run with {type:\"run\"}, follow sessions with {type:\"subscribe\"} (see docs/18)", responses: { "101": { description: "Switching protocols" } } } },
     },
     components: {
       securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", description: "bck_<id>_<secret> API key" } },
@@ -117,6 +125,12 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
           type: "object",
           required: ["id", "channel", "agentId", "status", "createdAt", "updatedAt"],
           properties: { id: str, channel: str, agentId: str, status: { enum: ["active", "handoff"] }, activeAgent: str, handoffReason: str, handoffAt: time, externalId: str, createdAt: time, updatedAt: time },
+        },
+        SessionEvent: {
+          oneOf: [
+            { type: "object", required: ["type", "sessionId", "text", "at"], properties: { type: { const: "operator_message" }, sessionId: str, text: str, at: time } },
+            { type: "object", required: ["type", "sessionId", "at"], properties: { type: { const: "handoff_released" }, sessionId: str, at: time } },
+          ],
         },
         SessionCreated: { type: "object", properties: { session: ref("Session"), created: { type: "boolean" } } },
         Message: { type: "object", required: ["role", "content"], properties: { role: { enum: ["user", "assistant", "operator", "tool", "system"] }, content: str, toolCalls: { type: "array", items: { type: "object", properties: { id: str, name: str, args: {} } } }, toolCallId: str } },

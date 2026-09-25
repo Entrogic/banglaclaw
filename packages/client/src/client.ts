@@ -1,4 +1,4 @@
-import type { AdminKey, AdminSession, AdminStats, AuditEvent, KnowledgeHit, Me, Memory, Message, Run, RunResponse, Session, StreamEvent } from "./types.js";
+import type { AdminKey, AdminSession, AdminStats, AuditEvent, KnowledgeHit, Me, Memory, Message, Run, RunResponse, Session, SessionEvent, StreamEvent } from "./types.js";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -30,28 +30,37 @@ export interface RunOptions {
   signal?: AbortSignal;
 }
 
-/** Parses a Server-Sent Events byte stream into {event, data} objects. */
-export async function* parseSSE(body: ReadableStream<Uint8Array>): AsyncGenerator<{ event: string; data: string }> {
+/** Parses a Server-Sent Events byte stream into {event, data} objects. Ends when `signal` aborts. */
+export async function* parseSSE(body: ReadableStream<Uint8Array>, signal?: AbortSignal): AsyncGenerator<{ event: string; data: string }> {
   const reader = body.getReader();
+  const stop = () => void reader.cancel().catch(() => undefined);
+  if (signal?.aborted === true) stop();
+  signal?.addEventListener("abort", stop, { once: true });
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    if (value !== undefined) buffer += decoder.decode(value, { stream: true });
-    if (done) buffer += decoder.decode();
-    let boundary: number;
-    while ((boundary = buffer.search(/\r?\n\r?\n/)) !== -1) {
-      const block = buffer.slice(0, boundary);
-      buffer = buffer.slice(boundary).replace(/^\r?\n\r?\n/, "");
-      let event = "message";
-      const data: string[] = [];
-      for (const line of block.split(/\r?\n/)) {
-        if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (value !== undefined) buffer += decoder.decode(value, { stream: true });
+      if (done) buffer += decoder.decode();
+      let boundary: number;
+      while ((boundary = buffer.search(/\r?\n\r?\n/)) !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary).replace(/^\r?\n\r?\n/, "");
+        let event = "message";
+        const data: string[] = [];
+        for (const line of block.split(/\r?\n/)) {
+          if (line.startsWith("event:")) event = line.slice(6).trim();
+          else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /, ""));
+        }
+        if (data.length > 0) yield { event, data: data.join("\n") };
       }
-      if (data.length > 0) yield { event, data: data.join("\n") };
+      if (done) return;
     }
-    if (done) return;
+  } finally {
+    // Also runs when the consumer stops early (break/return): release the connection.
+    signal?.removeEventListener("abort", stop);
+    stop();
   }
 }
 
@@ -96,6 +105,19 @@ export class BanglaClawClient {
     for await (const { event, data } of parseSSE(res.body)) yield { event, data: JSON.parse(data) } as StreamEvent;
   }
 
+  async *#sessionEvents(id: string, signal?: AbortSignal): AsyncGenerator<SessionEvent> {
+    const res = await this.#request("GET", `/v1/sessions/${enc(id)}/events`, undefined, { accept: "text/event-stream", ...(signal !== undefined && { signal }) });
+    if (res.body === null) return;
+    try {
+      for await (const { event, data } of parseSSE(res.body, signal)) {
+        if (event === "operator_message" || event === "handoff_released") yield JSON.parse(data) as SessionEvent;
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      throw error;
+    }
+  }
+
   health(): Promise<{ status: string; version: string }> {
     return this.#json("GET", "/health");
   }
@@ -137,6 +159,8 @@ export class BanglaClawClient {
     send: (id: string, text: string, signal?: AbortSignal): Promise<RunResponse> => this.#json("POST", `/v1/sessions/${enc(id)}/messages`, { text }, signal),
     stream: (id: string, text: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> => this.#stream(`/v1/sessions/${enc(id)}/messages`, { text }, signal),
     runs: (id: string, options: { limit?: number } = {}): Promise<{ runs: Run[] }> => this.#json("GET", `/v1/sessions/${enc(id)}/runs${query(options)}`),
+    /** Follows a session: operator replies and handoff releases as they happen, until `signal` aborts. */
+    events: (id: string, options: { signal?: AbortSignal } = {}): AsyncGenerator<SessionEvent> => this.#sessionEvents(id, options.signal),
   };
 
   readonly runs = {

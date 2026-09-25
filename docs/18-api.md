@@ -18,6 +18,7 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | GET | `/v1/sessions/:id/messages?limit=` | Recent messages (`role`, `content`, `toolCalls`, `toolCallId`) |
 | POST | `/v1/sessions/:id/messages` | Send a message, i.e. run the agent in that session: `{ text }` |
 | GET | `/v1/sessions/:id/runs?limit=` | Runs of a session, with tool calls |
+| GET | `/v1/sessions/:id/events` | Follow a session over SSE: operator replies and handoff releases as they happen (see below) |
 | GET | `/v1/runs/:id` | One run |
 | GET | `/v1/knowledge/search?q=&limit=` | Search the knowledge base (when enabled) |
 | GET | `/v1/knowledge/documents` | Ingested documents |
@@ -70,11 +71,31 @@ If the client disconnects, the run is cancelled.
 → {"type":"run","ref":"q1","text":"…","sessionId?":"…"}    ← {"type":"event","ref":"q1","event":{RunEvent}}
                                                             ← {"type":"done","ref":"q1","sessionId":"…","run":{…}}
 → {"type":"cancel","ref":"q1"}
+→ {"type":"subscribe","sessionId":"…"}                      ← {"type":"subscribed","sessionId":"…"}
+                                                            ← {"type":"session_event","sessionId":"…","event":{SessionEvent}}
+→ {"type":"unsubscribe","sessionId":"…"}
 → {"type":"ping"}                                           ← {"type":"pong"}
                                                             ← {"type":"error","ref?":"q1","error":{"code","message"}}
 ```
 
-Several runs may be active on one connection (each with its own `ref`), up to the per-key concurrency limit. Closing the socket cancels its runs.
+Several runs may be active on one connection (each with its own `ref`), up to the per-key concurrency limit. Closing the socket cancels its runs. A connection may follow up to 20 sessions it owns (`subscribe` needs the `read` scope; another user's session answers `session_not_found`).
+
+## Session events
+
+While a session is handed off, a human operator's replies don't come from a run, so clients learn about them by following the session, either over the WebSocket (`subscribe`) or with Server-Sent Events:
+
+```text
+GET /v1/sessions/:id/events            (Accept: text/event-stream)
+event: ready             data: {"sessionId":"…","status":"handoff"}
+event: operator_message  data: {"type":"operator_message","sessionId":"…","text":"…","at":"…"}
+event: handoff_released  data: {"type":"handoff_released","sessionId":"…","at":"…"}
+event: ping              data: {}                  (every 25 s)
+```
+
+- Only the session's owner can follow it. At most 10 event streams may be open per API key (429 `too_many_event_streams`).
+- `POST /v1/handoffs/:id/reply` reports `delivered: true` when the reply reached a connected follower or the session's platform (Telegram, WhatsApp). Replies are always stored, so a client that wasn't connected finds them in `/messages`.
+- The web chat (`/chat`) follows its session automatically. With the SDK: `for await (const e of bc.sessions.events(id, { signal })) …`.
+- Events are published in the gateway process that handled the operator's request; horizontally scaled gateways need a shared bus (docs/20).
 
 ## Errors
 
@@ -92,7 +113,7 @@ Every error has the same shape and carries the request id (also returned in `X-R
 | 409 | `not_handed_off` |
 | 404 | `not_found`, `session_not_found`, `run_not_found` |
 | 413 | `payload_too_large` (bodies over 256 KB) |
-| 429 | `rate_limited`, `too_many_concurrent_runs` (with `Retry-After`) |
+| 429 | `rate_limited`, `too_many_concurrent_runs` (with `Retry-After`), `too_many_event_streams`, `too_many_subscriptions` (WebSocket) |
 | 502 | `run_failed` (model provider error) |
 | 504 | `run_timeout` |
 

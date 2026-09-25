@@ -70,7 +70,11 @@ function HandoffDetail({ id, onChanged }: { id: string; onChanged: () => void })
     try {
       const res = await client.handoffs.reply(id, reply);
       setText("");
-      setResult(res.delivered ? "Sent to the customer." : "Saved to the conversation. This channel has no push delivery, so the client sees it when it next reads the messages.");
+      setResult(
+        res.delivered
+          ? "Sent to the customer."
+          : "Saved to the conversation, but not delivered: the customer isn't connected right now, so they will see it when their client next loads the messages.",
+      );
       detail.reload();
     } catch (err) {
       setError(errorMessage(err));

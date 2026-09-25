@@ -90,4 +90,45 @@ describe("gateway WebSocket", () => {
     expect(await c.next((m) => m.type === "done" && m.ref === "slow")).toMatchObject({ run: { status: "aborted", error: "Run cancelled" } });
     c.ws.close();
   });
+
+  it("pushes operator replies and releases to subscribed sessions only", async () => {
+    const { deps, alice, bob } = await makeDeps({ script: [{ content: "salam" }] });
+    const ops = (await deps.auth.issueKey("ops", "default", "operator")).token;
+    const gw = await startGateway(deps);
+    gateways.push(gw);
+    const a = client(gw.url, { Authorization: `Bearer ${alice}` });
+    await a.next((m) => m.type === "ready");
+    a.send({ type: "run", ref: "r", text: "hello" });
+    const { sessionId } = (await a.next((m) => m.type === "done")) as unknown as { sessionId: string };
+    await deps.sessions.update(sessionId, { status: "handoff", handoffReason: "refund" });
+
+    a.send({ type: "subscribe", sessionId });
+    expect(await a.next((m) => m.type === "subscribed")).toMatchObject({ sessionId });
+
+    // Another user can't follow alice's session, and learns nothing about it.
+    const b = client(gw.url, { Authorization: `Bearer ${bob}` });
+    await b.next((m) => m.type === "ready");
+    b.send({ type: "subscribe", sessionId });
+    expect(await b.next((m) => m.type === "error")).toMatchObject({ error: { code: "session_not_found" } });
+
+    const post = (path: string, body: unknown) =>
+      fetch(`${gw.url}${path}`, { method: "POST", headers: { Authorization: `Bearer ${ops}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const reply = await post(`/v1/handoffs/${sessionId}/reply`, { text: "আমি করিম, সাপোর্ট থেকে।" });
+    expect(await reply.json()).toMatchObject({ delivered: true });
+    expect(await a.next((m) => m.type === "session_event")).toMatchObject({ sessionId, event: { type: "operator_message", sessionId, text: "আমি করিম, সাপোর্ট থেকে।" } });
+
+    await post(`/v1/handoffs/${sessionId}/release`, {});
+    expect(await a.next((m) => m.type === "session_event" && (m.event as { type: string }).type === "handoff_released")).toMatchObject({ sessionId });
+    expect(b.inbox.some((m) => m.type === "session_event")).toBe(false);
+
+    // After unsubscribing (and with nobody else following), a reply is stored but not pushed.
+    a.send({ type: "unsubscribe", sessionId });
+    a.send({ type: "ping" });
+    await a.next((m) => m.type === "pong");
+    await deps.sessions.update(sessionId, { status: "handoff" });
+    expect(await (await post(`/v1/handoffs/${sessionId}/reply`, { text: "still there?" })).json()).toMatchObject({ delivered: false });
+    a.ws.close();
+    b.ws.close();
+  });
 });
+

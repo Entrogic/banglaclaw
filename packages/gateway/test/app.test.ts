@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createGatewayApp } from "../src/index.js";
 import { GatedProvider, makeDeps, parseSSE } from "./helpers.js";
 
@@ -381,3 +381,67 @@ describe("admin API and dashboard", () => {
     expect((await app.request("/admin/..%2f..%2fetc%2fpasswd")).status).toBe(404);
   });
 });
+
+describe("gateway session events (SSE)", () => {
+  it("streams operator replies to the session owner and enforces ownership", async () => {
+    const { deps, alice, bob } = await makeDeps();
+    const ops = (await deps.auth.issueKey("ops", "default", "operator")).token;
+    const app = createGatewayApp(deps);
+    const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
+    const created = (await (await app.request("/v1/sessions", { method: "POST", headers: { ...auth(alice), "Content-Type": "application/json" }, body: "{}" })).json()) as { session: { id: string } };
+    const sessionId = created.session.id;
+    await deps.sessions.update(sessionId, { status: "handoff" });
+
+    expect((await app.request(`/v1/sessions/${sessionId}/events`, { headers: auth(bob) })).status).toBe(404);
+
+    const controller = new AbortController();
+    const res = await app.request(`/v1/sessions/${sessionId}/events`, { headers: auth(alice), signal: controller.signal });
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+    const reader = res.body?.getReader();
+    if (reader === undefined) throw new Error("no body");
+    const decoder = new TextDecoder();
+    let buffer = "";
+    const readUntil = async (needle: string) => {
+      while (!buffer.includes(needle)) {
+        const { value, done } = await reader.read();
+        if (done) throw new Error(`stream ended before ${needle}`);
+        buffer += decoder.decode(value, { stream: true });
+      }
+    };
+    await readUntil("event: ready");
+
+    const reply = await app.request(`/v1/handoffs/${sessionId}/reply`, { method: "POST", headers: { ...auth(ops), "Content-Type": "application/json" }, body: JSON.stringify({ text: "Operator here" }) });
+    expect(await reply.json()).toMatchObject({ delivered: true });
+    await readUntil("event: operator_message");
+    const events = parseSSE(buffer.slice(0, buffer.lastIndexOf("\n\n") + 2));
+    expect(events.map((e) => e.event)).toEqual(["ready", "operator_message"]);
+    expect(events[1]?.data).toMatchObject({ type: "operator_message", sessionId, text: "Operator here" });
+    controller.abort();
+    await reader.cancel().catch(() => undefined);
+  });
+
+  it("limits open event streams per key", async () => {
+    const { deps, alice } = await makeDeps();
+    const app = createGatewayApp(deps);
+    const headers = { Authorization: `Bearer ${alice}` };
+    const created = (await (await app.request("/v1/sessions", { method: "POST", headers: { ...headers, "Content-Type": "application/json" }, body: "{}" })).json()) as { session: { id: string } };
+    const open: Response[] = [];
+    for (let i = 0; i < 10; i++) {
+      const res = await app.request(`/v1/sessions/${created.session.id}/events`, { headers });
+      expect(res.status).toBe(200);
+      open.push(res);
+    }
+    const over = await app.request(`/v1/sessions/${created.session.id}/events`, { headers });
+    expect(over.status).toBe(429);
+    expect(await over.json()).toMatchObject({ error: { code: "too_many_event_streams" } });
+    // A client disconnect (the response body is cancelled) frees the slot.
+    await open[0]?.body?.cancel();
+    await vi.waitFor(async () => {
+      const again = await app.request(`/v1/sessions/${created.session.id}/events`, { headers });
+      expect(again.status).toBe(200);
+      open.push(again);
+    });
+    await Promise.all(open.slice(1).map((r) => r.body?.cancel()));
+  });
+});
+

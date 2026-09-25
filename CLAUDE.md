@@ -77,6 +77,7 @@ What exists:
   - `createGatewayApp(deps, upgradeWebSocket?)` is a Hono app; `startGateway()` serves it on Node with `@hono/node-ws`.
   - `/v1` middleware runs bearer API-key auth (`ApiKeyAuthenticator`) and a per-key `RateLimiter`. `GatewayContext` owns session ownership checks (other users' resources → 404), `externalId` namespacing (`<userId>/<externalId>`) and the per-key `ConcurrencyLimiter`.
   - The run endpoints return JSON or SSE (`respondWithRun`). The WebSocket protocol lives in `ws.ts`: auth happens in-protocol, with `ref`-keyed runs and cancel.
+  - Session events (`session-events.ts`, `events.ts`): `GatewayContext.events` is an in-process bus. The gateway wraps `deps.deliver` so operator replies are published to followers (WS `subscribe`, SSE `/v1/sessions/:id/events`) as well as sent to the platform; releases publish `handoff_released`.
   - All errors map through `toHttpError`.
   - Tests use `app.request()`, plus a real server on port 0 for WebSocket; `GatedProvider` in `test/helpers.ts` blocks a run for concurrency and cancel tests.
 - **Knowledge** (`packages/knowledge`, docs/07, ADR-0008):
