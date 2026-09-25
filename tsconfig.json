@@ -1,5 +1,13 @@
 {
   "extends": "./tsconfig.base.json",
-  "compilerOptions": { "noEmit": true },
-  "include": ["packages/*/src", "packages/*/test", "apps/*/src", "mcp-servers/*/src", "mcp-servers/*/test"]
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "packages/*/src",
+    "packages/*/test",
+    "apps/*/src",
+    "mcp-servers/*/src",
+    "mcp-servers/*/test"
+  ]
 }

@@ -133,3 +133,14 @@ describe("chat TUI", () => {
     await until(() => exited() ?? "", (x) => x === session.id);
   });
 });
+
+describe("chat TUI input", () => {
+  it("sends text and Enter that arrive in one chunk", async () => {
+    const { app } = await setup(new FakeProvider([{ content: "five" }]));
+    cleanup = app.unmount;
+    app.stdin.write("2+3?\r");
+    const f = await until(app.lastFrame, (x) => x.includes("completed"));
+    expect(f).toContain("› 2+3?");
+    expect(f).toContain("five");
+  });
+});

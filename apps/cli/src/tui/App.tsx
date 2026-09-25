@@ -310,6 +310,13 @@ export function App({ bundle, initial, onExit }: AppProps) {
       return setText(history[next] ?? "");
     }
     if (key.tab || key.ctrl || key.meta) return;
+    // Text + Enter arriving in one chunk (fast typing over SSH, or pasting a line ending in Enter): type it, then send.
+    // Multi-line pastes keep their newlines so they can be reviewed before sending.
+    if (input.length > 1 && input.endsWith("\r") && !input.slice(0, -1).includes("\r") && !input.includes("\n")) {
+      const typed = graphemes(input.slice(0, -1));
+      chars.splice(cursor, 0, ...typed);
+      return submit(chars.join(""));
+    }
     if (input !== "") insert(input);
   });
 
