@@ -26,6 +26,8 @@ START → prepare → model ─┬─ tool calls, within limits ─→ tools →
   - appends the run's new messages to the session.
 - With a checkpointer (`PostgresSaver` when `storage.provider: postgres`), graph state is checkpointed per run under `thread_id = runId`, which `runtime.checkpoint(runId)` reads back. Conversation history is owned by the session store, not by checkpoints.
 
+MCP tools (v0.3) are registered in the same `ToolRegistry` and run through the same `tools` node, so the dedicated `mcp` branch in the target graph below is not needed.
+
 ## Target graph
 
 The router / planner / verifier / MCP branches below are planned for later releases:

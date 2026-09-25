@@ -17,6 +17,7 @@ tools:
   allow:
     - calculator
     - current_datetime
+    - bangladesh__*        # every tool of the "bangladesh" MCP server below
 
 storage:
   provider: memory        # or: postgres (needs DATABASE_URL, then `banglaclaw db migrate`)
@@ -28,5 +29,18 @@ memory:
 skills:
   dirs: [skills]
   maxActive: 2
+
+mcp:
+  servers:
+    # Bundled Bangladesh reference-data server (paths are relative to this file).
+    bangladesh:
+      transport: stdio
+      command: node
+      args: [--import, tsx, mcp-servers/bangladesh/src/bin.ts]   # or [mcp-servers/bangladesh/dist/bin.js] after `pnpm build`
+      timeoutMs: 30000
+    # remote:
+    #   transport: http
+    #   url: https://mcp.example.com/mcp
+    #   headers: { Authorization: "Bearer ${REMOTE_MCP_TOKEN}" }  # ${VAR} is read from the environment
 
 timezone: Asia/Dhaka

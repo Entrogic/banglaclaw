@@ -6,7 +6,8 @@ import { requiredApiKeyEnv } from "@banglaclaw/providers";
 import { SessionManager, type RunRecord, type Session } from "@banglaclaw/session";
 import { BanglaClawError } from "@banglaclaw/shared";
 import { AllowlistPolicy } from "@banglaclaw/tools";
-import { buildRegistry, createRuntime, load, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
+import type { McpManager, McpServerStatus } from "@banglaclaw/mcp";
+import { buildRegistry, connectMcp, createRuntime, load, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
 import { bold, createRenderer, dim, green, red, yellow } from "./render.js";
 
 const CHANNEL = "cli";
@@ -24,6 +25,17 @@ async function resolveSession(runtime: AgentRuntime, services: Services, session
   });
 }
 
+/** Warns (on stderr) about MCP servers that failed to connect, so the reply stream stays clean. */
+function reportMcpFailures(mcp: McpManager): void {
+  for (const s of mcp.status()) {
+    if (s.state === "failed") process.stderr.write(yellow(`! MCP server ${s.name} unavailable: ${firstLine(s.error)}\n`));
+  }
+}
+
+function firstLine(text: string | undefined): string {
+  return (text ?? "").split("\n")[0] ?? "";
+}
+
 function memoryNotice(services: Services): void {
   if (!services.persistent) {
     console.log(dim("storage.provider is memory — sessions and runs are not kept between CLI invocations."));
@@ -31,8 +43,9 @@ function memoryNotice(services: Services): void {
 }
 
 export async function agentRun(message: string, options: SessionOption): Promise<void> {
-  const { runtime, services } = await createRuntime(options);
+  const { runtime, services, mcp } = await createRuntime(options);
   try {
+    reportMcpFailures(mcp);
     const { session } = await resolveSession(runtime, services, options.session);
     const controller = new AbortController();
     process.once("SIGINT", () => controller.abort());
@@ -45,7 +58,7 @@ export async function agentRun(message: string, options: SessionOption): Promise
 }
 
 export async function chat(options: SessionOption): Promise<void> {
-  const { runtime, services } = await createRuntime(options);
+  const { runtime, services, mcp } = await createRuntime(options);
   let { session, created } = await resolveSession(runtime, services, options.session).catch(async (error: unknown) => {
     await services.close();
     throw error;
@@ -61,6 +74,9 @@ export async function chat(options: SessionOption): Promise<void> {
 
   const model = services.loaded.config.models.default;
   console.log(bold("🐾 BanglaClaw") + dim(` — ${model.provider}:${model.model} · ${services.persistent ? "postgres" : "memory"} storage`));
+  const mcpTools = mcp.tools().length;
+  if (mcpTools > 0) console.log(dim(`MCP: ${mcpTools} tools from ${mcp.status().filter((s) => s.state === "connected").map((s) => s.name).join(", ")}`));
+  reportMcpFailures(mcp);
   if (!created) {
     const count = await runtime.sessions.countMessages(session.id);
     console.log(dim(`Resumed session ${session.id} (${count} messages)`));
@@ -187,6 +203,7 @@ export async function runList(options: GlobalOptions & { session: string; limit:
 export function skillList(options: GlobalOptions): void {
   const loaded = load(options);
   const policy = new AllowlistPolicy(loaded.config.tools.allow);
+  // MCP tools are not connected here; skills that rely on them show as unavailable.
   const registry = buildRegistry();
   const skills = loadSkills(loaded).list();
   if (skills.length === 0) console.log(dim(`No skills found in: ${loaded.config.skills.dirs.join(", ")}`));
@@ -200,14 +217,50 @@ export function skillList(options: GlobalOptions): void {
   }
 }
 
-export function toolList(options: GlobalOptions): void {
-  const { config } = load(options);
-  const policy = new AllowlistPolicy(config.tools.allow);
-  for (const tool of buildRegistry().list()) {
-    const decision = policy.check(tool);
-    const state = decision.allowed ? green("allowed") : yellow(`denied (${decision.reason})`);
-    console.log(`${bold(tool.name.padEnd(18))} ${tool.risk.padEnd(12)} ${state}`);
-    console.log(dim(`  ${tool.description}`));
+export async function toolList(options: GlobalOptions): Promise<void> {
+  const loaded = load(options);
+  const policy = new AllowlistPolicy(loaded.config.tools.allow);
+  const mcp = await connectMcp(loaded);
+  try {
+    reportMcpFailures(mcp);
+    for (const tool of buildRegistry(mcp).list()) {
+      const decision = policy.check(tool);
+      const state = decision.allowed ? green("allowed") : yellow(`denied (${decision.reason})`);
+      console.log(`${bold(tool.name.padEnd(28))} ${tool.risk.padEnd(12)} ${state}`);
+      console.log(dim(`  ${tool.description}`));
+    }
+  } finally {
+    await mcp.close();
+  }
+}
+
+function printMcpStatus(s: McpServerStatus, policy: AllowlistPolicy, mcp: McpManager): void {
+  const state = s.state === "connected" ? green("connected") : s.state === "failed" ? red("failed") : dim("disabled");
+  const info = s.serverInfo !== undefined ? dim(` ${s.serverInfo.name} ${s.serverInfo.version}`) : "";
+  console.log(`${bold(s.name)} ${dim(`(${s.transport})`)} ${state}${info}`);
+  if (s.error !== undefined) console.log(red(`  ${s.error.split("\n").join("\n  ")}`));
+  const tools = new Map(mcp.tools().map((t) => [t.name, t]));
+  for (const name of s.tools) {
+    const tool = tools.get(name);
+    const allowed = tool !== undefined && policy.check(tool).allowed;
+    console.log(`  ${name.padEnd(36)} ${allowed ? green("allowed") : yellow("denied")}  ${dim(tool?.risk ?? "")}`);
+  }
+}
+
+export async function mcpList(options: GlobalOptions): Promise<void> {
+  const loaded = load(options);
+  const servers = Object.keys(loaded.config.mcp.servers);
+  if (servers.length === 0) {
+    console.log(dim("No MCP servers configured. Add them under mcp.servers in banglaclaw.yaml (see banglaclaw.example.yaml)."));
+    return;
+  }
+  const policy = new AllowlistPolicy(loaded.config.tools.allow);
+  const mcp = await connectMcp(loaded);
+  try {
+    for (const s of mcp.status()) printMcpStatus(s, policy, mcp);
+    if (mcp.status().some((s) => s.state === "failed")) process.exitCode = 1;
+  } finally {
+    await mcp.close();
   }
 }
 
@@ -251,7 +304,7 @@ runtime:
   timeoutMs: 60000
 
 tools:
-  allow: [calculator, current_datetime]
+  allow: [calculator, current_datetime]   # add "bangladesh__*" to enable an MCP server's tools
 
 storage:
   provider: memory                # or: postgres (needs DATABASE_URL, then \`banglaclaw db migrate\`)
@@ -263,6 +316,21 @@ memory:
 skills:
   dirs: [skills]
   maxActive: 2
+
+mcp:
+  servers: {}
+  # Example: the bundled Bangladesh reference-data server (run from the repo root).
+  # Its tools are named bangladesh__<tool> and must be allowed in tools.allow.
+  # servers:
+  #   bangladesh:
+  #     transport: stdio
+  #     command: node
+  #     args: [--import, tsx, mcp-servers/bangladesh/src/bin.ts]   # or: [mcp-servers/bangladesh/dist/bin.js] after pnpm build
+  #     timeoutMs: 30000
+  #   remote:
+  #     transport: http
+  #     url: https://mcp.example.com/mcp
+  #     headers: { Authorization: "Bearer \${REMOTE_MCP_TOKEN}" }   # \${VAR} is read from the environment
 
 timezone: Asia/Dhaka
 `;
@@ -324,6 +392,25 @@ export async function doctor(options: GlobalOptions): Promise<void> {
     }
   } catch (error) {
     fail(describe(error));
+  }
+
+  const servers = Object.keys(config.mcp.servers);
+  if (servers.length === 0) {
+    ok("MCP: no servers configured");
+  } else {
+    const mcp = await connectMcp(loaded);
+    try {
+      for (const s of mcp.status()) {
+        if (s.state === "connected") ok(`MCP ${s.name}: connected, ${s.tools.length} tools`);
+        else if (s.state === "disabled") ok(`MCP ${s.name}: disabled`);
+        else fail(`MCP ${s.name}: ${firstLine(s.error)}`);
+      }
+      const policy = new AllowlistPolicy(config.tools.allow);
+      const denied = mcp.tools().filter((t) => !policy.check(t).allowed).length;
+      if (denied > 0) warn(`${denied} MCP tools are not in tools.allow (add e.g. "<server>__*" to enable them)`);
+    } finally {
+      await mcp.close();
+    }
   }
 
   if (config.storage.provider === "memory") {

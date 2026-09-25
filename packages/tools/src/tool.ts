@@ -23,6 +23,11 @@ export interface BanglaClawTool<I = unknown, O = unknown> {
   description: string;
   inputSchema: z.ZodType<I>;
   outputSchema: z.ZodType<O>;
+  /**
+   * JSON Schema advertised to the model. Defaults to one generated from `inputSchema`; set it
+   * when the tool already has an authoritative JSON Schema (e.g. tools discovered over MCP).
+   */
+  parameters?: Record<string, unknown>;
   risk: ToolRisk;
   /** Per-call timeout; defaults to 10s. */
   timeoutMs?: number;

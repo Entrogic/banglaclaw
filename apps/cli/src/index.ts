@@ -9,6 +9,7 @@ import {
   describe,
   doctor,
   init,
+  mcpList,
   planned,
   runList,
   runShow,
@@ -22,7 +23,7 @@ import { red } from "./render.js";
 const program = new Command()
   .name("banglaclaw")
   .description("Bangla-first AI agent runtime")
-  .version("0.2.0")
+  .version("0.3.0")
   .option("-c, --config <path>", "path to banglaclaw.yaml");
 
 const globals = () => program.opts<{ config?: string }>();
@@ -78,7 +79,8 @@ const db = program.command("db").description("manage PostgreSQL storage (uses DA
 db.command("migrate").description("apply schema migrations and create checkpoint tables").action(() => dbMigrate(globals()));
 db.command("status").description("show migration status").action(() => dbStatus(globals()));
 
-program.command("mcp").description("inspect MCP servers").command("list").action(planned("mcp list", "v0.3"));
+const mcp = program.command("mcp").description("inspect MCP servers");
+mcp.command("list").description("connect to configured MCP servers and list their tools").action(() => mcpList(globals()));
 program
   .command("init")
   .description("create banglaclaw.yaml in the current directory")

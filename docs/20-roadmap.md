@@ -32,10 +32,10 @@
 
 ## v0.3 — MCP
 
-- [ ] MCP client
-- [ ] MCP tool discovery
-- [ ] MCP execution
-- [ ] Example MCP server
+- [x] MCP client
+- [x] MCP tool discovery
+- [x] MCP execution
+- [x] Example MCP server
 
 ## v0.4 — Gateway
 

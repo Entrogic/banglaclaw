@@ -36,10 +36,26 @@ skills:
   dirs: [skills]
   maxActive: 2
 
+mcp:
+  servers:
+    bangladesh:
+      transport: stdio          # stdio | http
+      command: node
+      args: [--import, tsx, mcp-servers/bangladesh/src/bin.ts]
+      env: {}                   # values may use ${VAR}
+      # cwd: .                  # relative to the config file
+      timeoutMs: 30000          # per tool call
+      connectTimeoutMs: 15000
+      enabled: true
+    # remote:
+    #   transport: http
+    #   url: https://mcp.example.com/mcp
+    #   headers: { Authorization: "Bearer ${REMOTE_MCP_TOKEN}" }
+
 timezone: Asia/Dhaka
 ```
 
-`banglaclaw init` writes this template.
+`banglaclaw init` writes this template. MCP tools must also be allowed in `tools.allow`, for example `bangladesh__*`.
 
 Unknown keys are rejected, which also prevents API keys from being written into the file.
 
@@ -56,7 +72,7 @@ Unknown keys are rejected, which also prevents API keys from being written into 
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |
 | `BANGLACLAW_LOG_LEVEL` | `debug` \| `info` \| `warn` (default) \| `error`; JSON logs go to stderr |
 
-Planned sections (`gateway`, `mcp`) arrive with their roadmap milestones.
+A planned `gateway` section arrives with v0.4.
 
 ## Requirements
 

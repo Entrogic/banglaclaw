@@ -29,7 +29,7 @@ export class ToolRegistry {
   /** Specs for the given tools (default: all), for binding to a chat model. */
   toSpecs(tools: AnyTool[] = this.list()): ToolSpec[] {
     return tools.map((tool) => {
-      const parameters: Record<string, unknown> = { ...z.toJSONSchema(tool.inputSchema, { io: "input" }) };
+      const parameters: Record<string, unknown> = { ...(tool.parameters ?? z.toJSONSchema(tool.inputSchema, { io: "input" })) };
       delete parameters.$schema;
       return {
         type: "function",

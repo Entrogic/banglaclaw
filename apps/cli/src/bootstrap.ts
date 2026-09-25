@@ -1,5 +1,6 @@
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { AgentRuntime } from "@banglaclaw/agent";
+import { McpManager } from "@banglaclaw/mcp";
 import { createProvider } from "@banglaclaw/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunStore, type SessionStore } from "@banglaclaw/session";
 import { ConfigError, createLogger, loadConfig, parseLogLevel, type LoadedConfig } from "@banglaclaw/shared";
@@ -15,10 +16,23 @@ export function load(options: GlobalOptions): LoadedConfig {
   return loadConfig(options.config !== undefined ? { path: options.config } : {});
 }
 
-export function buildRegistry(): ToolRegistry {
+export function buildRegistry(mcp?: McpManager): ToolRegistry {
   const registry = new ToolRegistry();
   for (const tool of builtinTools) registry.register(tool);
+  for (const tool of mcp?.tools() ?? []) registry.register(tool);
   return registry;
+}
+
+/** Connects configured MCP servers. Failed servers are reported via status(), not thrown. */
+export async function connectMcp(loaded: LoadedConfig): Promise<McpManager> {
+  const manager = new McpManager({
+    servers: loaded.config.mcp.servers,
+    baseDir: loaded.baseDir,
+    clientVersion: "0.3.0",
+    logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }),
+  });
+  await manager.connectAll();
+  return manager;
 }
 
 export function loadSkills(loaded: LoadedConfig): SkillSet {
@@ -79,14 +93,23 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
   };
 }
 
-/** Wires config → provider, tools, policy, skills, storage → AgentRuntime. */
-export async function createRuntime(options: GlobalOptions): Promise<{ runtime: AgentRuntime; services: Services }> {
+/** Wires config → provider, tools (built-in + MCP), policy, skills, storage → AgentRuntime. */
+export async function createRuntime(options: GlobalOptions): Promise<{ runtime: AgentRuntime; services: Services; mcp: McpManager }> {
   const services = await openServices(options);
+  let mcp: McpManager | undefined;
   try {
     const { config, secrets } = services.loaded;
+    const provider = createProvider(config.models.default, secrets);
+    mcp = await connectMcp(services.loaded);
+    const connected = mcp;
+    const closeStorage = services.close;
+    services.close = async () => {
+      await connected.close();
+      await closeStorage();
+    };
     const runtime = new AgentRuntime({
-      provider: createProvider(config.models.default, secrets),
-      registry: buildRegistry(),
+      provider,
+      registry: buildRegistry(mcp),
       policy: new AllowlistPolicy(config.tools.allow),
       sessions: services.sessions,
       runs: services.runs,
@@ -100,9 +123,10 @@ export async function createRuntime(options: GlobalOptions): Promise<{ runtime: 
       ...(services.checkpointer !== undefined && { checkpointer: services.checkpointer }),
       logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }),
     });
-    return { runtime, services };
+    return { runtime, services, mcp };
   } catch (error) {
     await services.close();
+    await mcp?.close();
     throw error;
   }
 }

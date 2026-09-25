@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/session",
+  "name": "@banglaclaw/mcp",
   "version": "0.3.0",
   "private": true,
   "type": "module",
@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@banglaclaw/shared": "workspace:*",
-    "@langchain/core": "^1.2.12"
+    "@banglaclaw/tools": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "zod": "^4.6.5"
   }
 }

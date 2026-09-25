@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **v0.1 (agent core) and v0.2 (sessions, PostgreSQL, skills, short-term memory, checkpoints) are implemented**; v0.3 (MCP) is next — see docs/20-roadmap.md. Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
+BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **v0.1 (agent core), v0.2 (sessions, PostgreSQL, skills, short-term memory, checkpoints) and v0.3 (MCP client + example server) are implemented**; v0.4 (gateway) is next — see docs/20-roadmap.md. Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
 
 ## Commands
 
@@ -13,7 +13,7 @@ pnpm workspaces + Turborepo. Never use npm or yarn. Node 22+.
 ```bash
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # pre-PR gate
-pnpm banglaclaw <cmd>          # CLI from source: chat | agent run | session | run | skill list | tool list | db migrate | init | doctor
+pnpm banglaclaw <cmd>          # CLI from source: chat | agent run | session | run | skill list | tool list | mcp list | db migrate | init | doctor
 pnpm dev                       # chat REPL with tsx watch
 pnpm --filter @banglaclaw/agent test language              # one test file (name filter)
 pnpm --filter @banglaclaw/agent exec vitest run -t "maxIterations"   # one test by name
@@ -30,7 +30,7 @@ Live model runs need `OPENAI_API_KEY` or `BANGLACLAW_PROVIDER=anthropic` + `ANTH
 
 ## Monorepo mechanics
 
-- Packages: `packages/{shared,providers,tools,session,skills,storage,agent}`, `apps/cli`, all named `@banglaclaw/*`. Dependency direction: `shared` ← `providers`, `tools`, `session`, `skills` ← `agent` ← `cli`; `storage` depends on `session` (implements its interfaces) and is wired in only by `cli`. Only `storage` imports Drizzle/pg; `agent` must not depend on `storage`. Shared types (`ToolSpec`, `StopReason`, `RunEvent`) live in `shared`.
+- Packages: `packages/{shared,providers,tools,session,skills,storage,mcp,agent}`, `apps/cli`, `mcp-servers/bangladesh`, all named `@banglaclaw/*`. Dependency direction: `shared` ← `providers`, `tools`, `session`, `skills` ← `agent` ← `cli`. `storage` (implements the `session` interfaces) and `mcp` (produces `tools`) are wired in only by `cli`; `agent` depends on neither. Only `storage` imports Drizzle/pg; `agent` must not depend on `storage`. Shared types (`ToolSpec`, `StopReason`, `RunEvent`) live in `shared`.
 - Each package's `exports` maps the custom condition `@banglaclaw/source` → `src/index.ts`. `tsconfig.base.json` (`customConditions`), tsx (`--conditions`) and each `vitest.config.ts` use it, so typecheck/test/dev need no build. `tsconfig.build.json` clears the condition so `tsc` builds against dependencies' `dist/`.
 - ESM with `NodeNext`: relative imports need `.js` extensions. Strict + `noUncheckedIndexedAccess`; ESLint forbids `any` and non-null assertions.
 - TypeScript is pinned to 6.x because typescript-eslint does not support TS 7 yet.
@@ -56,9 +56,10 @@ What exists:
 - **Language** (`language.ts`): deterministic `bn` / `bn-en` / `en` from Bengali-script word ratio plus a Banglish lexicon; the system prompt (`prompts.ts`, versioned by `SYSTEM_PROMPT_VERSION`) tells the model to reply in the same language/script.
 - **Tools** (`packages/tools`): `BanglaClawTool` with Zod v4 `inputSchema`/`outputSchema` and `risk`. `executeTool` runs lookup → input validation → `PermissionPolicy` → execute with timeout → output validation → audit, and returns failures as error observations instead of throwing. `AllowlistPolicy` is deny-by-default and always denies `destructive`. The graph binds only allowed tools and the executor re-checks anyway.
 - **Providers** (`packages/providers`): `ModelProvider { id; chat; stream }` taking `{tools?: ToolSpec[], signal?}`; `LangChainProvider` wraps `ChatOpenAI` (openai-compatible, optional `baseUrl`) or `ChatAnthropic`. Use `FakeProvider` (scripted turns, records calls) for agent tests.
+- **MCP** (`packages/mcp`, docs/10): `McpManager` connects the servers in `mcp.servers` (stdio or Streamable HTTP) in parallel and wraps each discovered tool as a `BanglaClawTool` named `<server>__<tool>`. It keeps the server's JSON Schema as `parameters` and validates input with `z.fromJSONSchema`. Tools run through the normal `executeTool`/allowlist path (use `bangladesh__*` wildcards). They default to `sensitive`, and `destructiveHint` makes them `destructive` (always denied). A failed server is reported via `status()` and never thrown. Stdio servers get `getDefaultEnvironment()` plus their configured `env`, with `${VAR}` expanded at connect time. Tests use `InMemoryTransport` via `transportFactory`; the stdio test spawns `mcp-servers/bangladesh/src/bin.ts` with `--import tsx`.
 - **Config** (`packages/shared/config.ts`): `banglaclaw.yaml` + `BANGLACLAW_*` env overrides validated by a strict Zod schema. API keys and `DATABASE_URL` come only from env, and the strict schema rejects them in YAML. Relative paths (such as `skills.dirs`) resolve against `baseDir`, which is the config file's directory or else cwd. The logger writes redacted JSON to stderr, because stdout is reserved for streamed replies.
 
-Planned (docs/04, 10): router/planner/verifier nodes, MCP client/servers (`mcp-servers/`), gateway, channels, auth/users. Follow the layout in docs/19-development.md; `AGENT.md` §2 shows a different generic layout (`apps/api`, `packages/llm`, …) — prefer docs/19 and ask before diverging.
+Planned (docs/04, 05, 10): router/planner/verifier nodes, gateway (REST/SSE, auth, rate limiting), channels, auth/users, exposing BanglaClaw as an MCP server. Follow the layout in docs/19-development.md; `AGENT.md` §2 shows a different generic layout (`apps/api`, `packages/llm`, …) — prefer docs/19 and ask before diverging.
 
 ## Rules that matter here (from AGENT.md, docs/14)
 

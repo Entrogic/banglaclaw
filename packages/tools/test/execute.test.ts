@@ -89,6 +89,14 @@ describe("executeTool", () => {
     expect(result.audit.error).toMatch(/destructive/);
   });
 
+  it("supports prefix wildcards but not a bare *", () => {
+    const policy = new AllowlistPolicy(["bangladesh__*", "*"]);
+    const tool = (name: string) => ({ ...calculatorTool, name });
+    expect(policy.check(tool("bangladesh__list_divisions")).allowed).toBe(true);
+    expect(policy.check(tool("calculator")).allowed).toBe(false);
+    expect(policy.check({ ...tool("bangladesh__wipe"), risk: "destructive" }).allowed).toBe(false);
+  });
+
   it("reports unknown tools", async () => {
     const { run } = setup([]);
     expect((await run("rm_rf", {})).audit.status).toBe("unknown_tool");
@@ -124,6 +132,15 @@ describe("ToolRegistry", () => {
       },
     });
     expect(spec?.function.parameters).not.toHaveProperty("$schema");
+  });
+
+  it("prefers an explicit JSON Schema for the model", () => {
+    const registry = new ToolRegistry().register({
+      ...calculatorTool,
+      name: "remote__tool",
+      parameters: { $schema: "x", type: "object", properties: { q: { type: "string" } } },
+    });
+    expect(registry.toSpecs()[0]?.function.parameters).toEqual({ type: "object", properties: { q: { type: "string" } } });
   });
 
   it("rejects duplicate and non-snake_case names", () => {

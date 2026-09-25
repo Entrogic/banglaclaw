@@ -21,6 +21,7 @@ describe("loadConfig", () => {
     expect(config.storage).toEqual({ provider: "memory", checkpoints: true });
     expect(config.memory.maxHistoryMessages).toBe(20);
     expect(config.skills).toEqual({ dirs: ["skills"], maxActive: 2 });
+    expect(config.mcp).toEqual({ servers: {} });
     expect(secrets).toEqual({});
   });
 
@@ -64,6 +65,35 @@ describe("loadConfig", () => {
     expect(config.storage).toEqual({ provider: "postgres", checkpoints: false });
     expect(secrets.databaseUrl).toBe("postgres://u:p@localhost/db");
     expect(baseDir).toBe(cwd);
+  });
+
+  it("parses MCP servers with defaults", () => {
+    const cwd = tempDir(
+      [
+        "mcp:",
+        "  servers:",
+        "    bangladesh:",
+        "      transport: stdio",
+        "      command: node",
+        "      args: [server.js]",
+        "      env: { TOKEN: '${BD_TOKEN}' }",
+        "    remote:",
+        "      transport: http",
+        "      url: https://mcp.example.com/mcp",
+        "      timeoutMs: 5000",
+      ].join("\n"),
+    );
+    const { config } = loadConfig({ cwd, env: {} });
+    expect(config.mcp.servers.bangladesh).toEqual({
+      transport: "stdio", command: "node", args: ["server.js"], env: { TOKEN: "${BD_TOKEN}" },
+      enabled: true, timeoutMs: 30_000, connectTimeoutMs: 15_000,
+    });
+    expect(config.mcp.servers.remote).toMatchObject({ transport: "http", headers: {}, timeoutMs: 5000 });
+  });
+
+  it("rejects invalid MCP server names and transports", () => {
+    expect(() => loadConfig({ cwd: tempDir("mcp:\n  servers:\n    Bad-Name:\n      transport: stdio\n      command: x\n"), env: {} })).toThrow(/Invalid key/);
+    expect(() => loadConfig({ cwd: tempDir("mcp:\n  servers:\n    s:\n      transport: ws\n      url: ws://x\n"), env: {} })).toThrow(ConfigError);
   });
 
   it("rejects an unknown provider", () => {

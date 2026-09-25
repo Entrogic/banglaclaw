@@ -19,6 +19,37 @@ export const ModelConfigSchema = z.strictObject({
   temperature: z.number().min(0).max(2).optional(),
 });
 
+const McpCommonSchema = {
+  enabled: z.boolean().default(true),
+  /** Per tool-call timeout. */
+  timeoutMs: z.int().min(100).max(600_000).default(30_000),
+  /** Timeout for connecting and listing tools. */
+  connectTimeoutMs: z.int().min(100).max(120_000).default(15_000),
+};
+
+/** Values may reference environment variables as ${VAR}; they are expanded at connect time. */
+const EnvMapSchema = z.record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string());
+
+export const McpServerConfigSchema = z.discriminatedUnion("transport", [
+  z.strictObject({
+    transport: z.literal("stdio"),
+    command: z.string().min(1),
+    args: z.array(z.string()).default([]),
+    /** Extra environment for the server process. Only safe defaults (PATH, HOME, …) are inherited. */
+    env: EnvMapSchema.default({}),
+    /** Working directory, relative to the config file. */
+    cwd: z.string().min(1).optional(),
+    ...McpCommonSchema,
+  }),
+  z.strictObject({
+    transport: z.literal("http"),
+    url: z.url(),
+    headers: EnvMapSchema.default({}),
+    ...McpCommonSchema,
+  }),
+]);
+export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
+
 export const ConfigSchema = z.strictObject({
   agent: z.strictObject({ name: z.string().min(1).default("banglaclaw") }).prefault({}),
   models: z
@@ -55,6 +86,14 @@ export const ConfigSchema = z.strictObject({
       dirs: z.array(z.string().min(1)).default(["skills"]),
       /** Maximum skills activated for a single message. */
       maxActive: z.int().min(0).max(10).default(2),
+    })
+    .prefault({}),
+  mcp: z
+    .strictObject({
+      /** Server name → connection. Names prefix tool names: <server>__<tool>. */
+      servers: z
+        .record(z.string().regex(/^[a-z][a-z0-9_]{0,30}$/, "use lower snake_case (max 31 chars)"), McpServerConfigSchema)
+        .default({}),
     })
     .prefault({}),
 });

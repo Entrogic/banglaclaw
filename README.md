@@ -28,6 +28,13 @@ pnpm banglaclaw chat
 
 Run `pnpm banglaclaw init` (or copy `banglaclaw.example.yaml`) to create `banglaclaw.yaml` and configure models, limits, tools, storage and skills.
 
+MCP tools — copy `banglaclaw.example.yaml` to `banglaclaw.yaml` (it enables the bundled Bangladesh server), then:
+
+```bash
+pnpm banglaclaw mcp list
+pnpm banglaclaw agent run "কুমিল্লা কোন বিভাগে?"
+```
+
 Persistent sessions with PostgreSQL:
 
 ```bash
@@ -81,5 +88,6 @@ Pre-alpha. Implemented so far:
 
 - **v0.1 Agent Core**: TypeScript monorepo, LangGraph runtime, OpenAI-compatible and Anthropic providers, permission-checked tool calling, streaming, Bangla/Banglish/English detection, CLI.
 - **v0.2 State and Skills**: sessions, optional PostgreSQL persistence (Drizzle), short-term memory window, per-run LangGraph checkpoints, and SKILL.md skills.
+- **v0.3 MCP**: MCP client (stdio and Streamable HTTP), tool discovery into the permission-checked tool registry, and a bundled Bangladesh reference-data MCP server.
 
-Next up is MCP (v0.3) — see the [roadmap](docs/20-roadmap.md).
+Next up is the Gateway (v0.4) — see the [roadmap](docs/20-roadmap.md).

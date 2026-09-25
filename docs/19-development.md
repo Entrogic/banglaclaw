@@ -39,7 +39,7 @@ banglaclaw/
 └── turbo.json
 ```
 
-## Implemented so far (v0.2)
+## Implemented so far (v0.3)
 
 ```text
 apps/cli            banglaclaw CLI (commander)
@@ -49,7 +49,9 @@ packages/tools      tool contract, registry, permission policy, executeTool, bui
 packages/session    Session/Run models, SessionStore/RunStore, in-memory stores, SessionManager, trimHistory
 packages/skills     SKILL.md parsing, discovery, trigger-based selection
 packages/storage    Drizzle schema + migrations, Postgres stores, PostgresSaver checkpoints
+packages/mcp        MCP client manager, MCP tool wrapping (stdio + Streamable HTTP)
 packages/agent      language detection, prompts, LangGraph graph, AgentRuntime
+mcp-servers/        bundled MCP servers (bangladesh)
 skills/             bundled skills (calculation, time-and-date)
 docker/             compose file for local PostgreSQL
 ```
