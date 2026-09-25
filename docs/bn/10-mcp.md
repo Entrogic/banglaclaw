@@ -82,9 +82,25 @@ pnpm banglaclaw doctor
 | `format_taka` | লাখ/কোটি গ্রুপিং (৳১,২৩,৪৫,৬৭৮.৫০) এবং কোটি/লক্ষ/হাজার ভাঙন |
 | `convert_digits` | বাংলা ↔ ইংরেজি অঙ্ক |
 
+## BanglaClaw নিজেই MCP সার্ভার হিসেবে
+
+`banglaclaw mcp serve` BanglaClaw-কে stdio-তে একটি MCP সার্ভার হিসেবে চালায়। ফলে Claude Desktop, Cursor, Claude Code-এর মতো অন্য এজেন্ট বা IDE BanglaClaw-কে বাংলা-প্রধান সহকারী হিসেবে ব্যবহার করতে পারে।
+
+| টুল | কাজ |
+|---|---|
+| `ask` | `{ message, conversation?, new_conversation? }` → এজেন্টের উত্তর। প্রতিটি `conversation` নাম (ডিফল্ট `default`) `mcp` চ্যানেলে আলাদা সেশন, নিজস্ব ইতিহাস সহ; `new_conversation: true` দিলে নতুন করে শুরু হয়। রান ব্যর্থ হলে `isError`। |
+| `search_knowledge` | `{ query, limit? }` → নলেজ বেস থেকে মিলে যাওয়া অংশ। শুধু-পড়া; `knowledge.enabled` চালু থাকলেই দেখা যায়। |
+
+- **একই এজেন্ট, একই নিয়ম।** স্কিল, `tools.allow`, সীমা, টাইমআউট, অডিট ও স্টোরেজ সব আগের মতোই প্রযোজ্য; হ্যান্ডঅফও কাজ করে।
+- **বিশ্বাস।** সার্ভারটি যে ইউজার চালায় তার কনফিগ ও key নিয়ে চলে (CLI-এর মতো), নিজস্ব API key স্তর নেই। শুধু বিশ্বস্ত ক্লায়েন্টে নিবন্ধন করুন।
+- **stdout শুধু প্রোটোকলের জন্য।** লগ ও সতর্কবার্তা stderr-এ যায়।
+
+```bash
+claude mcp add banglaclaw -- banglaclaw -c /path/to/banglaclaw.yaml mcp serve
+```
+
 ## পরিকল্পনায় আছে
 
-- BanglaClaw-এর নির্বাচিত ক্ষমতা MCP সার্ভার হিসেবে প্রকাশ করা
 - সংযোগ ছিন্ন হলে পুনঃসংযোগ এবং `tools/list_changed` নোটিফিকেশন সামলানো
 - MCP resources ও prompts
 - প্রতি সার্ভারে টুল ফিল্টারিং এবং রিমোট সার্ভারের জন্য OAuth

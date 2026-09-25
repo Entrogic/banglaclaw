@@ -93,6 +93,7 @@ What exists:
   - Output goes through `ui/output.ts` (`emit(data, humanRenderer)` for `--json`, `print`/`note`/`warn`), `ui/table.ts` (string-width, Bangla-safe) and `ui/theme.ts` (colors and symbols). Never `console.log` in commands.
   - `src/tui/` is the Ink chat: `useChat.ts` bridges RunEvents to state, and `App.tsx` handles input, slash menu and status bar. It is tested with ink-testing-library in `test/tui.test.tsx`. `chat-plain.ts` is the non-TTY fallback (async readline iterator).
   - `src/init/config.ts` holds the pure wizard logic (`buildConfigYaml`, `mergeEnv`).
+  - `src/mcp-server.ts` (`createBanglaClawMcpServer`) is BanglaClaw as an MCP server (`mcp serve`, stdio): `ask` runs the agent on channel `mcp` keyed by conversation name; `search_knowledge` when enabled. stdout is the protocol, so that command must never `print`. Tested with `InMemoryTransport`.
 - **Config** (`packages/shared/config.ts`): `banglaclaw.yaml` + `BANGLACLAW_*` env overrides validated by a strict Zod schema. API keys and `DATABASE_URL` come only from env, and the strict schema rejects them in YAML. Relative paths (such as `skills.dirs`) resolve against `baseDir`, which is the config file's directory or else cwd. The logger writes redacted JSON to stderr, because stdout is reserved for streamed replies.
 
 Post-1.0 ideas (docs/20): per-tenant document ACLs, push of operator replies to API clients, shared rate-limit store, router/planner/verifier nodes, more channels, exposing BanglaClaw as an MCP server.

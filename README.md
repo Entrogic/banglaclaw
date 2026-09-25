@@ -55,6 +55,12 @@ pnpm banglaclaw mcp list
 pnpm banglaclaw agent run "কুমিল্লা কোন বিভাগে?"
 ```
 
+BanglaClaw as an MCP server for Claude Desktop, Cursor or Claude Code (see [MCP](docs/10-mcp.md#banglaclaw-as-an-mcp-server)):
+
+```bash
+claude mcp add banglaclaw -- pnpm --dir "$PWD" banglaclaw mcp serve
+```
+
 HTTP gateway (see [API](docs/18-api.md)):
 
 ```bash

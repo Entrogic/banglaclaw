@@ -19,6 +19,7 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
   - API keys: issue (token shown once), list and revoke
   - `pnpm --filter @banglaclaw/dashboard demo` for UI work with seeded data
 - `@banglaclaw/client` covers the admin endpoints.
+- **BanglaClaw as an MCP server:** `banglaclaw mcp serve` (stdio) offers `ask` (the agent, with per-conversation history, skills, tools and permission policy) and read-only `search_knowledge`, for Claude Desktop, Cursor, Claude Code and other MCP clients (docs/10).
 - **Live operator replies for API clients:** follow a session with WebSocket `subscribe` or `GET /v1/sessions/:id/events` (SSE) to receive `operator_message` and `handoff_released` events; the web chat follows its session automatically, and `delivered` is true when a follower got the reply. SDK: `sessions.events(id, { signal })`; `parseSSE` takes an optional `signal`.
 - With memory storage, the temporary key printed by `serve` is now an admin key, so the dashboard works without Postgres.
 

@@ -2,6 +2,7 @@ import { Command, Option } from "commander";
 import type { GlobalOptions } from "./bootstrap.js";
 import { auditList, dbMigrate, dbStatus, handoffList, handoffRelease, handoffReply, handoffShow, keyCreate, keyList, keyRevoke } from "./commands/admin.js";
 import { agentList, mcpList, skillList, toolList } from "./commands/catalog.js";
+import { mcpServe } from "./commands/mcp-serve.js";
 import { agentRun, chat } from "./commands/chat.js";
 import { completionScript } from "./commands/completion.js";
 import { doctor } from "./commands/doctor.js";
@@ -164,7 +165,13 @@ export function buildProgram(): Command {
   db.command("status").description("migration status").action(() => dbStatus(g()));
   program.command("tool").description("tools").command("list").description("built-in, plugin and MCP tools").action(() => toolList(g()));
   program.command("skill").description("skills").command("list").description("discovered skills").action(() => skillList(g()));
-  program.command("mcp").description("MCP servers").command("list").description("connect and list MCP servers and tools").action(() => mcpList(g()));
+  const mcp = program.command("mcp").description("MCP servers, and BanglaClaw as an MCP server");
+  mcp.command("list").description("connect and list MCP servers and tools").action(() => mcpList(g()));
+  mcp
+    .command("serve")
+    .description("run BanglaClaw as an MCP server on stdio (Claude Desktop, Cursor, Claude Code…)")
+    .addHelpText("after", examples(["banglaclaw mcp serve", "claude mcp add banglaclaw -- banglaclaw -c /path/to/banglaclaw.yaml mcp serve"]))
+    .action(() => mcpServe(g()));
   program.command("version").description("version and environment details").action(() => version(g()));
   program.helpCommand("help [command]", "show help for a command");
   program

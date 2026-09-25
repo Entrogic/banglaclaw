@@ -80,4 +80,4 @@
 - Router/planner/verifier graph nodes; streaming replies by editing channel messages
 - Discord and Messenger channels, a public web widget with visitor sessions
 - Voice notes (speech-to-text), images, DOCX and URL loaders
-- Exposing BanglaClaw itself as an MCP server; publishing `@banglaclaw/*` packages to npm
+- Publishing `@banglaclaw/*` packages to npm; MCP resources and prompts for the BanglaClaw MCP server

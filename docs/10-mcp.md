@@ -66,9 +66,43 @@ mcp:
 | `format_taka` | lakh/crore grouping (৳১,২৩,৪৫,৬৭৮.৫০) and a কোটি/লক্ষ/হাজার breakdown |
 | `convert_digits` | Bangla ↔ English digits |
 
+## BanglaClaw as an MCP server
+
+`banglaclaw mcp serve` runs BanglaClaw itself as an MCP server on stdio, so other agents and IDEs can use it as a Bangla-first assistant. The server lives in `apps/cli/src/mcp-server.ts`.
+
+| Tool | Purpose |
+|---|---|
+| `ask` | `{ message, conversation?, new_conversation? }` → the agent's reply (text) plus `{ reply, conversation, sessionId, status, language, skills, tools }`. Each `conversation` name (default `default`) is a session on channel `mcp` with its own history; `new_conversation: true` starts it over. Failed runs return `isError`. |
+| `search_knowledge` | `{ query, limit? }` → matching passages from the knowledge base. Read-only; only listed when `knowledge.enabled` is true. |
+
+- **Same agent, same rules.** Runs go through the normal runtime: skills, `tools.allow`, limits, timeouts, audit and storage all apply, and handoff works (the reply says a human operator has taken over). Cancelling the MCP request cancels the run.
+- **Trust.** The server runs with the configuration and keys of the user who starts it, like the CLI, and has no API-key layer of its own. Only register it with clients you trust to use your model quota and data.
+- **stdout is the protocol.** Logs, knowledge ingestion notes and MCP warnings go to stderr.
+
+Claude Code:
+
+```bash
+claude mcp add banglaclaw -- banglaclaw -c /path/to/banglaclaw.yaml mcp serve
+```
+
+Claude Desktop (`claude_desktop_config.json`), from a source checkout:
+
+```json
+{
+  "mcpServers": {
+    "banglaclaw": {
+      "command": "pnpm",
+      "args": ["--dir", "/path/to/bangla-claw", "banglaclaw", "mcp", "serve"],
+      "env": { "OPENAI_API_KEY": "sk-…" }
+    }
+  }
+}
+```
+
+The CLI loads `./.env` from its working directory, so with `pnpm --dir` the checkout's `.env` is used and `env` can be left out.
+
 ## Planned
 
-- Expose selected BanglaClaw capabilities as an MCP server
 - Reconnect on dropped connections and handle `tools/list_changed` notifications
 - MCP resources and prompts
 - Per-server tool filtering and OAuth for remote servers

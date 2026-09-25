@@ -25,6 +25,7 @@ banglaclaw serve     # API, web chat, metrics and channels
 | | `key create \| list \| revoke` | API keys: `--role user\|operator\|admin`, `--scopes read,run` |
 | | `handoff list \| show \| reply \| release` | Human handoff queue (docs/04) |
 | | `audit [--action …]` | Security audit log |
+| | `mcp serve` | BanglaClaw as an MCP server on stdio for other agents (docs/10) |
 | **Setup** | `init [--yes] [--force]` | Setup wizard; `--yes` writes the commented template |
 | | `doctor` | Checks config, keys, storage, MCP, channels, knowledge and plugins |
 | | `db migrate \| status` | PostgreSQL schema |
