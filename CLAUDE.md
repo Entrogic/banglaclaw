@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **Version 1.1.0** (1.1 added the professional CLI: Ink chat, `init` wizard, `--json`): all roadmap milestones (v0.1–v1.0) are implemented; see CHANGELOG.md and docs/20-roadmap.md ("After 1.0" lists ideas). The `/v1` HTTP API is stable and changes must be additive (docs/18). Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
+BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **Version 1.1.0** (1.1 added the professional CLI: Ink chat, `init` wizard, `--json`): all roadmap milestones (v0.1–v1.0) are implemented; see CHANGELOG.md and docs/20-roadmap.md ("After 1.0" lists ideas). The `/v1` HTTP API is stable and changes must be additive (docs/18). Architecture is specified in `docs/` first (`docs/bn/` has Bangla versions of 05, 08, 10 and 11; keep them in sync when those change): when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
 
 ## Commands
 

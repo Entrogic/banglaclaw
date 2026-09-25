@@ -41,5 +41,5 @@ A channel must not contain agent reasoning logic.
 ## Planned
 
 - Shared rate-limit store (Redis) for horizontal scaling
-- Key scopes (read-only, run-only) and per-key tool allowlists
+- Per-key tool allowlists (key scopes `read`/`run` shipped in v1.0)
 - A dedicated `apps/gateway` entry point; today the CLI hosts it (`banglaclaw serve`)

@@ -132,6 +132,7 @@ pnpm banglaclaw session list
 - [Operations](docs/22-operations.md)
 - [Plugins](docs/23-plugins.md)
 - [Architecture Decision Records](docs/adr/)
+- বাংলা ডকুমেন্টেশন: [গেটওয়ে, স্কিল, MCP, চ্যানেল](docs/bn/README.md)
 
 ## Design principles
 

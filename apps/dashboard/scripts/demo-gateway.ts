@@ -21,7 +21,7 @@ const sessions = new InMemorySessionStore();
 const runs = new InMemoryRunStore(sessions);
 const registry = new ToolRegistry();
 for (const tool of builtinTools) registry.register(tool);
-const policy = new AllowlistPolicy(["calculator", "current_time"]);
+const policy = new AllowlistPolicy(["calculator", "current_datetime"]);
 
 // Real runs through the runtime give the sessions genuine transcripts.
 const conversations: { channel: string; externalId: string; turns: [string, string][] }[] = [

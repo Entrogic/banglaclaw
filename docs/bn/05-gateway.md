@@ -1,0 +1,81 @@
+# ০৫ — গেটওয়ে (Gateway)
+
+> ইংরেজি মূল: [../05-gateway.md](../05-gateway.md) · API-র পূর্ণ বিবরণ: [../18-api.md](../18-api.md)
+
+## উদ্দেশ্য
+
+গেটওয়ে হলো চ্যানেল ও এজেন্ট রানটাইমের মাঝখানের ট্রান্সপোর্ট ও অর্কেস্ট্রেশন সীমানা। বাইরের সব অনুরোধ (REST, WebSocket, চ্যানেল webhook) গেটওয়ে দিয়ে ঢোকে; রানটাইম কখনো কোনো চ্যানেলের API চেনে না (ADR-0005)।
+
+## চালু করা
+
+```bash
+pnpm banglaclaw serve                  # ডিফল্ট: http://127.0.0.1:3000
+pnpm banglaclaw serve --port 8080 --host 0.0.0.0
+```
+
+`serve` একসাথে API, ওয়েব চ্যাট (`/chat`), মেট্রিক্স (`/metrics`) এবং চালু থাকা চ্যানেলগুলো শুরু করে। মেমরি স্টোরেজে এটি শুধু এই প্রসেসের জন্য একটি অস্থায়ী API key প্রিন্ট করে; স্থায়ী key-র জন্য PostgreSQL স্টোরেজ ও `banglaclaw key create` ব্যবহার করুন।
+
+```bash
+curl -H "Authorization: Bearer <key>" -H "Content-Type: application/json" \
+  -d '{"text":"হ্যালো"}' http://127.0.0.1:3000/v1/agents/run
+```
+
+## যা বাস্তবায়িত আছে
+
+`packages/gateway` একটি Hono অ্যাপ (ADR-0007), যা Node-এ `@hono/node-server` ও `@hono/node-ws` দিয়ে চলে।
+
+| দায়িত্ব | বাস্তবায়ন |
+|---|---|
+| অথেনটিকেশন | API key (`packages/auth`): `bck_<id>_<secret>`; শুধু SHA-256 হ্যাশ জমা থাকে, বাতিল (revoke) করা যায়, `last_used_at` রাখা হয় |
+| অথরাইজেশন | সেশন, মেসেজ ও রান key-র মালিক ইউজারের মধ্যে সীমাবদ্ধ; অন্য ইউজারের জিনিস চাইলে 404 |
+| key scope | `read` (GET অনুরোধ) ও `run` (রান ও অন্যান্য লেখা); scope না থাকলে 403 `insufficient_scope` |
+| রোল | `user` (ডিফল্ট), `operator` (`/v1/handoffs`), `admin` (অপারেটরের অধিকার + `/v1/audit` ও `/v1/admin`) |
+| মেসেজ নরমালাইজেশন | HTTP/WS বডি Zod দিয়ে যাচাই করে সাধারণ টেক্সট হিসেবে `AgentRuntime`-এ পাঠানো হয় |
+| সেশন নির্ধারণ | নির্দিষ্ট `sessionId`, ইউজারের `externalId`, অথবা নতুন `api` সেশন |
+| এজেন্ট চালানো | `AgentRuntime.run()`, সব অনুরোধে একটিই রানটাইম |
+| স্ট্রিমিং | রান এন্ডপয়েন্টে SSE; `/v1/ws`-এ WebSocket, একাধিক রান ও বাতিল (cancel) সহ |
+| রেট লিমিট | প্রতি key-তে token bucket (`gateway.rateLimit.requestsPerMinute`) এবং একসাথে চলা রানের সীমা (`maxConcurrentRuns`), প্রসেসের ভেতরে |
+| রিকোয়েস্ট আইডি | `X-Request-Id` গ্রহণ বা তৈরি করা হয়, রেসপন্সে ফেরত যায়, লগে ও এররে থাকে |
+| এরর ম্যাপিং | সব এররের একই ধরনের বডি; প্রোভাইডারের ব্যর্থতা → 502, টাইমআউট → 504; ভেতরের তথ্য কখনো ফাঁস হয় না |
+
+ক্লায়েন্ট সংযোগ ছিন্ন করলে (SSE) বা সকেট বন্ধ হলে (WS) চলমান রান বাতিল হয়ে যায়।
+
+v0.5 থেকে গেটওয়ে চ্যানেলের webhook রুটও (`deps.routes`) যুক্ত করে। এগুলো API key নয়, নিজস্ব সিগনেচার যাচাই করে। গেটওয়ে `/chat`-এ ওয়েব চ্যাট পেজও দেয় (`deps.webChat`)। বিস্তারিত: [11-channels.md](11-channels.md)।
+
+## অ্যাডমিন ড্যাশবোর্ড
+
+`gateway.dashboardDir` সেট করলে গেটওয়ে বিল্ড করা অ্যাডমিন ড্যাশবোর্ড (`apps/dashboard`) `/admin`-এ কঠোর CSP সহ পরিবেশন করে। পেজটি নিজে পাবলিক স্ট্যাটিক ফাইল; এর প্রতিটি কল admin key নিয়ে `/v1/admin`-এ যায়।
+
+```bash
+pnpm build                                   # apps/dashboard/dist তৈরি হয়
+pnpm banglaclaw key create --user ops --role admin
+```
+
+```yaml
+gateway:
+  dashboardDir: apps/dashboard/dist          # কনফিগ ফাইলের সাপেক্ষে
+pricing:                                     # ঐচ্ছিক: খরচের আনুমানিক হিসাব (প্রতি ১০ লক্ষ টোকেনে USD)
+  "openai-compatible:gpt-4o-mini": { input: 0.15, output: 0.6 }
+```
+
+এরপর `http://127.0.0.1:3000/admin/` খুলে admin key দিয়ে সাইন ইন করুন। ড্যাশবোর্ডে রান, এরর, টোকেন ও খরচের চার্ট, সব ইউজারের সেশন এবং API key ব্যবস্থাপনা আছে। Docker ইমেজে এটি আগে থেকেই চালু।
+
+## প্রবাহ
+
+```text
+Telegram ─┐
+WhatsApp ─┤
+Web ──────┼──→ Gateway → Session → Agent Runtime
+CLI ──────┤
+REST ─────┘
+```
+
+## নিয়ম
+
+কোনো চ্যানেলে এজেন্টের যুক্তি বা সিদ্ধান্তের কোড থাকবে না।
+
+## পরিকল্পনায় আছে
+
+- একাধিক গেটওয়ে ইনস্ট্যান্সের জন্য শেয়ার্ড রেট-লিমিট স্টোর (Redis)
+- প্রতি key-তে আলাদা টুল অ্যালাউলিস্ট
+- আলাদা `apps/gateway` এন্ট্রি পয়েন্ট; এখন CLI-ই গেটওয়ে চালায় (`banglaclaw serve`)
