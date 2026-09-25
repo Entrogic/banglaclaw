@@ -1,0 +1,21 @@
+# Copy to banglaclaw.yaml. API keys are read from environment variables only.
+agent:
+  name: banglaclaw
+
+models:
+  default:
+    provider: openai-compatible   # or: anthropic
+    model: gpt-4o-mini
+    # baseUrl: http://localhost:11434/v1
+
+runtime:
+  maxIterations: 6
+  maxToolCalls: 8
+  timeoutMs: 60000
+
+tools:
+  allow:
+    - calculator
+    - current_datetime
+
+timezone: Asia/Dhaka
