@@ -46,6 +46,14 @@ curl -N -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
      -d '{"text":"ekhon koyta baje?"}' "http://127.0.0.1:3000/v1/agents/run?stream=true"
 ```
 
+Telegram bot (see [Channels](docs/11-channels.md)):
+
+```bash
+export TELEGRAM_BOT_TOKEN=123456:ABC...   # from @BotFather (or put it in .env)
+# banglaclaw.yaml: channels.telegram.enabled: true, allowedUserIds: [<your numeric id>]
+pnpm banglaclaw serve                     # long polling; also serves the web chat at /chat
+```
+
 Persistent sessions with PostgreSQL:
 
 ```bash
@@ -101,5 +109,6 @@ Pre-alpha. Implemented so far:
 - **v0.2 State and Skills**: sessions, optional PostgreSQL persistence (Drizzle), short-term memory window, per-run LangGraph checkpoints, and SKILL.md skills.
 - **v0.3 MCP**: MCP client (stdio and Streamable HTTP), tool discovery into the permission-checked tool registry, and a bundled Bangladesh reference-data MCP server.
 - **v0.4 Gateway**: HTTP API (Hono) with REST, SSE and WebSocket streaming, API-key authentication with per-user isolation, and per-key rate limits.
+- **v0.5 Channels**: Telegram (polling or webhook), WhatsApp Cloud API, a browser chat page, and allowlist access with per-chat rate limits.
 
-Next up is Channels (v0.5) — see the [roadmap](docs/20-roadmap.md).
+Next up is Knowledge / RAG (v0.6) — see the [roadmap](docs/20-roadmap.md).

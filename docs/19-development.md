@@ -39,7 +39,7 @@ banglaclaw/
 └── turbo.json
 ```
 
-## Implemented so far (v0.4)
+## Implemented so far (v0.5)
 
 ```text
 apps/cli            banglaclaw CLI (commander)
@@ -51,7 +51,8 @@ packages/skills     SKILL.md parsing, discovery, trigger-based selection
 packages/storage    Drizzle schema + migrations, Postgres stores, PostgresSaver checkpoints
 packages/mcp        MCP client manager, MCP tool wrapping (stdio + Streamable HTTP)
 packages/auth       users, API key generation/verification, AuthStore + in-memory store
-packages/gateway    Hono HTTP gateway: REST, SSE, WebSocket, rate limits, request ids
+packages/gateway    Hono HTTP gateway: REST, SSE, WebSocket, rate limits, request ids, /chat page
+packages/channels   ChannelRouter + Telegram (polling/webhook) and WhatsApp Cloud API adapters
 packages/agent      language detection, prompts, LangGraph graph, AgentRuntime
 mcp-servers/        bundled MCP servers (bangladesh)
 skills/             bundled skills (calculation, time-and-date)

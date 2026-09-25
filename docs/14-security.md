@@ -28,7 +28,7 @@ Security is a core architecture requirement, not a later feature.
 - Timeouts
 - Network restrictions
 
-## Implemented controls (v0.4)
+## Implemented controls (v0.5)
 
 - Deny-by-default tool allowlist; destructive tools are always denied (no confirmation flow yet)
 - Input and output validation, per-call timeouts and a run timeout, and iteration / tool-call limits
@@ -40,6 +40,11 @@ Security is a core architecture requirement, not a later feature.
   - per-key rate limits and a concurrent-run cap
   - body size and input length limits, CORS off by default
   - binds to 127.0.0.1 by default — see docs/05
+- Channels:
+  - allowlist access by default, per-chat rate limits, and rate-limited refusals
+  - Telegram webhook secret-token and WhatsApp `X-Hub-Signature-256` verification (timing-safe)
+  - tokens from the environment only, and never included in error messages
+  - web chat served with a strict CSP — see docs/11
 
 ## Principle
 

@@ -39,6 +39,23 @@ skills:
   dirs: [skills]
   maxActive: 2
 
+channels:
+  web:
+    enabled: true                # browser chat at http://<gateway>/chat
+  telegram:
+    enabled: false               # needs TELEGRAM_BOT_TOKEN (from @BotFather)
+    mode: polling                # polling (no public URL) | webhook (needs webhookUrl + TELEGRAM_WEBHOOK_SECRET)
+    # webhookUrl: https://bot.example.com
+    access: allowlist            # allowlist | open — every message costs model tokens
+    allowedUserIds: []           # your numeric Telegram user id(s)
+    rateLimitPerMinute: 10       # per chat
+  whatsapp:
+    enabled: false               # needs WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN
+    # phoneNumberId: "123456789012345"
+    access: allowlist
+    allowedNumbers: []           # e.g. ["8801712345678"]
+    rateLimitPerMinute: 10
+
 mcp:
   servers:
     # Bundled Bangladesh reference-data server (paths are relative to this file).

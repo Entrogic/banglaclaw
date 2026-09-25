@@ -50,6 +50,32 @@ export const McpServerConfigSchema = z.discriminatedUnion("transport", [
 ]);
 export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
+const AccessSchema = z.enum(["allowlist", "open"]);
+
+export const TelegramChannelSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  /** polling: no public URL needed. webhook: Telegram POSTs to <webhookUrl>/channels/telegram/webhook on the gateway. */
+  mode: z.enum(["polling", "webhook"]).default("polling"),
+  /** Public HTTPS base URL of the gateway (webhook mode), e.g. https://bot.example.com */
+  webhookUrl: z.url().optional(),
+  /** allowlist: only allowedUserIds are answered. open: anyone (rate limits still apply). */
+  access: AccessSchema.default("allowlist"),
+  allowedUserIds: z.array(z.union([z.int(), z.string().regex(/^\d+$/)]).transform(String)).default([]),
+  /** Messages per chat per minute. */
+  rateLimitPerMinute: z.int().min(1).max(1_000).default(10),
+});
+
+export const WhatsAppChannelSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  /** WhatsApp Cloud API phone number id (not the phone number). */
+  phoneNumberId: z.string().regex(/^\d+$/).optional(),
+  graphApiVersion: z.string().regex(/^v\d+\.\d+$/).default("v21.0"),
+  access: AccessSchema.default("allowlist"),
+  /** Sender numbers in international format without "+", e.g. 8801712345678. */
+  allowedNumbers: z.array(z.string().regex(/^\d{6,15}$/)).default([]),
+  rateLimitPerMinute: z.int().min(1).max(1_000).default(10),
+});
+
 export const ConfigSchema = z.strictObject({
   agent: z.strictObject({ name: z.string().min(1).default("banglaclaw") }).prefault({}),
   models: z
@@ -107,6 +133,14 @@ export const ConfigSchema = z.strictObject({
         .prefault({}),
     })
     .prefault({}),
+  channels: z
+    .strictObject({
+      telegram: TelegramChannelSchema.prefault({}),
+      whatsapp: WhatsAppChannelSchema.prefault({}),
+      /** Serve the browser chat page at /chat on the gateway. */
+      web: z.strictObject({ enabled: z.boolean().default(true) }).prefault({}),
+    })
+    .prefault({}),
   mcp: z
     .strictObject({
       /** Server name → connection. Names prefix tool names: <server>__<tool>. */
@@ -127,6 +161,14 @@ export interface Secrets {
   anthropicApiKey?: string;
   /** Contains credentials, so it is treated as a secret. */
   databaseUrl?: string;
+  telegramBotToken?: string;
+  /** Verifies Telegram webhook requests (X-Telegram-Bot-Api-Secret-Token). */
+  telegramWebhookSecret?: string;
+  whatsappAccessToken?: string;
+  /** Meta app secret used to verify X-Hub-Signature-256 on webhooks. */
+  whatsappAppSecret?: string;
+  /** Token echoed during webhook verification (hub.verify_token). */
+  whatsappVerifyToken?: string;
 }
 
 export interface LoadConfigOptions {
@@ -192,6 +234,17 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
   if (anthropicApiKey !== undefined) secrets.anthropicApiKey = anthropicApiKey;
   const databaseUrl = nonEmpty(env.DATABASE_URL);
   if (databaseUrl !== undefined) secrets.databaseUrl = databaseUrl;
+  const secretEnv: [keyof Secrets, string][] = [
+    ["telegramBotToken", "TELEGRAM_BOT_TOKEN"],
+    ["telegramWebhookSecret", "TELEGRAM_WEBHOOK_SECRET"],
+    ["whatsappAccessToken", "WHATSAPP_ACCESS_TOKEN"],
+    ["whatsappAppSecret", "WHATSAPP_APP_SECRET"],
+    ["whatsappVerifyToken", "WHATSAPP_VERIFY_TOKEN"],
+  ];
+  for (const [key, name] of secretEnv) {
+    const value = nonEmpty(env[name]);
+    if (value !== undefined) secrets[key] = value;
+  }
 
   const baseDir = source !== undefined ? dirname(source) : cwd;
   return source !== undefined ? { config, secrets, source, baseDir } : { config, secrets, baseDir };

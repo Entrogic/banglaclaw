@@ -30,7 +30,7 @@ loadDotEnv();
 const program = new Command()
   .name("banglaclaw")
   .description("Bangla-first AI agent runtime")
-  .version("0.4.0")
+  .version("0.5.0")
   .option("-c, --config <path>", "path to banglaclaw.yaml");
 
 const globals = () => program.opts<{ config?: string }>();
@@ -90,7 +90,7 @@ const mcp = program.command("mcp").description("inspect MCP servers");
 mcp.command("list").description("connect to configured MCP servers and list their tools").action(() => mcpList(globals()));
 program
   .command("serve")
-  .description("start the HTTP gateway (REST, SSE, WebSocket)")
+  .description("start the HTTP gateway (REST, SSE, WebSocket, web chat) and enabled channels")
   .option("-p, --port <port>", "port (default gateway.port, 3000)")
   .option("-H, --host <host>", "bind address (default gateway.host, 127.0.0.1)")
   .action((opts: { port?: string; host?: string }) => serve({ ...globals(), ...opts }));

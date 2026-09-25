@@ -196,6 +196,9 @@ importers:
       '@banglaclaw/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@banglaclaw/channels':
+        specifier: workspace:*
+        version: link:../../packages/channels
       '@banglaclaw/gateway':
         specifier: workspace:*
         version: link:../../packages/gateway
@@ -229,6 +232,9 @@ importers:
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      hono:
+        specifier: ^4.13.9
+        version: 4.13.9
 
   mcp-servers/bangladesh:
     dependencies:
@@ -272,6 +278,31 @@ importers:
       '@banglaclaw/shared':
         specifier: workspace:*
         version: link:../shared
+
+  packages/channels:
+    dependencies:
+      '@banglaclaw/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@banglaclaw/session':
+        specifier: workspace:*
+        version: link:../session
+      '@banglaclaw/shared':
+        specifier: workspace:*
+        version: link:../shared
+      hono:
+        specifier: ^4.13.9
+        version: 4.13.9
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@banglaclaw/providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@banglaclaw/tools':
+        specifier: workspace:*
+        version: link:../tools
 
   packages/gateway:
     dependencies:

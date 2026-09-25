@@ -1,3 +1,4 @@
+import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { createGatewayApp } from "../src/index.js";
 import { GatedProvider, makeDeps, parseSSE } from "./helpers.js";
@@ -150,5 +151,24 @@ describe("gateway REST", () => {
     const tools = (await (await app.request("/v1/tools", get(alice))).json()) as { tools: { name: string; allowed: boolean }[] };
     expect(tools.tools.map((t) => [t.name, t.allowed])).toEqual([["calculator", true], ["current_datetime", false]]);
     expect(await (await app.request("/v1/skills", get(alice))).json()).toMatchObject({ skills: [{ name: "calculation", tools: ["calculator"] }] });
+  });
+});
+
+describe("gateway extras", () => {
+  it("serves the web chat page with a strict CSP only when enabled", async () => {
+    const { deps } = await makeDeps();
+    expect((await createGatewayApp(deps).request("/chat")).status).toBe(404);
+    const res = await createGatewayApp({ ...deps, webChat: true }).request("/chat");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(res.headers.get("content-security-policy")).toContain("default-src 'none'");
+    expect(await res.text()).toContain("/v1/ws");
+  });
+
+  it("mounts extra routes outside /v1 auth", async () => {
+    const { deps } = await makeDeps();
+    const hook = new Hono().post("/channels/test/webhook", (c) => c.text("hooked"));
+    const res = await createGatewayApp({ ...deps, routes: [hook] }).request("/channels/test/webhook", { method: "POST" });
+    expect(await res.text()).toBe("hooked");
   });
 });

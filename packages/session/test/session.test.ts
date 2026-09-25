@@ -36,6 +36,11 @@ describe("InMemorySessionStore + SessionManager", () => {
     const byId = await manager.resolve({ sessionId: first.session.id, channel: "cli", agentId: "banglaclaw" });
     expect(byId.session.id).toBe(first.session.id);
     await expect(manager.resolve({ sessionId: "nope", channel: "cli", agentId: "x" })).rejects.toThrow(/not found/);
+
+    await manager.store.detachExternalId(first.session.id);
+    const fresh = await manager.resolve({ channel: "telegram", externalId: "chat-1", agentId: "banglaclaw" });
+    expect(fresh.created).toBe(true);
+    expect(fresh.session.id).not.toBe(first.session.id);
   });
 
   it("stores messages and returns the recent window oldest-first", async () => {

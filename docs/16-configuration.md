@@ -36,6 +36,24 @@ skills:
   dirs: [skills]
   maxActive: 2
 
+channels:
+  web:
+    enabled: true            # /chat page on the gateway
+  telegram:
+    enabled: false
+    mode: polling            # polling | webhook
+    # webhookUrl: https://bot.example.com
+    access: allowlist        # allowlist | open
+    allowedUserIds: []       # numeric Telegram user ids
+    rateLimitPerMinute: 10   # per chat
+  whatsapp:
+    enabled: false
+    # phoneNumberId: "123456789012345"
+    graphApiVersion: v21.0
+    access: allowlist
+    allowedNumbers: []       # e.g. ["8801712345678"]
+    rateLimitPerMinute: 10
+
 gateway:
   host: 127.0.0.1          # use 0.0.0.0 only behind a reverse proxy
   port: 3000
@@ -80,6 +98,8 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `BANGLACLAW_CONFIG` | Config file path |
 | `BANGLACLAW_STORAGE` | Overrides `storage.provider` |
 | `BANGLACLAW_GATEWAY_PORT`, `BANGLACLAW_GATEWAY_HOST` | Override `gateway.port` / `gateway.host` |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` | Telegram channel secrets |
+| `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp channel secrets |
 | `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |
 | `BANGLACLAW_LOG_LEVEL` | `debug` \| `info` \| `warn` (default) \| `error`; JSON logs go to stderr |

@@ -26,6 +26,9 @@ describe("loadConfig", () => {
       host: "127.0.0.1", port: 3000, corsOrigins: [], maxInputChars: 8000,
       rateLimit: { requestsPerMinute: 60, maxConcurrentRuns: 2 },
     });
+    expect(config.channels.telegram).toEqual({ enabled: false, mode: "polling", access: "allowlist", allowedUserIds: [], rateLimitPerMinute: 10 });
+    expect(config.channels.whatsapp).toMatchObject({ enabled: false, access: "allowlist", allowedNumbers: [] });
+    expect(config.channels.web).toEqual({ enabled: true });
     expect(secrets).toEqual({});
   });
 
@@ -104,6 +107,15 @@ describe("loadConfig", () => {
     const { config } = loadConfig({ cwd: tempDir(), env: { BANGLACLAW_GATEWAY_PORT: "8080", BANGLACLAW_GATEWAY_HOST: "0.0.0.0" } });
     expect(config.gateway).toMatchObject({ host: "0.0.0.0", port: 8080 });
     expect(() => loadConfig({ cwd: tempDir(), env: { BANGLACLAW_GATEWAY_PORT: "http" } })).toThrow(ConfigError);
+  });
+
+  it("parses channel config and reads channel secrets from env only", () => {
+    const cwd = tempDir("channels:\n  telegram:\n    enabled: true\n    allowedUserIds: [12345, '678']\n  whatsapp:\n    phoneNumberId: '1098'\n");
+    const { config, secrets } = loadConfig({ cwd, env: { TELEGRAM_BOT_TOKEN: "123:abc", WHATSAPP_APP_SECRET: "s" } });
+    expect(config.channels.telegram.allowedUserIds).toEqual(["12345", "678"]);
+    expect(config.channels.whatsapp.phoneNumberId).toBe("1098");
+    expect(secrets).toMatchObject({ telegramBotToken: "123:abc", whatsappAppSecret: "s" });
+    expect(() => loadConfig({ cwd: tempDir("channels:\n  telegram:\n    botToken: x\n"), env: {} })).toThrow(ConfigError);
   });
 
   it("rejects an unknown provider", () => {

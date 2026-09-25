@@ -22,6 +22,8 @@ The Gateway is the transport and orchestration boundary between channels and the
 
 Client disconnects (SSE) and socket closes (WS) abort in-flight runs. See docs/18 for the API.
 
+Since v0.5 the gateway also mounts channel webhook routes (`deps.routes`), which verify their own signatures instead of using API keys, and serves the web chat page at `/chat` (`deps.webChat`). See docs/11.
+
 ## Flow
 
 ```text
@@ -38,7 +40,6 @@ A channel must not contain agent reasoning logic.
 
 ## Planned
 
-- Channel adapters (Telegram, WhatsApp, web widget) on top of the gateway (v0.5)
 - Shared rate-limit store (Redis) for horizontal scaling
 - Key scopes (read-only, run-only) and per-key tool allowlists
 - A dedicated `apps/gateway` entry point; today the CLI hosts it (`banglaclaw serve`)

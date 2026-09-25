@@ -11,6 +11,7 @@ import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
 import { respondWithRun } from "./run.js";
 import { createSessionBody, limitQuery, messageBody, runBody } from "./schemas.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
+import { WEB_CHAT_CSP, WEB_CHAT_HTML } from "./web-chat.js";
 import { websocketHandler } from "./ws.js";
 
 type Env = { Variables: { requestId: string; principal: Principal; log: Logger } };
@@ -69,6 +70,17 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   app.notFound((c) => c.json({ error: { code: "not_found", message: "Route not found", requestId: c.get("requestId") } } satisfies ErrorBody, 404));
 
   app.get("/health", (c) => c.json({ status: "ok", version: deps.version }));
+
+  if (deps.webChat === true) {
+    app.get("/chat", (c) => {
+      c.header("Content-Security-Policy", WEB_CHAT_CSP);
+      c.header("X-Content-Type-Options", "nosniff");
+      c.header("Referrer-Policy", "no-referrer");
+      return c.html(WEB_CHAT_HTML);
+    });
+  }
+
+  for (const routes of deps.routes ?? []) app.route("/", routes);
 
   if (upgradeWebSocket !== undefined) {
     // Authenticated inside the protocol (browsers cannot set headers on WebSocket upgrades).

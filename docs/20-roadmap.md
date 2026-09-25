@@ -46,10 +46,10 @@
 
 ## v0.5 — Channels
 
-- [ ] Web
-- [ ] Telegram
-- [ ] WhatsApp
-- [ ] CLI improvements
+- [x] Web
+- [x] Telegram
+- [x] WhatsApp
+- [x] CLI improvements
 
 ## v0.6 — Knowledge
 

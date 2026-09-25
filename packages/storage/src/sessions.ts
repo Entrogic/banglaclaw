@@ -86,6 +86,10 @@ export class PostgresSessionStore implements SessionStore {
     return mapStoredMessagesToChatMessages(rows.reverse().map((r) => r.data));
   }
 
+  async detachExternalId(sessionId: string): Promise<void> {
+    await this.db.update(sessions).set({ externalId: null, updatedAt: new Date() }).where(eq(sessions.id, sessionId));
+  }
+
   async countMessages(sessionId: string): Promise<number> {
     const [row] = await this.db.select({ n: count() }).from(messages).where(eq(messages.sessionId, sessionId));
     return row?.n ?? 0;

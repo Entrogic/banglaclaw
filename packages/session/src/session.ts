@@ -30,4 +30,6 @@ export interface SessionStore {
   /** The most recent `limit` messages, oldest first. */
   recentMessages(sessionId: string, limit: number): Promise<BaseMessage[]>;
   countMessages(sessionId: string): Promise<number>;
+  /** Unlinks the channel-native id so the next message from that conversation starts a new session (e.g. /new). */
+  detachExternalId(sessionId: string): Promise<void>;
 }

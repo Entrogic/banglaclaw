@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/tools",
+  "name": "@banglaclaw/channels",
   "version": "0.5.0",
   "private": true,
   "type": "module",
@@ -16,7 +16,14 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@banglaclaw/agent": "workspace:*",
+    "@banglaclaw/session": "workspace:*",
     "@banglaclaw/shared": "workspace:*",
+    "hono": "^4.13.9",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@banglaclaw/providers": "workspace:*",
+    "@banglaclaw/tools": "workspace:*"
   }
 }

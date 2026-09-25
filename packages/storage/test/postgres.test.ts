@@ -55,6 +55,9 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await storage.sessions.list({ channel: "cli" })).toHaveLength(1);
     expect(await storage.sessions.list()).toHaveLength(2);
     await expect(storage.sessions.create({ channel: "telegram", externalId: "42", agentId: "x" })).rejects.toThrow();
+    await storage.sessions.detachExternalId(session.id);
+    expect(await storage.sessions.findByExternalId("telegram", "42")).toBeUndefined();
+    expect((await manager.resolve({ channel: "telegram", externalId: "42", agentId: "banglaclaw" })).created).toBe(true);
   });
 
   it("stores users and API keys, and scopes sessions to users", async () => {

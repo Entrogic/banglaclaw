@@ -5,11 +5,13 @@ import { AgentRunError, type AgentRuntime } from "@banglaclaw/agent";
 import { requiredApiKeyEnv } from "@banglaclaw/providers";
 import { SessionManager, type RunRecord, type Session } from "@banglaclaw/session";
 import { ApiKeyAuthenticator } from "@banglaclaw/auth";
+import { TelegramApi } from "@banglaclaw/channels";
 import { startGateway, type RunningGateway } from "@banglaclaw/gateway";
 import { BanglaClawError, createLogger, parseLogLevel } from "@banglaclaw/shared";
 import { AllowlistPolicy } from "@banglaclaw/tools";
 import type { McpManager, McpServerStatus } from "@banglaclaw/mcp";
 import { buildRegistry, connectMcp, createRuntime, load, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
+import { setupChannels } from "./channels.js";
 import { bold, createRenderer, dim, green, red, yellow } from "./render.js";
 
 const CHANNEL = "cli";
@@ -85,7 +87,7 @@ export async function chat(options: SessionOption): Promise<void> {
     const count = await runtime.sessions.countMessages(session.id);
     console.log(dim(`Resumed session ${session.id} (${count} messages)`));
   }
-  console.log(dim("Type in Bangla, Banglish or English. /new starts a new session, /session shows its id, /exit quits.\n"));
+  console.log(dim("Type in Bangla, Banglish or English. /help lists commands.\n"));
 
   try {
     for (;;) {
@@ -99,8 +101,22 @@ export async function chat(options: SessionOption): Promise<void> {
       const input = answer.trim();
       if (input === "") continue;
       if (input === "/exit" || input === "/quit") break;
+      if (input === "/help") {
+        console.log(dim(["/new       start a new session", "/history   show recent messages", "/session   show the session id", "/exit      quit (Ctrl+C cancels a running reply)"].join("\n")));
+        continue;
+      }
       if (input === "/session") {
         console.log(dim(session.id));
+        continue;
+      }
+      if (input === "/history") {
+        const recent = await runtime.sessions.recentMessages(session.id, 20);
+        if (recent.length === 0) console.log(dim("No messages yet."));
+        for (const m of recent) {
+          const type = m.getType();
+          if (type === "human") console.log(`${green("you")}   ${m.text}`);
+          else if (type === "ai" && m.text.length > 0) console.log(`${bold("agent")} ${m.text}`);
+        }
         continue;
       }
       if (input === "/new" || input === "/reset") {
@@ -332,6 +348,23 @@ skills:
   dirs: [skills]
   maxActive: 2
 
+channels:
+  web:
+    enabled: true                # browser chat at http://<gateway>/chat
+  telegram:
+    enabled: false               # needs TELEGRAM_BOT_TOKEN (from @BotFather)
+    mode: polling                # polling (no public URL) | webhook (needs webhookUrl + TELEGRAM_WEBHOOK_SECRET)
+    # webhookUrl: https://bot.example.com
+    access: allowlist            # allowlist | open — every message costs model tokens
+    allowedUserIds: []           # your numeric Telegram user id(s)
+    rateLimitPerMinute: 10       # per chat
+  whatsapp:
+    enabled: false               # needs WHATSAPP_ACCESS_TOKEN, WHATSAPP_APP_SECRET, WHATSAPP_VERIFY_TOKEN
+    # phoneNumberId: "123456789012345"
+    access: allowlist
+    allowedNumbers: []           # e.g. ["8801712345678"]
+    rateLimitPerMinute: 10
+
 mcp:
   servers: {}
   # Example: the bundled Bangladesh reference-data server (run from the repo root).
@@ -429,6 +462,32 @@ export async function doctor(options: GlobalOptions): Promise<void> {
     }
   }
 
+  const tg = config.channels.telegram;
+  if (tg.enabled) {
+    if (secrets.telegramBotToken === undefined) fail("Telegram: TELEGRAM_BOT_TOKEN is not set");
+    else {
+      try {
+        const me = await new TelegramApi(secrets.telegramBotToken).getMe();
+        ok(`Telegram: @${me.username} (${tg.mode}, access ${tg.access}${tg.access === "allowlist" ? `: ${tg.allowedUserIds.length} users` : ""})`);
+      } catch (error) {
+        fail(`Telegram: ${describe(error)}`);
+      }
+      if (tg.mode === "webhook" && (tg.webhookUrl === undefined || secrets.telegramWebhookSecret === undefined)) fail("Telegram webhook mode needs channels.telegram.webhookUrl and TELEGRAM_WEBHOOK_SECRET");
+      if (tg.access === "allowlist" && tg.allowedUserIds.length === 0) warn("Telegram allowlist is empty — nobody will be answered");
+    }
+  }
+  const wa = config.channels.whatsapp;
+  if (wa.enabled) {
+    const missing = [
+      wa.phoneNumberId === undefined && "phoneNumberId",
+      secrets.whatsappAccessToken === undefined && "WHATSAPP_ACCESS_TOKEN",
+      secrets.whatsappAppSecret === undefined && "WHATSAPP_APP_SECRET",
+      secrets.whatsappVerifyToken === undefined && "WHATSAPP_VERIFY_TOKEN",
+    ].filter(Boolean);
+    if (missing.length > 0) fail(`WhatsApp: missing ${missing.join(", ")}`);
+    else ok(`WhatsApp: configured (webhook /channels/whatsapp/webhook, access ${wa.access})`);
+  }
+
   if (config.storage.provider === "memory") {
     ok("Storage: memory (nothing persists between runs)");
   } else {
@@ -476,6 +535,15 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
     throw new BanglaClawError("INVALID_PORT", `Invalid port: ${options.port ?? ""}`);
   }
 
+  const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL, "info") });
+  let channels;
+  try {
+    channels = setupChannels(services.loaded, bundle.runtime, services.sessions, logger);
+  } catch (error) {
+    await services.close();
+    throw error;
+  }
+
   const authenticator = new ApiKeyAuthenticator(services.auth);
   let devToken: string | undefined;
   if (!services.persistent) {
@@ -495,16 +563,28 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       skills: bundle.skills,
       agent: { name: config.agent.name, model: bundle.providerId },
       config: gatewayConfig,
-      version: "0.4.0",
-      logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL, "info") }),
+      version: "0.5.0",
+      logger,
+      routes: channels.routes,
+      webChat: config.channels.web.enabled,
     });
   } catch (error) {
+    await services.close();
+    throw error;
+  }
+  try {
+    await channels.start();
+  } catch (error) {
+    await gateway.close();
     await services.close();
     throw error;
   }
 
   console.log(`${green("✔")} BanglaClaw gateway listening on ${bold(gateway.url)} ${dim(`(${bundle.providerId}, ${services.persistent ? "postgres" : "memory"} storage)`)}`);
   reportMcpFailures(mcp);
+  if (config.channels.web.enabled) console.log(`  web chat: ${gateway.url}/chat`);
+  for (const line of channels.summary) console.log(`  ${line}`);
+  for (const line of channels.warnings) console.log(yellow(`! ${line}`));
   if (devToken !== undefined) {
     console.log(yellow("! Memory storage: using a temporary API key valid until this process exits:"));
     console.log(`  ${devToken}`);
@@ -522,6 +602,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
   });
+  await channels.stop();
   await gateway.close();
   await services.close();
 }

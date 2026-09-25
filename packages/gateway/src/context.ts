@@ -1,11 +1,11 @@
+import type { Hono } from "hono";
 import type { AgentRuntime } from "@banglaclaw/agent";
 import type { ApiKeyAuthenticator, Principal } from "@banglaclaw/auth";
 import type { RunStore, Session, SessionStore } from "@banglaclaw/session";
-import type { BanglaClawConfig, Logger } from "@banglaclaw/shared";
+import { ConcurrencyLimiter, RateLimiter, type BanglaClawConfig, type Logger } from "@banglaclaw/shared";
 import type { SkillSet } from "@banglaclaw/skills";
 import type { PermissionPolicy, ToolRegistry } from "@banglaclaw/tools";
 import { HttpError } from "./errors.js";
-import { ConcurrencyLimiter, RateLimiter } from "./rate-limit.js";
 import { scopedExternalId } from "./serialize.js";
 
 export type GatewayConfig = BanglaClawConfig["gateway"];
@@ -21,6 +21,10 @@ export interface GatewayDeps {
   agent: { name: string; model: string };
   config: GatewayConfig;
   version: string;
+  /** Extra apps mounted at the root without /v1 API-key auth (channel webhooks verify their own signatures). */
+  routes?: Hono[];
+  /** Serve the browser chat page at /chat. */
+  webChat?: boolean;
   logger?: Logger;
 }
 

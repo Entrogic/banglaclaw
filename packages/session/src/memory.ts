@@ -56,6 +56,14 @@ export class InMemorySessionStore implements SessionStore {
   async countMessages(sessionId: string): Promise<number> {
     return this.#messages.get(sessionId)?.length ?? 0;
   }
+
+  async detachExternalId(sessionId: string): Promise<void> {
+    const session = this.#sessions.get(sessionId);
+    if (session !== undefined) {
+      delete session.externalId;
+      session.updatedAt = new Date();
+    }
+  }
 }
 
 export class InMemoryRunStore implements RunStore {

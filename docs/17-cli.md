@@ -5,7 +5,7 @@ The CLI is the primary developer interface during early development.
 ## Commands
 
 ```bash
-banglaclaw chat [--session <id>]               # interactive REPL (/new, /session, /exit; Ctrl+C cancels a reply)
+banglaclaw chat [--session <id>]               # interactive REPL (/help, /new, /history, /session, /exit; Ctrl+C cancels a reply)
 banglaclaw agent run [--session <id>] "<msg>"  # one-shot streamed reply; exit code 2 if a run limit was hit
 banglaclaw session list | show <id>            # sessions, their messages and recent runs
 banglaclaw run list --session <id> | show <id> # runs with tool calls and checkpoint id
@@ -13,7 +13,7 @@ banglaclaw skill list                          # discovered skills, their tools 
 banglaclaw tool list                           # built-in + MCP tools, risk level, allowed/denied
 banglaclaw mcp list                            # connect to MCP servers; status and discovered tools
 banglaclaw db migrate | status                 # PostgreSQL schema + checkpoint tables (DATABASE_URL)
-banglaclaw serve [--port 3000] [--host …]      # HTTP gateway: REST, SSE, WebSocket (docs/18)
+banglaclaw serve [--port 3000] [--host …]      # gateway (REST, SSE, WebSocket, /chat) + enabled channels (docs/11, 18)
 banglaclaw key create --user <name> [--name]   # issue an API key (shown once; postgres storage)
 banglaclaw key list [--user <name>] | revoke <id>
 banglaclaw init [--force]                      # write banglaclaw.yaml
