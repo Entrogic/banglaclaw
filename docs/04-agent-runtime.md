@@ -18,7 +18,13 @@ START → prepare → model ─┬─ tool calls, within limits ─→ tools →
 - `model` streams from the `ModelProvider` with only the policy-allowed tools bound, emitting `token` events.
 - `tools` runs each call through `executeTool` (validation → permission → execution → audit).
 - `limit` enforces `maxIterations` / `maxToolCalls`, closes dangling tool calls and replies with a localised message.
-- `AgentRuntime` (`runtime.ts`) wraps the graph: run timeout via `AbortSignal`, per-session history (in memory until v0.2), and a `RunRecord` saved to a `RunStore` for every run, including failures.
+- `AgentRuntime` (`runtime.ts`) wraps the graph. For each run it:
+  - loads the session's short-term memory window from the `SessionStore` (docs/07);
+  - selects skills (docs/08) and injects their instructions into the system prompt;
+  - enforces the run timeout via `AbortSignal`;
+  - saves a `RunRecord` to the `RunStore` for every run, including failures;
+  - appends the run's new messages to the session.
+- With a checkpointer (`PostgresSaver` when `storage.provider: postgres`), graph state is checkpointed per run under `thread_id = runId`, which `runtime.checkpoint(runId)` reads back. Conversation history is owned by the session store, not by checkpoints.
 
 ## Target graph
 

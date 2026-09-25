@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -21,9 +21,13 @@
   "dependencies": {
     "@banglaclaw/agent": "workspace:*",
     "@banglaclaw/providers": "workspace:*",
+    "@banglaclaw/session": "workspace:*",
     "@banglaclaw/shared": "workspace:*",
+    "@banglaclaw/skills": "workspace:*",
+    "@banglaclaw/storage": "workspace:*",
     "@banglaclaw/tools": "workspace:*",
     "@langchain/core": "^1.2.12",
+    "@langchain/langgraph": "^1.4.17",
     "commander": "^15.0.0"
   }
 }

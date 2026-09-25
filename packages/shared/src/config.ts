@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 import { ConfigError } from "./errors.js";
@@ -35,6 +35,28 @@ export const ConfigSchema = z.strictObject({
     .strictObject({ allow: z.array(z.string().min(1)).default(["calculator", "current_datetime"]) })
     .prefault({}),
   timezone: z.string().min(1).default("Asia/Dhaka"),
+  storage: z
+    .strictObject({
+      /** memory: zero-setup, lost on exit. postgres: requires DATABASE_URL. */
+      provider: z.enum(["memory", "postgres"]).default("memory"),
+      /** LangGraph checkpoints per run (postgres storage only). */
+      checkpoints: z.boolean().default(true),
+    })
+    .prefault({}),
+  memory: z
+    .strictObject({
+      /** Short-term memory window: most recent session messages sent to the model. */
+      maxHistoryMessages: z.int().min(0).max(500).default(20),
+    })
+    .prefault({}),
+  skills: z
+    .strictObject({
+      /** Directories (relative to the config file / cwd) scanned for <name>/SKILL.md. */
+      dirs: z.array(z.string().min(1)).default(["skills"]),
+      /** Maximum skills activated for a single message. */
+      maxActive: z.int().min(0).max(10).default(2),
+    })
+    .prefault({}),
 });
 
 export type BanglaClawConfig = z.infer<typeof ConfigSchema> & {
@@ -45,6 +67,8 @@ export type BanglaClawConfig = z.infer<typeof ConfigSchema> & {
 export interface Secrets {
   openaiApiKey?: string;
   anthropicApiKey?: string;
+  /** Contains credentials, so it is treated as a secret. */
+  databaseUrl?: string;
 }
 
 export interface LoadConfigOptions {
@@ -59,6 +83,8 @@ export interface LoadedConfig {
   secrets: Secrets;
   /** Absolute path of the file that was read, if any. */
   source?: string;
+  /** Directory relative paths in the config resolve against (config file dir, else cwd). */
+  baseDir: string;
 }
 
 function nonEmpty(value: string | undefined): string | undefined {
@@ -106,14 +132,23 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
   const anthropicApiKey = nonEmpty(env.ANTHROPIC_API_KEY);
   if (openaiApiKey !== undefined) secrets.openaiApiKey = openaiApiKey;
   if (anthropicApiKey !== undefined) secrets.anthropicApiKey = anthropicApiKey;
+  const databaseUrl = nonEmpty(env.DATABASE_URL);
+  if (databaseUrl !== undefined) secrets.databaseUrl = databaseUrl;
 
-  return source !== undefined ? { config, secrets, source } : { config, secrets };
+  const baseDir = source !== undefined ? dirname(source) : cwd;
+  return source !== undefined ? { config, secrets, source, baseDir } : { config, secrets, baseDir };
 }
 
-function applyEnvOverrides(raw: Record<string, unknown>, env: NodeJS.ProcessEnv): Record<string, unknown> {
+function applyEnvOverrides(input: Record<string, unknown>, env: NodeJS.ProcessEnv): Record<string, unknown> {
   const provider = nonEmpty(env.BANGLACLAW_PROVIDER);
   const model = nonEmpty(env.BANGLACLAW_MODEL);
   const baseUrl = nonEmpty(env.BANGLACLAW_BASE_URL);
+  const storage = nonEmpty(env.BANGLACLAW_STORAGE);
+  let raw = input;
+  if (storage !== undefined) {
+    const current = isRecord(raw.storage) ? raw.storage : {};
+    raw = { ...raw, storage: { ...current, provider: storage } };
+  }
   if (provider === undefined && model === undefined && baseUrl === undefined) return raw;
 
   const models = isRecord(raw.models) ? raw.models : {};

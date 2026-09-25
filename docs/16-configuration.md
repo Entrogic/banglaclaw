@@ -25,8 +25,21 @@ runtime:
 tools:
   allow: [calculator, current_datetime]
 
+storage:
+  provider: memory     # memory | postgres (needs DATABASE_URL)
+  checkpoints: true    # LangGraph checkpoints per run (postgres only)
+
+memory:
+  maxHistoryMessages: 20   # short-term memory window
+
+skills:
+  dirs: [skills]
+  maxActive: 2
+
 timezone: Asia/Dhaka
 ```
+
+`banglaclaw init` writes this template.
 
 Unknown keys are rejected, which also prevents API keys from being written into the file.
 
@@ -38,10 +51,12 @@ Unknown keys are rejected, which also prevents API keys from being written into 
 | `BANGLACLAW_MODEL` | Overrides `models.default.model` |
 | `BANGLACLAW_BASE_URL` | Overrides `models.default.baseUrl` |
 | `BANGLACLAW_CONFIG` | Config file path |
+| `BANGLACLAW_STORAGE` | Overrides `storage.provider` |
+| `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |
 | `BANGLACLAW_LOG_LEVEL` | `debug` \| `info` \| `warn` (default) \| `error`; JSON logs go to stderr |
 
-Planned sections (`memory`, `gateway`, `mcp`) arrive with their roadmap milestones.
+Planned sections (`gateway`, `mcp`) arrive with their roadmap milestones.
 
 ## Requirements
 

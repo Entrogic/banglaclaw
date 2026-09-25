@@ -1,6 +1,7 @@
 import type { Language } from "@banglaclaw/shared";
+import type { Skill } from "@banglaclaw/skills";
 
-export const SYSTEM_PROMPT_VERSION = "2026-09-25.1";
+export const SYSTEM_PROMPT_VERSION = "2026-09-25.2";
 
 const LANGUAGE_GUIDANCE: Record<Language, string> = {
   bn: "The user is writing in Bangla (Bengali script). Reply in natural, clear Bangla using Bengali script.",
@@ -14,13 +15,14 @@ export interface SystemPromptInput {
   language: Language;
   toolNames: string[];
   timezone: string;
+  skills?: readonly Skill[];
 }
 
 /**
  * System prompt for the default agent. Prompts guide behaviour only — tool permissions are
  * enforced in application code (PermissionPolicy), never here.
  */
-export function buildSystemPrompt({ agentName, language, toolNames, timezone }: SystemPromptInput): string {
+export function buildSystemPrompt({ agentName, language, toolNames, timezone, skills = [] }: SystemPromptInput): string {
   const tools =
     toolNames.length > 0
       ? `Available tools: ${toolNames.join(", ")}.
@@ -28,6 +30,13 @@ export function buildSystemPrompt({ agentName, language, toolNames, timezone }: 
 - Call tools with exactly the documented arguments. If a tool returns an error, explain briefly or try a corrected call; do not invent results.
 - Never claim to have performed an action unless a tool result confirms it.`
       : "You have no tools available in this session. Answer from your own knowledge and say when you are unsure.";
+
+  const skillSection =
+    skills.length > 0
+      ? `\n\nActive skills (follow these instructions for this request):\n${skills
+          .map((s) => `\n### Skill: ${s.name}\n${s.instructions}`)
+          .join("\n")}`
+      : "";
 
   return `You are ${agentName}, a helpful AI assistant built for Bangla, Banglish and English speakers.
 
@@ -37,7 +46,7 @@ Keep numbers readable; when replying in Bangla you may use Bengali digits.
 ${tools}
 
 Default timezone: ${timezone}.
-Be concise and direct. If a request is unclear, ask one short clarifying question.`;
+Be concise and direct. If a request is unclear, ask one short clarifying question.${skillSection}`;
 }
 
 export const LIMIT_MESSAGES: Record<Language, string> = {

@@ -26,7 +26,18 @@ export BANGLACLAW_BASE_URL=http://localhost:11434/v1 BANGLACLAW_MODEL=qwen2.5
 pnpm banglaclaw chat
 ```
 
-Copy `banglaclaw.example.yaml` to `banglaclaw.yaml` to configure models, limits and allowed tools.
+Run `pnpm banglaclaw init` (or copy `banglaclaw.example.yaml`) to create `banglaclaw.yaml` and configure models, limits, tools, storage and skills.
+
+Persistent sessions with PostgreSQL:
+
+```bash
+docker compose -f docker/compose.yaml up -d
+export BANGLACLAW_STORAGE=postgres DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw
+pnpm banglaclaw db migrate
+pnpm banglaclaw chat                      # prints a session id on exit
+pnpm banglaclaw chat --session <id>       # resume later
+pnpm banglaclaw session list
+```
 
 ## Documentation
 
@@ -66,4 +77,9 @@ Copy `banglaclaw.example.yaml` to `banglaclaw.yaml` to configure models, limits 
 
 ## Status
 
-Pre-alpha. **v0.1 Agent Core** is implemented: a TypeScript monorepo with a LangGraph runtime, OpenAI-compatible and Anthropic providers, permission-checked tool calling, streaming, Bangla/Banglish/English detection and a CLI. Sessions and runs are kept in memory until PostgreSQL persistence lands in v0.2 — see the [roadmap](docs/20-roadmap.md).
+Pre-alpha. Implemented so far:
+
+- **v0.1 Agent Core**: TypeScript monorepo, LangGraph runtime, OpenAI-compatible and Anthropic providers, permission-checked tool calling, streaming, Bangla/Banglish/English detection, CLI.
+- **v0.2 State and Skills**: sessions, optional PostgreSQL persistence (Drizzle), short-term memory window, per-run LangGraph checkpoints, and SKILL.md skills.
+
+Next up is MCP (v0.3) — see the [roadmap](docs/20-roadmap.md).

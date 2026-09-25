@@ -1,0 +1,79 @@
+import { randomUUID } from "node:crypto";
+import type { BaseMessage } from "@langchain/core/messages";
+import type { RunRecord, RunStore } from "./run.js";
+import type { NewSession, Session, SessionStore } from "./session.js";
+
+/** Process-local session store (storage.provider: memory). */
+export class InMemorySessionStore implements SessionStore {
+  readonly #sessions = new Map<string, Session>();
+  readonly #messages = new Map<string, BaseMessage[]>();
+
+  async create(input: NewSession): Promise<Session> {
+    if (input.externalId !== undefined && (await this.findByExternalId(input.channel, input.externalId)) !== undefined) {
+      throw new Error(`Session already exists for ${input.channel}:${input.externalId}`);
+    }
+    const now = new Date();
+    const session: Session = { id: randomUUID(), ...input, createdAt: now, updatedAt: now };
+    this.#sessions.set(session.id, session);
+    this.#messages.set(session.id, []);
+    return { ...session };
+  }
+
+  async get(id: string): Promise<Session | undefined> {
+    const s = this.#sessions.get(id);
+    return s === undefined ? undefined : { ...s };
+  }
+
+  async findByExternalId(channel: string, externalId: string): Promise<Session | undefined> {
+    for (const s of this.#sessions.values()) {
+      if (s.channel === channel && s.externalId === externalId) return { ...s };
+    }
+    return undefined;
+  }
+
+  async list(options: { limit?: number; channel?: string } = {}): Promise<Session[]> {
+    return [...this.#sessions.values()]
+      .filter((s) => options.channel === undefined || s.channel === options.channel)
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .slice(0, options.limit ?? 50)
+      .map((s) => ({ ...s }));
+  }
+
+  async appendMessages(sessionId: string, _runId: string, messages: BaseMessage[]): Promise<void> {
+    const session = this.#sessions.get(sessionId);
+    const history = this.#messages.get(sessionId);
+    if (session === undefined || history === undefined) throw new Error(`Unknown session ${sessionId}`);
+    history.push(...messages);
+    session.updatedAt = new Date();
+  }
+
+  async recentMessages(sessionId: string, limit: number): Promise<BaseMessage[]> {
+    if (limit <= 0) return [];
+    return (this.#messages.get(sessionId) ?? []).slice(-limit);
+  }
+
+  async countMessages(sessionId: string): Promise<number> {
+    return this.#messages.get(sessionId)?.length ?? 0;
+  }
+}
+
+export class InMemoryRunStore implements RunStore {
+  readonly #runs = new Map<string, RunRecord>();
+
+  async save(record: RunRecord): Promise<void> {
+    this.#runs.set(record.id, structuredClone(record));
+  }
+
+  async get(id: string): Promise<RunRecord | undefined> {
+    const record = this.#runs.get(id);
+    return record === undefined ? undefined : structuredClone(record);
+  }
+
+  async listBySession(sessionId: string, options: { limit?: number } = {}): Promise<RunRecord[]> {
+    return [...this.#runs.values()]
+      .filter((r) => r.sessionId === sessionId)
+      .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+      .slice(0, options.limit ?? 50)
+      .map((r) => structuredClone(r));
+  }
+}

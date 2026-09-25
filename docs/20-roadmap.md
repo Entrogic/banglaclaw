@@ -24,11 +24,11 @@
 
 ## v0.2 — State and Skills
 
-- [ ] Sessions
-- [ ] PostgreSQL persistence
-- [ ] Skills system
-- [ ] Short-term memory
-- [ ] Checkpointing
+- [x] Sessions
+- [x] PostgreSQL persistence
+- [x] Skills system
+- [x] Short-term memory
+- [x] Checkpointing
 
 ## v0.3 — MCP
 

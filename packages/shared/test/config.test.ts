@@ -18,6 +18,9 @@ describe("loadConfig", () => {
     expect(config.runtime).toEqual({ maxIterations: 6, maxToolCalls: 8, timeoutMs: 60_000 });
     expect(config.tools.allow).toEqual(["calculator", "current_datetime"]);
     expect(config.timezone).toBe("Asia/Dhaka");
+    expect(config.storage).toEqual({ provider: "memory", checkpoints: true });
+    expect(config.memory.maxHistoryMessages).toBe(20);
+    expect(config.skills).toEqual({ dirs: ["skills"], maxActive: 2 });
     expect(secrets).toEqual({});
   });
 
@@ -50,6 +53,17 @@ describe("loadConfig", () => {
     const cwd = tempDir("models:\n  default:\n    provider: openai-compatible\n    model: gpt-4o\n");
     const { config } = loadConfig({ cwd, env: { BANGLACLAW_PROVIDER: "anthropic" } });
     expect(config.models.default).toEqual({ provider: "anthropic", model: "claude-sonnet-5" });
+  });
+
+  it("selects postgres storage from env and reads DATABASE_URL as a secret", () => {
+    const cwd = tempDir("storage:\n  checkpoints: false\n");
+    const { config, secrets, baseDir } = loadConfig({
+      cwd,
+      env: { BANGLACLAW_STORAGE: "postgres", DATABASE_URL: "postgres://u:p@localhost/db" },
+    });
+    expect(config.storage).toEqual({ provider: "postgres", checkpoints: false });
+    expect(secrets.databaseUrl).toBe("postgres://u:p@localhost/db");
+    expect(baseDir).toBe(cwd);
   });
 
   it("rejects an unknown provider", () => {

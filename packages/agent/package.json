@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/agent",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -18,9 +18,13 @@
   "dependencies": {
     "@banglaclaw/providers": "workspace:*",
     "@banglaclaw/shared": "workspace:*",
+    "@banglaclaw/skills": "workspace:*",
     "@banglaclaw/tools": "workspace:*",
     "@langchain/core": "^1.2.12",
     "@langchain/langgraph": "^1.4.17",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@banglaclaw/session": "workspace:*"
   }
 }

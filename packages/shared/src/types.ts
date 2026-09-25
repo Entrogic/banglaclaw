@@ -29,9 +29,12 @@ export interface ToolAuditEvent {
   durationMs: number;
 }
 
+/** Why an agent graph stopped. */
+export type StopReason = "completed" | "tool_limit" | "iteration_limit";
+
 /** Events streamed from an agent run to its caller. */
 export type RunEvent =
-  | { type: "run_start"; runId: string; sessionId: string; language: Language }
+  | { type: "run_start"; runId: string; sessionId: string; language: Language; skills: string[] }
   | { type: "token"; runId: string; text: string }
   | { type: "tool_start"; runId: string; toolCallId: string; tool: string; input: unknown }
   | { type: "tool_end"; runId: string; audit: ToolAuditEvent }

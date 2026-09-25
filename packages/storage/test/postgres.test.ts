@@ -1,0 +1,157 @@
+import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { AgentRuntime } from "@banglaclaw/agent";
+import { FakeProvider } from "@banglaclaw/providers";
+import { SessionManager, type RunRecord } from "@banglaclaw/session";
+import { createLogger } from "@banglaclaw/shared";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { PostgresStorage } from "../src/index.js";
+
+/**
+ * Integration tests against a real PostgreSQL. They TRUNCATE tables, so point
+ * TEST_DATABASE_URL at a dedicated database, e.g. the banglaclaw_test DB from docker/compose.yaml:
+ *   TEST_DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw_test
+ */
+const url = process.env.TEST_DATABASE_URL;
+
+describe.skipIf(url === undefined)("PostgresStorage", () => {
+  let storage: PostgresStorage;
+
+  beforeAll(async () => {
+    storage = new PostgresStorage(url as string, { maxConnections: 4 });
+    await storage.migrate();
+    await storage.migrate(); // idempotent
+  });
+
+  beforeEach(async () => {
+    await storage.pool.query("TRUNCATE sessions, runs, messages, tool_calls, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE");
+  });
+
+  afterAll(async () => {
+    await storage?.close();
+  });
+
+  it("reports migration status", async () => {
+    const status = await storage.migrationStatus();
+    expect(status.applied).toBe(status.available);
+    expect(status.available).toBeGreaterThan(0);
+  });
+
+  it("creates, finds and lists sessions", async () => {
+    const manager = new SessionManager(storage.sessions);
+    const { session, created } = await manager.resolve({ channel: "telegram", externalId: "42", agentId: "banglaclaw" });
+    expect(created).toBe(true);
+    expect(session).toMatchObject({ channel: "telegram", externalId: "42", agentId: "banglaclaw" });
+    expect(session).not.toHaveProperty("userId");
+
+    const again = await manager.resolve({ channel: "telegram", externalId: "42", agentId: "banglaclaw" });
+    expect(again.session.id).toBe(session.id);
+    expect(await storage.sessions.get("not-a-uuid")).toBeUndefined();
+
+    await storage.sessions.create({ channel: "cli", agentId: "banglaclaw" });
+    expect(await storage.sessions.list({ channel: "cli" })).toHaveLength(1);
+    expect(await storage.sessions.list()).toHaveLength(2);
+    await expect(storage.sessions.create({ channel: "telegram", externalId: "42", agentId: "x" })).rejects.toThrow();
+  });
+
+  it("round-trips messages including tool calls, oldest first", async () => {
+    const s = await storage.sessions.create({ channel: "cli", agentId: "banglaclaw" });
+    const batch = [
+      new HumanMessage("২+২?"),
+      new AIMessage({ content: "", tool_calls: [{ id: "c1", name: "calculator", args: { expression: "2+2" }, type: "tool_call" }] }),
+      new ToolMessage({ tool_call_id: "c1", name: "calculator", content: '{"result":4}' }),
+      new AIMessage("৪"),
+    ];
+    await expect(storage.sessions.appendMessages(crypto.randomUUID(), crypto.randomUUID(), [])).rejects.toThrow(/Unknown session/);
+
+    const run = baseRun(s.id);
+    await storage.runs.save(run);
+    await storage.sessions.appendMessages(s.id, run.id, batch);
+
+    expect(await storage.sessions.countMessages(s.id)).toBe(4);
+    const loaded = await storage.sessions.recentMessages(s.id, 3);
+    expect(loaded.map((m) => m.getType())).toEqual(["ai", "tool", "ai"]);
+    expect((loaded[0] as AIMessage).tool_calls?.[0]).toMatchObject({ id: "c1", name: "calculator", args: { expression: "2+2" } });
+    expect((loaded[1] as ToolMessage).tool_call_id).toBe("c1");
+    expect(loaded[2]?.content).toBe("৪");
+  });
+
+  it("saves runs with tool calls and lists them newest first", async () => {
+    const s = await storage.sessions.create({ channel: "cli", agentId: "banglaclaw" });
+    const first = baseRun(s.id, { startedAt: new Date("2026-01-01T00:00:00Z") });
+    const second = baseRun(s.id, {
+      startedAt: new Date("2026-01-02T00:00:00Z"),
+      skills: ["calculation"],
+      stopReason: "completed",
+      output: "4",
+      toolCalls: [
+        { runId: "", toolCallId: "c1", tool: "calculator", input: { expression: "2+2" }, status: "ok", output: { result: 4 }, durationMs: 1 },
+        { runId: "", toolCallId: "c2", tool: "shell", input: {}, status: "unknown_tool", error: "No tool", durationMs: 0 },
+      ],
+    });
+    await storage.runs.save(first);
+    await storage.runs.save(second);
+
+    const got = await storage.runs.get(second.id);
+    expect(got).toMatchObject({ id: second.id, skills: ["calculation"], output: "4", stopReason: "completed", language: "bn" });
+    expect(got?.toolCalls.map((c) => [c.toolCallId, c.status])).toEqual([["c1", "ok"], ["c2", "unknown_tool"]]);
+    expect(got?.toolCalls[0]?.runId).toBe(second.id);
+    expect(got).not.toHaveProperty("error");
+
+    expect((await storage.runs.listBySession(s.id)).map((r) => r.id)).toEqual([second.id, first.id]);
+    expect(await storage.runs.get("nope")).toBeUndefined();
+  });
+
+  it("runs the agent end-to-end with persistent history and checkpoints", async () => {
+    const registry = new ToolRegistry();
+    for (const tool of builtinTools) registry.register(tool);
+    const provider = new FakeProvider([
+      { toolCalls: [{ name: "calculator", args: { expression: "২৫ * ৪" } }] },
+      { content: "১০০" },
+      { content: "আবার জিজ্ঞেস করলেন!" },
+    ]);
+    const runtime = new AgentRuntime({
+      provider,
+      registry,
+      policy: new AllowlistPolicy(["calculator"]),
+      sessions: storage.sessions,
+      runs: storage.runs,
+      checkpointer: storage.checkpointer,
+      limits: { maxIterations: 4, maxToolCalls: 4 },
+      timeoutMs: 10_000,
+      timezone: "Asia/Dhaka",
+      logger: createLogger({ write: () => {} }),
+    });
+    const s = await storage.sessions.create({ channel: "cli", agentId: "banglaclaw" });
+
+    const record = await runtime.run("২৫ * ৪ কত?", { sessionId: s.id });
+    expect(record).toMatchObject({ status: "completed", output: "১০০" });
+    expect(await storage.sessions.countMessages(s.id)).toBe(4);
+    expect((await storage.runs.get(record.id))?.toolCalls[0]).toMatchObject({ tool: "calculator", status: "ok", output: { result: 100 } });
+    expect(await runtime.checkpoint(record.id)).toMatchObject({ response: "১০০", toolCallCount: 1 });
+
+    // A new runtime instance (e.g. after restart) sees the persisted history.
+    await runtime.run("আবার বলো", { sessionId: s.id });
+    const history = provider.calls[2]?.messages.slice(1).map((m) => m.getType());
+    expect(history).toEqual(["human", "ai", "tool", "ai", "human"]);
+  });
+});
+
+function baseRun(sessionId: string, overrides: Partial<RunRecord> = {}): RunRecord {
+  return {
+    id: crypto.randomUUID(),
+    sessionId,
+    provider: "fake:scripted",
+    promptVersion: "test",
+    language: "bn",
+    skills: [],
+    input: "২+২?",
+    status: "completed",
+    iterations: 1,
+    toolCalls: [],
+    startedAt: new Date(),
+    finishedAt: new Date(),
+    durationMs: 5,
+    ...overrides,
+  };
+}

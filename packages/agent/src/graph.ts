@@ -1,7 +1,8 @@
-import { END, START, StateGraph } from "@langchain/langgraph";
+import { END, START, StateGraph, type BaseCheckpointSaver } from "@langchain/langgraph";
 import { AIMessage, SystemMessage, ToolMessage, type AIMessageChunk } from "@langchain/core/messages";
 import type { RunEvent, ToolAuditEvent } from "@banglaclaw/shared";
 import type { ModelProvider } from "@banglaclaw/providers";
+import type { Skill } from "@banglaclaw/skills";
 import { executeTool, type AnyTool, type PermissionPolicy, type ToolRegistry } from "@banglaclaw/tools";
 import { detectLanguage } from "./language.js";
 import { LIMIT_MESSAGES, buildSystemPrompt } from "./prompts.js";
@@ -22,6 +23,10 @@ export interface AgentGraphOptions {
   registry: ToolRegistry;
   policy: PermissionPolicy;
   limits: RunLimits;
+  /** Skills activated for this run (selected by the runtime). */
+  skills?: readonly Skill[];
+  /** Persists graph state per run (thread_id = runId) when provided. */
+  checkpointer?: BaseCheckpointSaver;
   signal: AbortSignal;
   emit: (event: RunEvent) => void;
   onAudit: (event: ToolAuditEvent) => void;
@@ -41,12 +46,16 @@ function lastAiMessage(state: AgentState): AIMessage | undefined {
  */
 export function buildAgentGraph(options: AgentGraphOptions) {
   const { runId, provider, registry, policy, limits, signal, emit, onAudit } = options;
+  const skills = options.skills ?? [];
 
   // Only advertise tools the policy allows; executeTool re-checks every call regardless.
   const allowedTools: AnyTool[] = registry.list().filter((t) => policy.check(t).allowed);
   const toolSpecs = registry.toSpecs(allowedTools);
 
-  const prepare = (state: AgentState): AgentStateUpdate => ({ language: detectLanguage(state.input) });
+  const prepare = (state: AgentState): AgentStateUpdate => ({
+    language: detectLanguage(state.input),
+    skills: skills.map((s) => s.name),
+  });
 
   const model = async (state: AgentState): Promise<AgentStateUpdate> => {
     const system = new SystemMessage(
@@ -55,6 +64,7 @@ export function buildAgentGraph(options: AgentGraphOptions) {
         language: state.language,
         toolNames: allowedTools.map((t) => t.name),
         timezone: options.timezone,
+        skills,
       }),
     );
 
@@ -143,5 +153,5 @@ export function buildAgentGraph(options: AgentGraphOptions) {
     .addEdge("tools", "model")
     .addEdge("limit", END)
     .addEdge("finalize", END)
-    .compile();
+    .compile(options.checkpointer !== undefined ? { checkpointer: options.checkpointer } : {});
 }

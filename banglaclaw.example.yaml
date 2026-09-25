@@ -1,4 +1,4 @@
-# Copy to banglaclaw.yaml. API keys are read from environment variables only.
+# Copy to banglaclaw.yaml (or run `banglaclaw init`). API keys and DATABASE_URL come from environment variables only.
 agent:
   name: banglaclaw
 
@@ -17,5 +17,16 @@ tools:
   allow:
     - calculator
     - current_datetime
+
+storage:
+  provider: memory        # or: postgres (needs DATABASE_URL, then `banglaclaw db migrate`)
+  checkpoints: true
+
+memory:
+  maxHistoryMessages: 20
+
+skills:
+  dirs: [skills]
+  maxActive: 2
 
 timezone: Asia/Dhaka

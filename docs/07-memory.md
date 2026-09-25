@@ -2,9 +2,9 @@
 
 BanglaClaw separates conversation state from durable memory.
 
-## Short-term memory
+## Short-term memory (implemented, v0.2)
 
-Current execution context:
+Before each run the runtime loads the session's most recent messages and trims them to `memory.maxHistoryMessages` (default 20) with `trimHistory()`, which also advances the window to the first user message so it never starts with an orphaned tool result. Within a run the LangGraph state holds:
 
 - Recent messages
 - Current graph state
