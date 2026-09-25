@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import type { NewAuditEvent } from "@banglaclaw/shared";
 import type { RunStore } from "./run.js";
 import type { Session, SessionStore } from "./session.js";
 
@@ -30,6 +31,7 @@ export class HandoffDesk {
     private readonly sessions: SessionStore,
     private readonly runs: RunStore,
     private readonly deliver?: Deliver,
+    private readonly audit?: (event: NewAuditEvent) => void,
   ) {}
 
   queue(limit = 50): Promise<Session[]> {
@@ -67,14 +69,17 @@ export class HandoffDesk {
     });
     await this.sessions.appendMessages(session.id, runId, [new AIMessage({ content: text, response_metadata: { operator } })]);
     const delivered = this.deliver !== undefined ? await this.deliver(session, text) : false;
+    this.audit?.({ action: "handoff.replied", outcome: "success", actorName: operator, target: session.id, metadata: { runId, channel: session.channel, delivered } });
     return { delivered, runId };
   }
 
   /** Returns the session to the bot (supervisor). */
-  async release(sessionId: string): Promise<Session> {
+  async release(sessionId: string, operator?: string): Promise<Session> {
     const session = await this.#session(sessionId);
     if (session.status !== "handoff") throw new HandoffError("not_handed_off", "Session is not waiting for a human");
-    return (await this.sessions.update(session.id, { status: "active", activeAgent: null })) ?? session;
+    const released = (await this.sessions.update(session.id, { status: "active", activeAgent: null })) ?? session;
+    this.audit?.({ action: "handoff.released", outcome: "success", ...(operator !== undefined && { actorName: operator }), target: session.id, metadata: { channel: session.channel } });
+    return released;
   }
 
   async #session(id: string): Promise<Session> {

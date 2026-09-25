@@ -7,7 +7,12 @@ export interface User {
   createdAt: Date;
 }
 
-export type UserRole = "user" | "operator";
+/** operator: answers human handoffs. admin: operator + audit log access. */
+export type UserRole = "user" | "operator" | "admin";
+
+/** Per-key permissions: read = GET endpoints; run = agent runs and other writes. */
+export type ApiKeyScope = "read" | "run";
+export const ALL_SCOPES: readonly ApiKeyScope[] = ["read", "run"];
 
 /** Stored API key. The secret itself is never stored — only its SHA-256 hash. */
 export interface ApiKeyRecord {
@@ -16,6 +21,7 @@ export interface ApiKeyRecord {
   userId: string;
   name: string;
   hash: string;
+  scopes: ApiKeyScope[];
   createdAt: Date;
   lastUsedAt?: Date;
   revokedAt?: Date;

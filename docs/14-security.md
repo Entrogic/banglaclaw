@@ -28,7 +28,7 @@ Security is a core architecture requirement, not a later feature.
 - Timeouts
 - Network restrictions
 
-## Implemented controls (v0.7)
+## Implemented controls (v1.0)
 
 - Deny-by-default tool allowlist; destructive tools are always denied (no confirmation flow yet)
 - Input and output validation, per-call timeouts and a run timeout, and iteration / tool-call limits
@@ -49,10 +49,19 @@ Security is a core architecture requirement, not a later feature.
   - memories are owner-scoped on the server side; secrets are refused by `remember`
   - retrieved passages and memories are framed as data, not instructions
   - the knowledge base is readable by every bot user, so don't ingest per-user private data — see docs/07
+- Audit log (`audit_logs`): failed and forbidden requests, rate limiting, key creation and revocation, tool denials, handoff request/reply/release, memory deletion. Includes actor, target, IP, request id and metadata, but never message content or secrets. Writes never fail requests, and flood-prone events are throttled per source.
+- API keys have scopes (`read`, `run`); users have roles (`user`, `operator`, `admin`).
+- Gateway response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Cache-Control: no-store` on `/v1`. Client IPs come from `X-Forwarded-For` only with `gateway.trustProxy`.
+- Supply chain: `pnpm audit --audit-level high` runs in CI (`.github/workflows/ci.yml`); the lockfile is frozen in CI and Docker builds; the container runs as a non-root user.
+- Plugins are trusted in-process code (docs/23); MCP servers are untrusted (docs/10).
 - Multi-agent:
   - specialist tool subsets are enforced by a scoped permission policy and can only narrow `tools.allow`
   - transfer limits per run
   - handoff queues are only visible to operator-role users; every operator reply is audited as a run — see docs/04
+
+## Reporting vulnerabilities
+
+See `SECURITY.md`.
 
 ## Principle
 

@@ -1,0 +1,53 @@
+# Production-style stack: BanglaClaw + PostgreSQL + Qdrant.
+#   cp .env.example .env   # set OPENAI_API_KEY, POSTGRES_PASSWORD, …
+#   docker compose -f docker/compose.prod.yaml up -d --build
+#   docker compose -f docker/compose.prod.yaml run --rm banglaclaw db migrate
+#   docker compose -f docker/compose.prod.yaml run --rm banglaclaw key create --user my-app
+name: banglaclaw-prod
+
+services:
+  banglaclaw:
+    build: ..
+    image: banglaclaw:1.0.0
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      BANGLACLAW_STORAGE: postgres
+      DATABASE_URL: postgres://banglaclaw:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/banglaclaw
+      QDRANT_URL: http://qdrant:6333
+    ports:
+      - "127.0.0.1:3000:3000"     # put a TLS reverse proxy in front for public access
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    # volumes:
+    #   - ./my-banglaclaw.yaml:/app/banglaclaw.yaml:ro
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: banglaclaw
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: banglaclaw
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banglaclaw -d banglaclaw"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    restart: unless-stopped
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant:/qdrant/storage
+
+volumes:
+  pgdata:
+  qdrant:

@@ -1,6 +1,7 @@
 {
   "name": "@banglaclaw/storage",
-  "version": "0.7.0",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -10,6 +11,10 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "drizzle"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",
@@ -33,9 +38,5 @@
     "@banglaclaw/tools": "workspace:*",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11"
-  },
-  "files": [
-    "dist",
-    "drizzle"
-  ]
+  }
 }

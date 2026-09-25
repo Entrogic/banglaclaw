@@ -26,7 +26,7 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
 
   beforeEach(async () => {
     await storage.pool.query(
-      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
+      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, audit_logs, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
     );
   });
 
@@ -85,6 +85,16 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await auth.authenticate(issued.token)).toBeUndefined();
     expect((await storage.auth.listUsers()).map((u) => u.name)).toEqual(["other", "shop-bot"]);
 
+    const reader = await auth.issueKey("reader", "ro", undefined, ["read"]);
+    expect((await auth.authenticate(reader.token))?.key.scopes).toEqual(["read"]);
+
+    await storage.audit.record({ action: "key.created", outcome: "success", actorId: "cli", target: reader.key.id, metadata: { scopes: ["read"] } });
+    await storage.audit.record({ action: "auth.failed", outcome: "failure", ip: "10.0.0.9", requestId: "r1" });
+    const audit = await storage.audit.list();
+    expect(audit.map((e) => e.action)).toEqual(["auth.failed", "key.created"]);
+    expect(audit[1]).toMatchObject({ actorId: "cli", target: reader.key.id, metadata: { scopes: ["read"] } });
+    expect(await storage.audit.list({ action: "auth.failed" })).toHaveLength(1);
+
     const ops = await auth.issueKey("ops", "console", "operator");
     expect(ops.user.role).toBe("operator");
     expect((await auth.authenticate(ops.token))?.user.role).toBe("operator");
@@ -122,6 +132,7 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
       output: "4",
       agent: "sales",
       agentPath: ["banglaclaw", "sales"],
+      usage: { inputTokens: 120, outputTokens: 30 },
       toolCalls: [
         { runId: "", toolCallId: "c1", tool: "calculator", input: { expression: "2+2" }, status: "ok", output: { result: 4 }, durationMs: 1 },
         { runId: "", toolCallId: "c2", tool: "shell", input: {}, status: "unknown_tool", error: "No tool", durationMs: 0 },
@@ -131,7 +142,7 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     await storage.runs.save(second);
 
     const got = await storage.runs.get(second.id);
-    expect(got).toMatchObject({ id: second.id, skills: ["calculation"], output: "4", stopReason: "completed", language: "bn", agent: "sales", agentPath: ["banglaclaw", "sales"] });
+    expect(got).toMatchObject({ id: second.id, skills: ["calculation"], output: "4", stopReason: "completed", language: "bn", agent: "sales", agentPath: ["banglaclaw", "sales"], usage: { inputTokens: 120, outputTokens: 30 } });
     expect(got?.toolCalls.map((c) => [c.toolCallId, c.status])).toEqual([["c1", "ok"], ["c2", "unknown_tool"]]);
     expect(got?.toolCalls[0]?.runId).toBe(second.id);
     expect(got).not.toHaveProperty("error");

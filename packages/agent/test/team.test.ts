@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseAgentProfile } from "@banglaclaw/agents";
 import { FakeProvider, type ScriptedTurn } from "@banglaclaw/providers";
 import { InMemoryRunStore, InMemorySessionStore, type Session } from "@banglaclaw/session";
-import { createLogger, type RunEvent } from "@banglaclaw/shared";
+import { createLogger, type NewAuditEvent, type RunEvent } from "@banglaclaw/shared";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
 import { AgentRuntime, HANDOFF_MESSAGES } from "../src/index.js";
 
@@ -17,7 +17,9 @@ function setup(script: ScriptedTurn[], team: { handoff?: boolean; maxTransfers?:
   const registry = new ToolRegistry();
   for (const tool of builtinTools) registry.register(tool);
   const handoffs: [string, string][] = [];
+  const audits: NewAuditEvent[] = [];
   const runtime = new AgentRuntime({
+    audit: (e) => audits.push(e),
     provider, registry, policy: new AllowlistPolicy(["calculator", "current_datetime"]), sessions, runs,
     limits: { maxIterations: 8, maxToolCalls: 8 }, timeoutMs: 5_000, timezone: "Asia/Dhaka", logger: silent,
     team: { profiles: [sales, support], handoff: team.handoff ?? false, maxTransfers: team.maxTransfers ?? 3 },
@@ -32,7 +34,7 @@ function setup(script: ScriptedTurn[], team: { handoff?: boolean; maxTransfers?:
     return runtime.run(text, { sessionId: session.id, onEvent: (e) => events.push(e) });
   };
   const current = async () => sessions.get(session?.id ?? "");
-  return { provider, sessions, run, events, current, handoffs };
+  return { provider, sessions, run, events, current, handoffs, audits };
 }
 
 const system = (provider: FakeProvider, call: number) => String(provider.calls[call]?.messages[0]?.content);
@@ -63,7 +65,7 @@ describe("multi-agent team", () => {
   });
 
   it("keeps specialists inside their tool subset and lets them hand back", async () => {
-    const { provider, run, current } = setup([
+    const { provider, run, current, audits } = setup([
       { toolCalls: [{ name: "transfer_to_support", args: {} }] },
       { toolCalls: [{ name: "current_datetime", args: {} }] },
       { toolCalls: [{ name: "transfer_to_supervisor", args: { reason: "not a delivery issue" } }] },
@@ -74,6 +76,7 @@ describe("multi-agent team", () => {
     expect(record.toolCalls.find((c) => c.tool === "current_datetime")).toMatchObject({ status: "denied", error: expect.stringMatching(/not available to agent support/) });
     expect(record).toMatchObject({ agent: "supervisor", agentPath: ["supervisor", "support", "supervisor"], output: "Supervisor answering" });
     expect((await current())?.activeAgent).toBeUndefined();
+    expect(audits).toContainEqual(expect.objectContaining({ action: "tool.denied", outcome: "denied", target: "current_datetime" }));
   });
 
   it("stops agent ping-pong at maxTransfers", async () => {
@@ -93,7 +96,7 @@ describe("multi-agent team", () => {
   });
 
   it("hands the session to a human and stays silent until released", async () => {
-    const { provider, run, current, handoffs, sessions } = setup(
+    const { provider, run, current, handoffs, sessions, audits } = setup(
       [{ toolCalls: [{ name: "request_human", args: { reason: "refund over limit" } }] }, { content: "bot is back" }],
       { handoff: true },
     );
@@ -103,6 +106,7 @@ describe("multi-agent team", () => {
     const s = await current();
     expect(s).toMatchObject({ status: "handoff", handoffReason: "refund over limit" });
     expect(handoffs).toEqual([[s?.id, "refund over limit"]]);
+    expect(audits).toContainEqual(expect.objectContaining({ action: "handoff.requested", target: s?.id }));
 
     const whileHanded = await run("hello? keu achen?");
     expect(whileHanded).toMatchObject({ status: "handoff", agent: "human", provider: "human" });

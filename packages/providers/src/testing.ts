@@ -3,6 +3,7 @@ import type { ModelCallOptions, ModelProvider } from "./provider.js";
 
 export interface ScriptedTurn {
   content?: string;
+  usage?: { input: number; output: number };
   toolCalls?: { id?: string; name: string; args: Record<string, unknown> }[];
 }
 
@@ -47,6 +48,12 @@ export class FakeProvider implements ModelProvider {
     const { turn, n } = this.#next(messages, options);
     for (const piece of (turn.content ?? "").match(/\S+\s*/g) ?? []) {
       yield new AIMessageChunk({ content: piece });
+    }
+    if (turn.usage !== undefined) {
+      yield new AIMessageChunk({
+        content: "",
+        usage_metadata: { input_tokens: turn.usage.input, output_tokens: turn.usage.output, total_tokens: turn.usage.input + turn.usage.output },
+      });
     }
     const toolCalls = this.#toolCalls(turn, n);
     if (toolCalls.length > 0) {

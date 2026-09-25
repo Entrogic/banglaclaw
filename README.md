@@ -4,7 +4,19 @@
 
 BanglaClaw is designed to help developers build stateful, tool-using, multi-channel AI agents that understand Bangla, Banglish and English.
 
-## Quickstart
+## Run with Docker
+
+```bash
+cp .env.example .env        # set OPENAI_API_KEY and POSTGRES_PASSWORD
+docker compose -f docker/compose.prod.yaml up -d --build
+docker compose -f docker/compose.prod.yaml run --rm banglaclaw db migrate
+docker compose -f docker/compose.prod.yaml run --rm banglaclaw key create --user my-app
+# → http://127.0.0.1:3000/chat, API docs: http://127.0.0.1:3000/v1/openapi.json
+```
+
+See [Deployment](docs/21-deployment.md) and [Operations](docs/22-operations.md).
+
+## Quickstart (from source)
 
 Requires Node.js 22+ and pnpm.
 
@@ -108,6 +120,9 @@ pnpm banglaclaw session list
 - [API](docs/18-api.md)
 - [Development](docs/19-development.md)
 - [Roadmap](docs/20-roadmap.md)
+- [Deployment](docs/21-deployment.md)
+- [Operations](docs/22-operations.md)
+- [Plugins](docs/23-plugins.md)
 - [Architecture Decision Records](docs/adr/)
 
 ## Design principles
@@ -123,7 +138,7 @@ pnpm banglaclaw session list
 
 ## Status
 
-Pre-alpha. Implemented so far:
+**1.0.0**. The `/v1` API is stable ([compatibility policy](docs/18-api.md#versioning-and-compatibility-v10)). Milestones:
 
 - **v0.1 Agent Core**: TypeScript monorepo, LangGraph runtime, OpenAI-compatible and Anthropic providers, permission-checked tool calling, streaming, Bangla/Banglish/English detection, CLI.
 - **v0.2 State and Skills**: sessions, optional PostgreSQL persistence (Drizzle), short-term memory window, per-run LangGraph checkpoints, and SKILL.md skills.
@@ -132,5 +147,10 @@ Pre-alpha. Implemented so far:
 - **v0.5 Channels**: Telegram (polling or webhook), WhatsApp Cloud API, a browser chat page, and allowlist access with per-chat rate limits.
 - **v0.6 Knowledge**: RAG over your documents (txt/md/html/pdf, Bangla-aware chunking, Qdrant or in-memory vectors) and owner-scoped long-term memory.
 - **v0.7 Multi-agent**: a supervisor routing to AGENT.md specialists with scoped tools, plus human handoff with an operator queue (CLI/API) that replies through the user's channel.
+- **v1.0 Production runtime**: audit log, key scopes and roles, OpenTelemetry tracing, Prometheus metrics, token usage, OpenAPI spec + typed client, plugins, and a production Docker image.
 
-Next up is v1.0 production hardening — see the [roadmap](docs/20-roadmap.md).
+See [CHANGELOG.md](CHANGELOG.md) and the [roadmap](docs/20-roadmap.md).
+
+## Contributing and license
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). BanglaClaw is licensed under the [Apache License 2.0](LICENSE).

@@ -32,7 +32,7 @@ export function findDistricts(query: string) {
 
 /** Bangladesh reference-data MCP server: divisions/districts, Taka formatting, digit conversion. */
 export function createServer(): McpServer {
-  const server = new McpServer({ name: "banglaclaw-bangladesh", version: "0.3.0" });
+  const server = new McpServer({ name: "banglaclaw-bangladesh", version: "1.0.0" });
 
   server.registerTool(
     "list_divisions",

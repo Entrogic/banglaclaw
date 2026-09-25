@@ -15,6 +15,8 @@ export interface RunRecord {
   /** Agents visited in order, including transfers. */
   agentPath: string[];
   handoffReason?: string;
+  /** Model token usage summed over the run (when the provider reports it). */
+  usage?: { inputTokens: number; outputTokens: number };
   input: string;
   output?: string;
   status: RunStatus;

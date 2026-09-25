@@ -21,6 +21,7 @@ export const apiKeys = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     hash: text("hash").notNull(),
+    scopes: text("scopes").array().notNull().default(sql`'{read,run}'::text[]`),
     createdAt: createdAt(),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
@@ -65,6 +66,8 @@ export const runs = pgTable(
     agent: text("agent").notNull().default("banglaclaw"),
     agentPath: text("agent_path").array().notNull().default(sql`'{}'::text[]`),
     handoffReason: text("handoff_reason"),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
     input: text("input").notNull(),
     output: text("output"),
     status: text("status").notNull(),
@@ -112,4 +115,21 @@ export const toolCalls = pgTable(
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.runId, t.seq] }), index("tool_calls_tool_idx").on(t.tool)],
+);
+
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    action: text("action").notNull(),
+    outcome: text("outcome").notNull(),
+    actorId: text("actor_id"),
+    actorName: text("actor_name"),
+    target: text("target"),
+    ip: text("ip"),
+    requestId: text("request_id"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+  },
+  (t) => [index("audit_logs_at_idx").on(t.at), index("audit_logs_action_idx").on(t.action, t.at), index("audit_logs_actor_idx").on(t.actorId, t.at)],
 );

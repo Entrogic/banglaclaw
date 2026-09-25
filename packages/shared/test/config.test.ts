@@ -23,7 +23,7 @@ describe("loadConfig", () => {
     expect(config.skills).toEqual({ dirs: ["skills"], maxActive: 2 });
     expect(config.mcp).toEqual({ servers: {} });
     expect(config.gateway).toEqual({
-      host: "127.0.0.1", port: 3000, corsOrigins: [], maxInputChars: 8000,
+      host: "127.0.0.1", port: 3000, corsOrigins: [], maxInputChars: 8000, trustProxy: false, metrics: true,
       rateLimit: { requestsPerMinute: 60, maxConcurrentRuns: 2 },
     });
     expect(config.channels.telegram).toEqual({ enabled: false, mode: "polling", access: "allowlist", allowedUserIds: [], rateLimitPerMinute: 10 });

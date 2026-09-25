@@ -14,7 +14,8 @@ banglaclaw tool list                           # built-in + MCP tools, risk leve
 banglaclaw mcp list                            # connect to MCP servers; status and discovered tools
 banglaclaw db migrate | status                 # PostgreSQL schema + checkpoint tables (DATABASE_URL)
 banglaclaw serve [--port 3000] [--host …]      # gateway (REST, SSE, WebSocket, /chat) + enabled channels (docs/11, 18)
-banglaclaw key create --user <name> [--name] [--role operator]   # issue an API key (shown once; postgres storage)
+banglaclaw key create --user <name> [--name] [--role user|operator|admin] [--scopes read,run]   # API key (shown once)
+banglaclaw audit [--action auth.failed] [--limit 50]                                         # security audit log
 banglaclaw key list [--user <name>] | revoke <id>
 banglaclaw kb ingest <paths…> | list | search <q> | delete <source>   # knowledge base (docs/07)
 banglaclaw memory list [--owner cli:local] | forget <id> [--owner …]  # long-term memories

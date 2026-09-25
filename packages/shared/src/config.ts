@@ -162,6 +162,10 @@ export const ConfigSchema = z.strictObject({
       corsOrigins: z.array(z.string().min(1)).default([]),
       /** Maximum characters per message. */
       maxInputChars: z.int().min(1).max(100_000).default(8_000),
+      /** Take the client IP from X-Forwarded-For (only behind a trusted reverse proxy). */
+      trustProxy: z.boolean().default(false),
+      /** Serve Prometheus metrics at GET /metrics (protect with METRICS_TOKEN or the network). */
+      metrics: z.boolean().default(true),
       rateLimit: z
         .strictObject({
           /** Requests per API key per minute (all endpoints). */
@@ -194,6 +198,8 @@ export const ConfigSchema = z.strictObject({
       enabled: z.boolean().default(false),
     })
     .prefault({}),
+  /** Plugin modules: paths relative to the config file ("./plugins/x") or installed package names. Trusted code only. */
+  plugins: z.array(z.string().min(1)).default([]),
   mcp: z
     .strictObject({
       /** Server name → connection. Names prefix tool names: <server>__<tool>. */
@@ -227,6 +233,8 @@ export interface Secrets {
   embeddingsApiKey?: string;
   /** POSTed a JSON notification whenever a session is handed to a human. */
   handoffWebhookUrl?: string;
+  /** Bearer token required to scrape GET /metrics (optional). */
+  metricsToken?: string;
 }
 
 export interface LoadConfigOptions {
@@ -301,6 +309,7 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
     ["qdrantApiKey", "QDRANT_API_KEY"],
     ["embeddingsApiKey", "EMBEDDINGS_API_KEY"],
     ["handoffWebhookUrl", "HANDOFF_WEBHOOK_URL"],
+    ["metricsToken", "METRICS_TOKEN"],
   ];
   for (const [key, name] of secretEnv) {
     const value = nonEmpty(env[name]);

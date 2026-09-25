@@ -13,10 +13,11 @@ PostgreSQL is the initial recommended relational database.
 | Table | Contents |
 |---|---|
 | `users` | unique name, role `user` / `operator` (v0.4, role v0.7) |
-| `api_keys` | public key id, user_id, name, SHA-256 hash of the secret, last_used_at, revoked_at (v0.4) |
+| `api_keys` | public key id, user_id, name, SHA-256 hash of the secret, scopes, last_used_at, revoked_at |
 | `sessions` | channel, external_id (unique per channel), user_id (FK users), agent_id, status, active_agent, handoff_reason, handoff_at, timestamps |
 | `messages` | session_id, run_id, role, `data` jsonb (serialised LangChain message incl. tool calls) |
-| `runs` | status (incl. `handoff`), stop_reason, language, skills[], agent, agent_path[], handoff_reason, input/output/error, provider, prompt_version, timings |
+| `runs` | status (incl. `handoff`), stop_reason, language, skills[], agent, agent_path[], handoff_reason, input_tokens, output_tokens, input/output/error, provider, prompt_version, timings |
+| `audit_logs` | at, action, outcome, actor_id/name, target, ip, request_id, metadata (v1.0) |
 | `tool_calls` | run_id + seq, tool, input/output jsonb, status, error, duration |
 | `checkpoints*` | LangGraph `PostgresSaver` tables, one thread per run (`thread_id = runId`) |
 
@@ -29,11 +30,7 @@ PostgreSQL is the initial recommended relational database.
 
 Knowledge chunks and long-term memories live in a vector store, not in PostgreSQL: Qdrant collections `banglaclaw_knowledge` and `banglaclaw_memories` (configurable), or the in-memory store. See docs/07.
 
-## Planned tables
 
-```text
-audit_logs   (v1.0, security hardening)
-```
 
 ## Optional infrastructure
 

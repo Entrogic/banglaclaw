@@ -27,6 +27,9 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | GET | `/v1/handoffs/:id` | Operators: a handed-off session with its messages |
 | POST | `/v1/handoffs/:id/reply` | Operators: reply as a human `{ text }` → `{ delivered, runId }` (delivered through Telegram/WhatsApp) |
 | POST | `/v1/handoffs/:id/release` | Operators: return the session to the bot (409 if it isn't handed off) |
+| GET | `/v1/audit?action=&limit=` | Admins: security audit log |
+| GET | `/v1/openapi.json` | OpenAPI 3.1 spec (no auth) |
+| GET | `/metrics` | Prometheus metrics (no API key; `METRICS_TOKEN` if set) |
 | GET | `/v1/ws` | WebSocket (see below) |
 
 - `externalId` is the channel-native conversation id (for example a chat id). It is namespaced per user, so two API users never share or discover each other's sessions.
@@ -78,7 +81,7 @@ Every error has the same shape and carries the request id (also returned in `X-R
 |---|---|
 | 400 | `invalid_request`, `invalid_json` |
 | 401 | `unauthenticated` |
-| 403 | `forbidden` (operator role required) |
+| 403 | `forbidden` (role required), `insufficient_scope` |
 | 409 | `not_handed_off` |
 | 404 | `not_found`, `session_not_found`, `run_not_found` |
 | 413 | `payload_too_large` (bodies over 256 KB) |
@@ -86,8 +89,24 @@ Every error has the same shape and carries the request id (also returned in `X-R
 | 502 | `run_failed` (model provider error) |
 | 504 | `run_timeout` |
 
+## Versioning and compatibility (v1.0)
+
+- **`/v1` is stable.** Within v1, changes are additive only: new endpoints, new optional request fields, new response fields and new event types. Clients must ignore unknown fields and SSE events.
+- **Deprecations** are announced in `CHANGELOG.md` and signalled with `Deprecation` and `Sunset` response headers at least one minor release before removal. Breaking changes ship as `/v2`, with `/v1` served alongside for a transition period.
+- **The machine-readable contract** is `GET /v1/openapi.json` (OpenAPI 3.1, no auth). A test fails if a route is added without being documented.
+- **Typed client:** `@banglaclaw/client`.
+
+```ts
+import { BanglaClawClient } from "@banglaclaw/client";
+
+const bc = new BanglaClawClient({ baseUrl: "https://bot.example.com", apiKey: process.env.BANGLACLAW_KEY! });
+const { reply, sessionId } = await bc.run("১৫০০ টাকার ১০% কত?");
+for await (const e of bc.sessions.stream(sessionId, "ar 20%?")) if (e.event === "token") process.stdout.write(e.data.text);
+```
+
 ## Authentication and limits
 
-- Users have a `role`: `user` (default) or `operator` (may use `/v1/handoffs`). Create operators with `banglaclaw key create --user <name> --role operator`.
+- Keys have **scopes**: `read` (GET endpoints) and `run` (agent runs and other writes). The default is both; `key create --scopes read` makes a read-only key. Missing scope → 403 `insufficient_scope`.
+- Users have a `role`: `user` (default), `operator` (may use `/v1/handoffs`) or `admin` (operator rights plus `GET /v1/audit`). Create operators with `banglaclaw key create --user <name> --role operator`.
 - API keys look like `bck_<id>_<secret>`. Only a SHA-256 hash of the secret is stored. Create keys with `banglaclaw key create --user <name>` (postgres storage). In memory mode, `serve` prints a temporary key.
 - Per API key: a token-bucket rate limit (`gateway.rateLimit.requestsPerMinute`, reported in `X-RateLimit-Limit` / `X-RateLimit-Remaining`) and a cap on concurrent runs (`maxConcurrentRuns`). Limits are per process; a shared store is needed for multiple instances.

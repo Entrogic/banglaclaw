@@ -33,6 +33,7 @@ export function runJson(r: RunRecord) {
     agent: r.agent,
     agentPath: r.agentPath,
     ...(r.handoffReason !== undefined && { handoffReason: r.handoffReason }),
+    ...(r.usage !== undefined && { usage: r.usage }),
     input: r.input,
     ...(r.output !== undefined && { output: r.output }),
     ...(r.error !== undefined && { error: r.error }),

@@ -1,16 +1,18 @@
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
-import { AgentRuntime } from "@banglaclaw/agent";
+import { AgentRuntime, type AgentRuntimeOptions } from "@banglaclaw/agent";
 import { loadAgentProfiles, type AgentProfile } from "@banglaclaw/agents";
 import { InMemoryAuthStore, type AuthStore } from "@banglaclaw/auth";
 import { McpManager } from "@banglaclaw/mcp";
 import { createProvider } from "@banglaclaw/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunStore, type SessionStore } from "@banglaclaw/session";
-import { ConfigError, createLogger, loadConfig, parseLogLevel, type LoadedConfig } from "@banglaclaw/shared";
+import { ConfigError, InMemoryAuditStore, auditRecorder, createLogger, loadConfig, parseLogLevel, type AuditStore, type LoadedConfig } from "@banglaclaw/shared";
 import { SkillSet, loadSkillsFromDirs } from "@banglaclaw/skills";
 import type { PermissionPolicy } from "@banglaclaw/tools";
 import { PostgresStorage } from "@banglaclaw/storage";
 import { AllowlistPolicy, ToolRegistry, builtinTools, type AnyTool } from "@banglaclaw/tools";
 import { setupKnowledge, type KnowledgeSetup } from "./knowledge.js";
+import { loadPlugins, type LoadedPlugin } from "./plugins.js";
+import { VERSION } from "./version.js";
 
 export interface GlobalOptions {
   config?: string;
@@ -33,15 +35,15 @@ export async function connectMcp(loaded: LoadedConfig): Promise<McpManager> {
   const manager = new McpManager({
     servers: loaded.config.mcp.servers,
     baseDir: loaded.baseDir,
-    clientVersion: "0.3.0",
+    clientVersion: VERSION,
     logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }),
   });
   await manager.connectAll();
   return manager;
 }
 
-export function loadAgents(loaded: LoadedConfig): AgentProfile[] {
-  return loadAgentProfiles(loaded.config.agents.dirs, loaded.baseDir);
+export function loadAgents(loaded: LoadedConfig, plugins: readonly LoadedPlugin[] = []): AgentProfile[] {
+  return loadAgentProfiles([...loaded.config.agents.dirs, ...plugins.flatMap((p) => p.plugin.agentsDirs ?? [])], loaded.baseDir);
 }
 
 /** POSTs {event, sessionId, channel, reason} to HANDOFF_WEBHOOK_URL (Slack/Discord bridges, n8n, …). */
@@ -59,8 +61,8 @@ function handoffNotifier(loaded: LoadedConfig) {
   };
 }
 
-export function loadSkills(loaded: LoadedConfig): SkillSet {
-  return new SkillSet(loadSkillsFromDirs(loaded.config.skills.dirs, loaded.baseDir));
+export function loadSkills(loaded: LoadedConfig, plugins: readonly LoadedPlugin[] = []): SkillSet {
+  return new SkillSet(loadSkillsFromDirs([...loaded.config.skills.dirs, ...plugins.flatMap((p) => p.plugin.skillsDirs ?? [])], loaded.baseDir));
 }
 
 export interface Services {
@@ -68,6 +70,7 @@ export interface Services {
   sessions: SessionStore;
   runs: RunStore;
   auth: AuthStore;
+  audit: AuditStore;
   /** Set when storage.provider is postgres. */
   postgres?: PostgresStorage;
   checkpointer?: BaseCheckpointSaver;
@@ -93,6 +96,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
       sessions: new InMemorySessionStore(),
       runs: new InMemoryRunStore(),
       auth: new InMemoryAuthStore(),
+      audit: new InMemoryAuditStore(),
       persistent: false,
       close: async () => {},
     };
@@ -113,6 +117,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
     sessions: postgres.sessions,
     runs: postgres.runs,
     auth: postgres.auth,
+    audit: postgres.audit,
     postgres,
     ...(loaded.config.storage.checkpoints && { checkpointer: postgres.checkpointer }),
     persistent: true,
@@ -131,9 +136,10 @@ export interface RuntimeBundle {
   providerId: string;
   knowledge: KnowledgeSetup;
   profiles: AgentProfile[];
+  plugins: LoadedPlugin[];
 }
 
-export async function createRuntime(options: GlobalOptions): Promise<RuntimeBundle> {
+export async function createRuntime(options: GlobalOptions, hooks: { onRunComplete?: AgentRuntimeOptions["onRunComplete"] } = {}): Promise<RuntimeBundle> {
   const services = await openServices(options);
   let mcp: McpManager | undefined;
   try {
@@ -148,10 +154,11 @@ export async function createRuntime(options: GlobalOptions): Promise<RuntimeBund
     };
     const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
     const knowledge = setupKnowledge(services.loaded, services.sessions, logger);
-    const registry = buildRegistry(mcp, knowledge.tools);
+    const plugins = await loadPlugins(services.loaded);
+    const registry = buildRegistry(mcp, [...knowledge.tools, ...plugins.flatMap((p) => p.plugin.tools ?? [])]);
     const policy = new AllowlistPolicy(config.tools.allow);
-    const skills = loadSkills(services.loaded);
-    const profiles = loadAgents(services.loaded);
+    const skills = loadSkills(services.loaded, plugins);
+    const profiles = loadAgents(services.loaded, plugins);
     const notify = handoffNotifier(services.loaded);
     const runtime = new AgentRuntime({
       provider,
@@ -167,14 +174,16 @@ export async function createRuntime(options: GlobalOptions): Promise<RuntimeBund
       skills,
       maxActiveSkills: config.skills.maxActive,
       ...(services.checkpointer !== undefined && { checkpointer: services.checkpointer }),
-      contextProviders: knowledge.contextProviders,
+      contextProviders: [...knowledge.contextProviders, ...plugins.flatMap((p) => p.plugin.contextProviders ?? [])],
       ...((profiles.length > 0 || config.handoff.enabled) && {
         team: { profiles, handoff: config.handoff.enabled, maxTransfers: config.agents.maxTransfers },
       }),
       ...(notify !== undefined && { onHandoff: notify }),
+      audit: auditRecorder(services.audit, logger),
+      ...(hooks.onRunComplete !== undefined && { onRunComplete: hooks.onRunComplete }),
       logger,
     });
-    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id, knowledge, profiles };
+    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id, knowledge, profiles, plugins };
   } catch (error) {
     await services.close();
     await mcp?.close();

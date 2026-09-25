@@ -1,0 +1,27 @@
+{
+  "name": "@banglaclaw/plugin-sdk",
+  "version": "1.0.0",
+  "description": "Build BanglaClaw plugins: tools, skills, agents and context providers",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@banglaclaw/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@banglaclaw/agent": "workspace:*",
+    "@banglaclaw/tools": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}

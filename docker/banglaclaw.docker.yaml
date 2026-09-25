@@ -1,0 +1,24 @@
+# Default config baked into the Docker image. Mount your own at /app/banglaclaw.yaml
+# (or set BANGLACLAW_CONFIG). Secrets come from environment variables only.
+agent:
+  name: banglaclaw
+
+models:
+  default:
+    provider: openai-compatible
+    model: gpt-4o-mini
+
+storage:
+  provider: postgres             # needs DATABASE_URL; run `banglaclaw db migrate` once
+
+gateway:
+  host: 0.0.0.0
+  port: 3000
+  trustProxy: false              # set true behind a reverse proxy that sets X-Forwarded-For
+
+skills:
+  dirs: [skills]
+
+channels:
+  web:
+    enabled: true

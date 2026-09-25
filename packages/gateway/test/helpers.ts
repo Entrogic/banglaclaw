@@ -53,7 +53,7 @@ export async function makeDeps(options: { script?: ScriptedTurn[]; provider?: Mo
     runtime, sessions, runs, auth, registry, policy, skills,
     agent: { name: "banglaclaw", model: provider.id },
     config: {
-      host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 100,
+      host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 100, trustProxy: false, metrics: true,
       ...options.config,
       rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2, ...options.config?.rateLimit },
     },

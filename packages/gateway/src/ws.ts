@@ -63,6 +63,7 @@ export function websocketHandler(gw: GatewayContext, upgradeWebSocket: UpgradeWe
     const startRun = async (ws: WSContext, who: Principal, msg: { ref?: string; text: string; sessionId?: string; externalId?: string }) => {
       const ref = msg.ref ?? `run-${++counter}`;
       if (runs.has(ref)) return sendError(ws, new HttpError(400, "duplicate_ref", `A run with ref "${ref}" is already active`), ref);
+      if (!who.key.scopes.includes("run")) return sendError(ws, new HttpError(403, "insufficient_scope", 'This API key lacks the "run" scope'), ref);
       const rate = gw.rate.take(who.key.id);
       if (!rate.ok) return sendError(ws, new HttpError(429, "rate_limited", `Rate limit exceeded; retry in ${rate.retryAfterSeconds}s`), ref);
 

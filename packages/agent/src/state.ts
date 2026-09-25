@@ -14,6 +14,8 @@ export const AgentStateAnnotation = Annotation.Root({
   activeAgent: replace<string>(() => "supervisor"),
   agentPath: replace<string[]>(() => []),
   transfers: replace<number>(() => 0),
+  inputTokens: replace<number>(() => 0),
+  outputTokens: replace<number>(() => 0),
   /** Set when an agent requested a human operator. */
   handoffReason: replace<string | undefined>(() => undefined),
   /** Conversation history for this session plus messages produced in this run (no system prompt). */

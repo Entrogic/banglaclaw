@@ -1,5 +1,12 @@
 import { generateApiKey, parseApiKey, verifySecret } from "./keys.js";
-import type { ApiKeyRecord, AuthStore, User, UserRole } from "./types.js";
+import { ALL_SCOPES, type ApiKeyRecord, type ApiKeyScope, type AuthStore, type User, type UserRole } from "./types.js";
+
+/** operator and admin roles may use operator endpoints; only admin may read the audit log. */
+export function hasRole(user: User, role: UserRole): boolean {
+  if (role === "user") return true;
+  if (role === "operator") return user.role === "operator" || user.role === "admin";
+  return user.role === "admin";
+}
 
 export interface Principal {
   user: User;
@@ -24,7 +31,7 @@ export class ApiKeyAuthenticator {
   constructor(readonly store: AuthStore) {}
 
   /** Creates the user if needed (with `role`, default "user") and issues a new key; an explicit role updates an existing user. */
-  async issueKey(userName: string, keyName = "default", role?: UserRole): Promise<IssuedKey> {
+  async issueKey(userName: string, keyName = "default", role?: UserRole, scopes: readonly ApiKeyScope[] = ALL_SCOPES): Promise<IssuedKey> {
     let user = await this.store.findUserByName(userName);
     if (user === undefined) user = await this.store.createUser(userName, role ?? "user");
     else if (role !== undefined && user.role !== role) {
@@ -32,7 +39,7 @@ export class ApiKeyAuthenticator {
       user = { ...user, role };
     }
     const generated = generateApiKey();
-    const record: ApiKeyRecord = { id: generated.id, userId: user.id, name: keyName, hash: generated.hash, createdAt: new Date() };
+    const record: ApiKeyRecord = { id: generated.id, userId: user.id, name: keyName, hash: generated.hash, scopes: [...new Set(scopes)], createdAt: new Date() };
     await this.store.saveApiKey(record);
     return { user, key: publicKey(record), token: generated.token };
   }

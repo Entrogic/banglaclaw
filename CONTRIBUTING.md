@@ -1,0 +1,34 @@
+# Contributing to BanglaClaw
+
+Thanks for helping build a Bangla-first agent runtime! Issues and pull requests are welcome in Bangla or English.
+
+## Setup
+
+```bash
+pnpm install                                   # Node 22+, pnpm (never npm or yarn)
+docker compose -f docker/compose.yaml up -d    # PostgreSQL + Qdrant for integration tests
+cp .env.example .env                           # optional: a model key for live runs
+```
+
+## Before opening a pull request
+
+```bash
+pnpm lint && pnpm typecheck && pnpm test && pnpm build
+TEST_DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw_test \
+TEST_QDRANT_URL=http://localhost:56333 pnpm test    # include integration tests
+```
+
+CI runs the same checks plus `pnpm audit --audit-level high`.
+
+## Guidelines
+
+- **Design first.** Behavior changes update the relevant `docs/` page in the same PR. Significant decisions get an ADR in `docs/adr/`.
+- **TypeScript.** Strict TypeScript, no `any`. Validate external data with Zod.
+- **Tests.** Agent tests are deterministic: use `FakeProvider`, never live model calls.
+- **Security.** Tools need input and output schemas and a `risk` level; the application, not the prompt, decides permissions (AGENT.md §32).
+- **API.** New gateway routes must be added to `packages/gateway/src/openapi.ts`; a contract test enforces it. `/v1` changes must be additive (docs/18).
+- **Database.** Schema changes: edit `packages/storage/src/schema.ts`, run `pnpm --filter @banglaclaw/storage db:generate`, and commit the generated migration.
+- **Commits.** Conventional prefixes: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`.
+- **Scope.** Keep PRs small and focused. New channels, tools, skills, MCP servers and plugins are especially welcome.
+
+By contributing you agree that your contributions are licensed under the Apache License 2.0.

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
-import type { ApiKeyRecord, AuthStore, User, UserRole } from "@banglaclaw/auth";
+import type { ApiKeyRecord, ApiKeyScope, AuthStore, User, UserRole } from "@banglaclaw/auth";
 import type { Database } from "./db.js";
 import { apiKeys, users } from "./schema.js";
 
@@ -14,6 +14,7 @@ function toKey(row: KeyRow): ApiKeyRecord {
     userId: row.userId,
     name: row.name,
     hash: row.hash,
+    scopes: row.scopes as ApiKeyScope[],
     createdAt: row.createdAt,
     ...(row.lastUsedAt !== null && { lastUsedAt: row.lastUsedAt }),
     ...(row.revokedAt !== null && { revokedAt: row.revokedAt }),
@@ -53,6 +54,7 @@ export class PostgresAuthStore implements AuthStore {
       userId: record.userId,
       name: record.name,
       hash: record.hash,
+      scopes: record.scopes,
       createdAt: record.createdAt,
       lastUsedAt: record.lastUsedAt ?? null,
       revokedAt: record.revokedAt ?? null,

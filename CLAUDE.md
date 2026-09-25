@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **v0.1 (agent core), v0.2 (sessions, PostgreSQL, skills, short-term memory, checkpoints) and v0.3 (MCP client + example server) v0.4 (HTTP gateway, API keys, rate limits) v0.5 (Telegram, WhatsApp, web chat channels) v0.6 (RAG knowledge base, long-term memory, Qdrant) and v0.7 (supervisor + specialist agents, human handoff) are implemented**; v1.0 hardening is next — see docs/20-roadmap.md. Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
+BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **Version 1.0.0**: all roadmap milestones (v0.1–v1.0) are implemented; see CHANGELOG.md and docs/20-roadmap.md ("After 1.0" lists ideas). The `/v1` HTTP API is stable and changes must be additive (docs/18). Architecture is specified in `docs/` first: when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
 
 ## Commands
 
@@ -30,7 +30,7 @@ The CLI loads `./.env` at startup (`apps/cli/src/env.ts`; shell variables win). 
 
 ## Monorepo mechanics
 
-- Packages: `packages/{shared,providers,tools,session,skills,storage,mcp,auth,agents,agent,gateway,channels,knowledge}`, `apps/cli`, `mcp-servers/bangladesh`, all named `@banglaclaw/*`. Dependency direction: `shared` ← `providers`, `tools`, `session`, `skills`, `auth`, `agents` ← `agent` ← `gateway`, `channels` ← `cli` (channels don't depend on gateway; the CLI mounts their webhook apps via `GatewayDeps.routes`). `storage` (implements the `session` and `auth` interfaces), `mcp` and `knowledge` (both produce `tools`; knowledge also supplies a `ContextProvider`) are wired in only by `cli` (and `knowledge` types by `gateway`); `agent` and `gateway` depend on neither. Only `storage` imports Drizzle/pg; `agent` must not depend on `storage`. Shared types (`ToolSpec`, `StopReason`, `RunEvent`) live in `shared`.
+- Packages: `packages/{shared,providers,tools,session,skills,storage,mcp,auth,agents,agent,gateway,channels,knowledge,observability,client,plugin-sdk}`, `apps/cli`, `mcp-servers/bangladesh`, `examples/plugins/bd-phone`, all named `@banglaclaw/*`. Dependency direction: `shared` ← `providers`, `tools`, `session`, `skills`, `auth`, `agents` ← `agent` ← `gateway`, `channels` ← `cli` (channels don't depend on gateway; the CLI mounts their webhook apps via `GatewayDeps.routes`). `storage` (implements the `session` and `auth` interfaces), `mcp` and `knowledge` (both produce `tools`; knowledge also supplies a `ContextProvider`) are wired in only by `cli` (and `knowledge` types by `gateway`); `agent` and `gateway` depend on neither. Only `storage` imports Drizzle/pg; `agent` must not depend on `storage`. Shared types (`ToolSpec`, `StopReason`, `RunEvent`) live in `shared`.
 - Each package's `exports` maps the custom condition `@banglaclaw/source` → `src/index.ts`. `tsconfig.base.json` (`customConditions`), tsx (`--conditions`) and each `vitest.config.ts` use it, so typecheck/test/dev need no build. `tsconfig.build.json` clears the condition so `tsc` builds against dependencies' `dist/`.
 - ESM with `NodeNext`: relative imports need `.js` extensions. Strict + `noUncheckedIndexedAccess`; ESLint forbids `any` and non-null assertions.
 - TypeScript is pinned to 6.x because typescript-eslint does not support TS 7 yet.
@@ -50,6 +50,13 @@ What exists:
   - appends new messages only for finished runs. The `limit` node closes dangling tool calls so stored history stays valid for providers.
 
   An optional `checkpointer` stores graph state per run under `thread_id = runId`. Session history belongs to `SessionStore`, not to checkpoints.
+- **v1.0 production pieces:**
+  - **Audit.** `AuditStore` (in `shared`, Postgres `audit_logs`); `auditRecorder()` never throws. Events come from the gateway (auth failures, throttled per IP; forbidden; rate limited; memory deletion), the runtime (`tool.denied`, `handoff.requested`), `HandoffDesk` and CLI key commands.
+  - **Keys and roles.** Key `scopes` (`read` = GET, `run` = everything else, enforced in the `/v1` middleware and for WS runs). Roles `user`/`operator`/`admin` via `hasRole`.
+  - **Observability** (`packages/observability`, docs/15, ADR-0010). `initTelemetry()` (OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set; the CLI calls it for every command) and `Metrics` (prom-client, fed by `AgentRuntimeOptions.onRunComplete` and the gateway `metrics` dep). The agent and gateway use only `@opentelemetry/api`. Token usage is summed from `usage_metadata` into `RunRecord.usage`.
+  - **OpenAPI.** `packages/gateway/src/openapi.ts` must document every route; a contract test compares it with `app.routes`. `@banglaclaw/client` is the typed SDK (its tests run against `createGatewayApp` through `app.request`).
+  - **Plugins** (docs/23). `@banglaclaw/plugin-sdk` (`definePlugin`, `defineTool`, `z`); `apps/cli/src/plugins.ts` loads `plugins:` (paths relative to the config, or package names). Plugins are trusted in-process code.
+  - **Docker.** `Dockerfile` (pnpm deploy, non-root, healthcheck on `$BANGLACLAW_GATEWAY_PORT`), `docker/compose.prod.yaml`, `docker/banglaclaw.docker.yaml`. CI is `.github/workflows/ci.yml`. The version constant lives in `apps/cli/src/version.ts`.
 - **Multi-agent + handoff** (docs/04, ADR-0009):
   - `packages/agents` parses `AGENT.md` files.
   - `buildAgentGraph({team})` builds a per-agent view: the prompt uses `teamRole()`, tools are the profile subset (the supervisor gets unclaimed tools plus `transfer_to_*`), and a scoped policy enforces each agent's tools.
@@ -78,7 +85,7 @@ What exists:
 - **Auth** (`packages/auth`): `bck_<12 id>_<40 secret>` tokens store only a SHA-256 hash and are verified with `timingSafeEqual`; `issueKey` creates the user on demand. The store is `InMemoryAuthStore` or `PostgresAuthStore` (`users`, `api_keys` tables). In memory mode `banglaclaw serve` prints a temporary key; `key create/list/revoke` require postgres.
 - **Config** (`packages/shared/config.ts`): `banglaclaw.yaml` + `BANGLACLAW_*` env overrides validated by a strict Zod schema. API keys and `DATABASE_URL` come only from env, and the strict schema rejects them in YAML. Relative paths (such as `skills.dirs`) resolve against `baseDir`, which is the config file's directory or else cwd. The logger writes redacted JSON to stderr, because stdout is reserved for streamed replies.
 
-Planned (docs/04, 05, 07, 10, 11): v1.0 hardening (audit logs, observability, stable APIs), per-tenant document ACLs, push of operator replies to API clients, router/planner/verifier nodes, Telegram groups/voice, public web widget, shared rate-limit store, key scopes, exposing BanglaClaw as an MCP server. Follow the layout in docs/19-development.md; `AGENT.md` §2 shows a different generic layout (`apps/api`, `packages/llm`, …) — prefer docs/19 and ask before diverging.
+Post-1.0 ideas (docs/20): per-tenant document ACLs, push of operator replies to API clients, shared rate-limit store, router/planner/verifier nodes, more channels, exposing BanglaClaw as an MCP server.
 
 ## Rules that matter here (from AGENT.md, docs/14)
 

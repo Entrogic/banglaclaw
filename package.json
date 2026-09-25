@@ -1,5 +1,7 @@
 {
   "name": "banglaclaw",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.4.2",
@@ -12,7 +14,8 @@
     "test": "turbo run test",
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
-    "banglaclaw": "tsx --conditions=@banglaclaw/source apps/cli/src/index.ts"
+    "banglaclaw": "tsx --conditions=@banglaclaw/source apps/cli/src/index.ts",
+    "audit:deps": "pnpm audit --audit-level high"
   },
   "devDependencies": {
     "@types/node": "^26.6.2",

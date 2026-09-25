@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { HumanMessage } from "@langchain/core/messages";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
-import { BanglaClawError, createLogger, type Language, type Logger, type RunEvent, type ToolAuditEvent } from "@banglaclaw/shared";
+import { BanglaClawError, createLogger, type Language, type Logger, type NewAuditEvent, type RunEvent, type ToolAuditEvent } from "@banglaclaw/shared";
 import type { ModelProvider } from "@banglaclaw/providers";
 import { trimHistory, type RunRecord, type RunStatus, type RunStore, type Session, type SessionStore } from "@banglaclaw/session";
 import type { SkillSet } from "@banglaclaw/skills";
@@ -45,6 +46,10 @@ export interface AgentRuntimeOptions {
   team?: TeamOptions;
   /** Called after a run hands its session to a human operator (e.g. notify a webhook). Errors are logged. */
   onHandoff?: (session: Session, reason: string) => void | Promise<void>;
+  /** Called with every saved run record (metrics). Must not throw. */
+  onRunComplete?: (record: RunRecord, session: Session) => void;
+  /** Security audit sink (tool denials, handoff requests). Must not throw. */
+  audit?: (event: NewAuditEvent) => void;
   logger?: Logger;
 }
 
@@ -93,6 +98,14 @@ export class AgentRuntime {
     return tuple?.checkpoint.channel_values as Partial<AgentState> | undefined;
   }
 
+  #complete(record: RunRecord, session: Session, log: Logger): void {
+    try {
+      this.#options.onRunComplete?.(record, session);
+    } catch (error) {
+      log.warn("onRunComplete hook failed", { error });
+    }
+  }
+
   async #collectContext(ctx: RunContext, log: Logger): Promise<string[]> {
     const providers = this.#options.contextProviders ?? [];
     const results = await Promise.allSettled(providers.map((p) => p(ctx)));
@@ -107,7 +120,25 @@ export class AgentRuntime {
     return blocks;
   }
 
+  /** Runs the agent inside an `invoke_agent` trace span (no-op unless OpenTelemetry is configured). */
   async run(input: string, options: RunOptions): Promise<RunRecord> {
+    return tracer.startActiveSpan("invoke_agent banglaclaw", async (span) => {
+      try {
+        const record = await this.#run(input, options);
+        span.setAttributes(spanAttributes(record));
+        return record;
+      } catch (error) {
+        if (error instanceof AgentRunError) span.setAttributes(spanAttributes(error.record));
+        span.recordException(error as Error);
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        throw error;
+      } finally {
+        span.end();
+      }
+    });
+  }
+
+  async #run(input: string, options: RunOptions): Promise<RunRecord> {
     const text = input.trim();
     if (text.length === 0) throw new BanglaClawError("EMPTY_INPUT", "Input message is empty");
 
@@ -151,6 +182,15 @@ export class AgentRuntime {
       emit,
       onAudit: (event) => {
         audits.push(event);
+        if (event.status === "denied") {
+          this.#options.audit?.({
+            action: "tool.denied",
+            outcome: "denied",
+            ...(session.userId !== undefined && { actorId: session.userId }),
+            target: event.tool,
+            metadata: { runId, sessionId: session.id, channel: session.channel, reason: event.error },
+          });
+        }
         log.info("tool call", { tool: event.tool, status: event.status, durationMs: event.durationMs, error: event.error });
       },
     });
@@ -195,6 +235,7 @@ export class AgentRuntime {
       agent: state?.activeAgent ?? startAgent,
       agentPath: state?.agentPath ?? [startAgent],
       ...(state?.handoffReason !== undefined && { handoffReason: state.handoffReason }),
+      ...(state !== undefined && (state.inputTokens > 0 || state.outputTokens > 0) && { usage: { inputTokens: state.inputTokens, outputTokens: state.outputTokens } }),
       input: text,
       status,
       iterations: state?.iterations ?? 0,
@@ -208,6 +249,7 @@ export class AgentRuntime {
     };
 
     await runs.save(record);
+    this.#complete(record, session, log);
 
     if (state === undefined) {
       log.error("run failed", { status, error: failure, durationMs: record.durationMs });
@@ -222,6 +264,13 @@ export class AgentRuntime {
     if (state.handoffReason !== undefined) {
       const updated = await sessions.update(session.id, { status: "handoff", handoffReason: state.handoffReason, activeAgent: nextAgent });
       log.warn("session handed off to a human", { reason: state.handoffReason });
+      this.#options.audit?.({
+        action: "handoff.requested",
+        outcome: "success",
+        ...(session.userId !== undefined && { actorId: session.userId }),
+        target: session.id,
+        metadata: { runId, channel: session.channel, agent: state.activeAgent, reason: state.handoffReason },
+      });
       try {
         await this.#options.onHandoff?.(updated ?? session, state.handoffReason);
       } catch (error) {
@@ -261,10 +310,28 @@ export class AgentRuntime {
     };
     // Save the run before its message: messages.run_id references runs in PostgreSQL.
     await this.#options.runs.save(record);
+    this.#complete(record, session, log);
     await this.#options.sessions.appendMessages(session.id, runId, [new HumanMessage(text)]);
     log.info("message stored for human operator");
     return record;
   }
+}
+
+const tracer = trace.getTracer("banglaclaw.agent");
+
+function spanAttributes(r: RunRecord): Record<string, string | number> {
+  return {
+    "gen_ai.operation.name": "invoke_agent",
+    "banglaclaw.run_id": r.id,
+    "banglaclaw.session_id": r.sessionId,
+    "banglaclaw.run.status": r.status,
+    "banglaclaw.agent": r.agent,
+    "banglaclaw.agent_path": r.agentPath.join(">"),
+    "banglaclaw.language": r.language,
+    "banglaclaw.tool_calls": r.toolCalls.length,
+    "gen_ai.usage.input_tokens": r.usage?.inputTokens ?? 0,
+    "gen_ai.usage.output_tokens": r.usage?.outputTokens ?? 0,
+  };
 }
 
 function describeFailure(error: unknown, aborted: boolean, timeoutMs: number, callerSignal?: AbortSignal): string {

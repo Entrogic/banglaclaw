@@ -87,10 +87,14 @@ gateway:
   host: 127.0.0.1          # use 0.0.0.0 only behind a reverse proxy
   port: 3000
   corsOrigins: []          # allowed browser origins; empty = CORS off
+  trustProxy: false        # client IP from X-Forwarded-For (only behind a trusted proxy)
+  metrics: true            # GET /metrics (protect with METRICS_TOKEN)
   maxInputChars: 8000
   rateLimit:
     requestsPerMinute: 60  # per API key
     maxConcurrentRuns: 2   # per API key
+
+plugins: []                # e.g. [examples/plugins/bd-phone] — docs/23
 
 mcp:
   servers:
@@ -131,6 +135,8 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | WhatsApp channel secrets |
 | `QDRANT_URL`, `QDRANT_API_KEY` | Override `knowledge.vectorStoreUrl`; Qdrant API key |
 | `EMBEDDINGS_API_KEY` | Embeddings key (defaults to `OPENAI_API_KEY`) |
+| `METRICS_TOKEN` | Bearer token required for `GET /metrics` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` (+ standard `OTEL_*`) | Enables OpenTelemetry trace export (docs/15) |
 | `HANDOFF_WEBHOOK_URL` | Receives `POST {event: "handoff", sessionId, channel, reason, at}` |
 | `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |

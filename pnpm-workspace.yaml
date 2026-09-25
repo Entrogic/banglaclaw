@@ -2,6 +2,7 @@ packages:
   - "apps/*"
   - "packages/*"
   - "mcp-servers/*"
+  - "examples/plugins/*"
 
 allowBuilds:
   esbuild: true

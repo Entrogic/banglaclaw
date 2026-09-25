@@ -1,6 +1,7 @@
 {
   "name": "@banglaclaw/cli",
-  "version": "0.7.0",
+  "version": "1.0.0",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -26,6 +27,8 @@
     "@banglaclaw/gateway": "workspace:*",
     "@banglaclaw/knowledge": "workspace:*",
     "@banglaclaw/mcp": "workspace:*",
+    "@banglaclaw/observability": "workspace:*",
+    "@banglaclaw/plugin-sdk": "workspace:*",
     "@banglaclaw/providers": "workspace:*",
     "@banglaclaw/session": "workspace:*",
     "@banglaclaw/shared": "workspace:*",

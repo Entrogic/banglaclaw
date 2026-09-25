@@ -85,6 +85,8 @@ channels:
     allowedNumbers: []           # e.g. ["8801712345678"]
     rateLimitPerMinute: 10
 
+plugins: []                      # e.g. [examples/plugins/bd-phone] — trusted code only (docs/23)
+
 mcp:
   servers:
     # Bundled Bangladesh reference-data server (paths are relative to this file).

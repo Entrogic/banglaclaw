@@ -2,23 +2,34 @@ import { randomUUID } from "node:crypto";
 import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
+import { matchedRoutes } from "hono/route";
+import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
+import { timingSafeEqual } from "node:crypto";
 import type { UpgradeWebSocket } from "hono/ws";
 import type { z } from "zod";
-import type { Principal } from "@banglaclaw/auth";
+import { getConnInfo } from "@hono/node-server/conninfo";
+import { hasRole, type Principal } from "@banglaclaw/auth";
 import { ownerForUser } from "@banglaclaw/knowledge";
 import { HandoffDesk, HandoffError } from "@banglaclaw/session";
-import { createLogger, type Logger } from "@banglaclaw/shared";
+import { RateLimiter, auditRecorder, createLogger, type AuditAction, type Logger, type NewAuditEvent } from "@banglaclaw/shared";
 import { GatewayContext, type GatewayDeps } from "./context.js";
 import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
 import { respondWithRun } from "./run.js";
 import { createSessionBody, limitQuery, messageBody, runBody } from "./schemas.js";
+import { openApiSpec } from "./openapi.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
 import { WEB_CHAT_CSP, WEB_CHAT_HTML } from "./web-chat.js";
 import { websocketHandler } from "./ws.js";
 
-type Env = { Variables: { requestId: string; principal: Principal; log: Logger } };
+type Env = { Variables: { requestId: string; principal: Principal; log: Logger; ip: string | undefined } };
 
 const REQUEST_ID = /^[A-Za-z0-9._-]{1,128}$/;
+const tracer = trace.getTracer("banglaclaw.gateway");
+
+/** Matched route pattern (e.g. /v1/sessions/:id) for low-cardinality metric labels. */
+function routeLabel(c: Context): string {
+  return matchedRoutes(c).filter((r) => r.method !== "ALL").at(-1)?.path ?? "unmatched";
+}
 
 async function parseJson<T>(c: Context, schema: z.ZodType<T>): Promise<T> {
   let body: unknown;
@@ -41,21 +52,59 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   const logger = deps.logger ?? createLogger({ level: "warn" });
   const { config } = deps;
   const app = new Hono<Env>();
+  const recordAudit = auditRecorder(deps.audit, logger);
+  // Failed-auth and rate-limit events can be triggered by anyone; cap how many get written per source.
+  const auditThrottle = new RateLimiter(10);
+  const audit = (c: Context<Env>, event: Omit<NewAuditEvent, "ip" | "requestId">, throttleKey?: string) => {
+    if (throttleKey !== undefined && !auditThrottle.take(`${event.action}:${throttleKey}`).ok) return;
+    const ip = c.get("ip");
+    recordAudit({ ...event, requestId: c.get("requestId"), ...(ip !== undefined && { ip }) });
+  };
+
+  const clientIp = (c: Context<Env>): string | undefined => {
+    if (config.trustProxy) {
+      const forwarded = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+      if (forwarded !== undefined && forwarded !== "") return forwarded;
+    }
+    try {
+      return getConnInfo(c).remote.address;
+    } catch {
+      return undefined; // not running on the Node server (e.g. app.request in tests)
+    }
+  };
 
   app.use("*", async (c, next) => {
     const incoming = c.req.header("x-request-id");
     const requestId = incoming !== undefined && REQUEST_ID.test(incoming) ? incoming : randomUUID();
     const started = performance.now();
     c.set("requestId", requestId);
+    c.set("ip", clientIp(c));
     c.set("log", logger.child({ requestId }));
     c.header("X-Request-Id", requestId);
-    await next();
-    c.get("log").info("request", {
-      method: c.req.method,
-      path: c.req.path,
-      status: c.res.status,
-      durationMs: Math.round(performance.now() - started),
-      userId: c.get("principal")?.user.id,
+    c.header("X-Content-Type-Options", "nosniff");
+    c.header("Referrer-Policy", "no-referrer");
+    c.header("X-Frame-Options", "DENY");
+    const done = deps.metrics?.requestStarted();
+    await tracer.startActiveSpan(`${c.req.method} ${c.req.path.startsWith("/v1/") ? "/v1" : c.req.path}`, { kind: SpanKind.SERVER }, async (span) => {
+      try {
+        await next();
+      } finally {
+        const route = routeLabel(c);
+        const durationMs = performance.now() - started;
+        span.updateName(`${c.req.method} ${route}`);
+        span.setAttributes({ "http.request.method": c.req.method, "http.route": route, "http.response.status_code": c.res.status, "banglaclaw.request_id": requestId });
+        if (c.res.status >= 500) span.setStatus({ code: SpanStatusCode.ERROR });
+        span.end();
+        done?.();
+        if (route !== "/metrics") deps.metrics?.observeHttp(c.req.method, route, c.res.status, durationMs);
+        c.get("log").info("request", {
+          method: c.req.method,
+          path: c.req.path,
+          status: c.res.status,
+          durationMs: Math.round(durationMs),
+          userId: c.get("principal")?.user.id,
+        });
+      }
     });
   });
 
@@ -72,6 +121,20 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   app.notFound((c) => c.json({ error: { code: "not_found", message: "Route not found", requestId: c.get("requestId") } } satisfies ErrorBody, 404));
 
   app.get("/health", (c) => c.json({ status: "ok", version: deps.version }));
+  const spec = openApiSpec({ version: deps.version, maxInputChars: config.maxInputChars });
+  app.get("/v1/openapi.json", (c) => c.json(spec));
+
+  if (deps.metrics !== undefined) {
+    const metrics = deps.metrics;
+    app.get("/metrics", async (c) => {
+      if (metrics.token !== undefined) {
+        const given = Buffer.from(c.req.header("authorization")?.replace(/^Bearer\s+/i, "") ?? "");
+        const expected = Buffer.from(metrics.token);
+        if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw new HttpError(401, "unauthenticated", "Metrics token required");
+      }
+      return c.body(await metrics.render(), 200, { "Content-Type": metrics.contentType });
+    });
+  }
 
   if (deps.webChat === true) {
     app.get("/chat", (c) => {
@@ -96,6 +159,7 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
     const token = header?.match(/^Bearer\s+(.+)$/i)?.[1];
     const principal = await deps.auth.authenticate(token);
     if (principal === undefined) {
+      audit(c, { action: "auth.failed", outcome: "failure", target: `${c.req.method} ${c.req.path}`, metadata: { reason: token === undefined ? "missing" : "invalid" } }, c.get("ip") ?? "unknown");
       throw new HttpError(401, "unauthenticated", token === undefined ? "Missing Authorization: Bearer <api key>" : "Invalid API key", {
         "WWW-Authenticate": 'Bearer realm="banglaclaw"',
       });
@@ -104,15 +168,23 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
     const decision = gw.rate.take(principal.key.id);
     c.header("X-RateLimit-Limit", String(gw.rate.limitPerMinute));
     if (!decision.ok) {
+      audit(c, { action: "rate_limited", outcome: "denied", actorId: principal.user.id, target: principal.key.id }, principal.key.id);
       throw new HttpError(429, "rate_limited", "Rate limit exceeded", { "Retry-After": String(decision.retryAfterSeconds) });
     }
     c.header("X-RateLimit-Remaining", String(decision.remaining));
+    c.header("Cache-Control", "no-store");
+    // Key scopes: GET needs "read"; everything else (runs, writes) needs "run".
+    const scope = c.req.method === "GET" || c.req.method === "HEAD" ? "read" : "run";
+    if (!principal.key.scopes.includes(scope)) {
+      audit(c, { action: "auth.forbidden", outcome: "denied", actorId: principal.user.id, target: `${c.req.method} ${c.req.path}`, metadata: { missingScope: scope } }, principal.key.id);
+      throw new HttpError(403, "insufficient_scope", `This API key lacks the "${scope}" scope`);
+    }
     await next();
   });
 
   v1.get("/me", (c) => {
     const { user, key } = c.get("principal");
-    return c.json({ user: { id: user.id, name: user.name, role: user.role }, key: { id: key.id, name: key.name, createdAt: key.createdAt.toISOString() } });
+    return c.json({ user: { id: user.id, name: user.name, role: user.role }, key: { id: key.id, name: key.name, scopes: key.scopes, createdAt: key.createdAt.toISOString() } });
   });
 
   v1.get("/agents", (c) =>
@@ -213,15 +285,25 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
 
   v1.delete("/memories/:id", async (c) => {
     if (deps.memory === undefined) throw new HttpError(404, "memory_disabled", "Long-term memory is not enabled");
-    const forgotten = await deps.memory.forget(ownerForUser(c.get("principal").user.id), c.req.param("id"));
+    const principal = c.get("principal");
+    const forgotten = await deps.memory.forget(ownerForUser(principal.user.id), c.req.param("id"));
     if (!forgotten) throw new HttpError(404, "memory_not_found", "Memory not found");
+    audit(c, { action: "memory.forgotten", outcome: "success", actorId: principal.user.id, target: c.req.param("id") });
     return c.body(null, 204);
   });
 
   // Human handoff queue — operators only (users.role = operator); they may read any user's handed-off session.
-  const desk = new HandoffDesk(deps.sessions, deps.runs, deps.deliver);
-  const operatorOnly = (principal: Principal) => {
-    if (principal.user.role !== "operator") throw new HttpError(403, "forbidden", "Operator role required");
+  const desk = new HandoffDesk(deps.sessions, deps.runs, deps.deliver, recordAudit);
+  const requireRole = (c: Context<Env>, role: "operator" | "admin") => {
+    const principal = c.get("principal");
+    if (!hasRole(principal.user, role)) {
+      audit(c, { action: "auth.forbidden", outcome: "denied", actorId: principal.user.id, target: `${c.req.method} ${c.req.path}`, metadata: { requiredRole: role } }, principal.key.id);
+      throw new HttpError(403, "forbidden", `${role === "admin" ? "Admin" : "Operator"} role required`);
+    }
+  };
+  const operatorOnly = (principal: Principal, c?: Context<Env>) => {
+    if (c !== undefined) return requireRole(c, "operator");
+    if (!hasRole(principal.user, "operator")) throw new HttpError(403, "forbidden", "Operator role required");
   };
   const handoffCall = async <T>(fn: () => Promise<T>): Promise<T> => {
     try {
@@ -235,29 +317,37 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   };
 
   v1.get("/handoffs", async (c) => {
-    operatorOnly(c.get("principal"));
+    operatorOnly(c.get("principal"), c);
     const queue = await desk.queue(limitQuery(200, 50).parse(c.req.query("limit")));
     return c.json({ handoffs: queue.map(sessionJson) });
   });
 
   v1.get("/handoffs/:id", async (c) => {
-    operatorOnly(c.get("principal"));
+    operatorOnly(c.get("principal"), c);
     const { session, messages } = await handoffCall(() => desk.get(c.req.param("id"), limitQuery(500, 50).parse(c.req.query("limit"))));
     return c.json({ session: sessionJson(session), messages: messages.map(messageJson) });
   });
 
   v1.post("/handoffs/:id/reply", async (c) => {
     const principal = c.get("principal");
-    operatorOnly(principal);
+    operatorOnly(principal, c);
     const body = await parseJson(c, messageBody(config.maxInputChars));
     const result = await handoffCall(() => desk.reply(c.req.param("id"), principal.user.name, body.text));
     return c.json(result);
   });
 
   v1.post("/handoffs/:id/release", async (c) => {
-    operatorOnly(c.get("principal"));
-    const session = await handoffCall(() => desk.release(c.req.param("id")));
+    operatorOnly(c.get("principal"), c);
+    const session = await handoffCall(() => desk.release(c.req.param("id"), c.get("principal").user.name));
     return c.json({ session: sessionJson(session) });
+  });
+
+  v1.get("/audit", async (c) => {
+    requireRole(c, "admin");
+    if (deps.audit === undefined) throw new HttpError(404, "audit_disabled", "Audit log is not configured");
+    const action = c.req.query("action") as AuditAction | undefined;
+    const events = await deps.audit.list({ ...(action !== undefined && { action }), limit: limitQuery(1000, 100).parse(c.req.query("limit")) });
+    return c.json({ events: events.map((e) => ({ ...e, at: e.at.toISOString() })) });
   });
 
   app.route("/v1", v1);

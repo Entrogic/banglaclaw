@@ -27,6 +27,8 @@ describe("ApiKeyAuthenticator", () => {
     const auth = new ApiKeyAuthenticator(store);
     const issued = await auth.issueKey("shop-bot", "prod");
     expect(issued.key).not.toHaveProperty("hash");
+    expect(issued.key.scopes).toEqual(["read", "run"]);
+    expect((await auth.issueKey("reader", "ro", undefined, ["read", "read"])).key.scopes).toEqual(["read"]);
 
     const principal = await auth.authenticate(issued.token);
     expect(principal).toMatchObject({ user: { name: "shop-bot" }, key: { id: issued.key.id, name: "prod" } });
@@ -40,6 +42,15 @@ describe("ApiKeyAuthenticator", () => {
     expect(await store.revokeApiKey(issued.key.id)).toBe(false);
     expect(await auth.authenticate(issued.token)).toBeUndefined();
     expect(await auth.authenticate(second.token)).toBeDefined();
+  });
+
+  it("orders roles", async () => {
+    const { hasRole } = await import("../src/index.js");
+    const u = (role: "user" | "operator" | "admin") => ({ id: "1", name: "x", role, createdAt: new Date() });
+    expect(hasRole(u("user"), "operator")).toBe(false);
+    expect(hasRole(u("operator"), "operator")).toBe(true);
+    expect(hasRole(u("admin"), "operator")).toBe(true);
+    expect(hasRole(u("operator"), "admin")).toBe(false);
   });
 
   it("rejects unknown, tampered and missing tokens", async () => {

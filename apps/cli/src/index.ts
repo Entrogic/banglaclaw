@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { AgentRunError } from "@banglaclaw/agent";
 import {
   agentList,
+  auditList,
   agentRun,
   chat,
   dbMigrate,
@@ -32,15 +33,18 @@ import {
   skillList,
   toolList,
 } from "./commands.js";
+import { initTelemetry } from "@banglaclaw/observability";
 import { loadDotEnv } from "./env.js";
 import { red } from "./render.js";
+import { VERSION } from "./version.js";
 
 loadDotEnv();
+const telemetry = initTelemetry({ serviceName: "banglaclaw", version: VERSION });
 
 const program = new Command()
   .name("banglaclaw")
   .description("Bangla-first AI agent runtime")
-  .version("0.7.0")
+  .version(VERSION)
   .option("-c, --config <path>", "path to banglaclaw.yaml");
 
 const globals = () => program.opts<{ config?: string }>();
@@ -75,7 +79,12 @@ handoff
   .argument("<text...>")
   .option("--as <name>", "operator name recorded with the message", process.env.USER ?? "operator")
   .action((id: string, words: string[], opts: { as: string }) => handoffReply(id, words.join(" "), { ...globals(), ...opts }));
-handoff.command("release").description("give the conversation back to the bot").argument("<sessionId>").action((id: string) => handoffRelease(id, globals()));
+handoff
+  .command("release")
+  .description("give the conversation back to the bot")
+  .argument("<sessionId>")
+  .option("--as <name>", "operator name recorded in the audit log", process.env.USER ?? "operator")
+  .action((id: string, opts: { as: string }) => handoffRelease(id, { ...globals(), ...opts }));
 
 const session = program.command("session").description("inspect sessions");
 session
@@ -128,8 +137,16 @@ key
   .description("create an API key (creates the user if needed)")
   .requiredOption("-u, --user <name>", "user the key belongs to")
   .option("-n, --name <name>", "key label", "default")
-  .option("-r, --role <role>", "user (default) or operator (may answer human handoffs)")
-  .action((opts: { user: string; name: string; role?: string }) => keyCreate({ ...globals(), ...opts }));
+  .option("-r, --role <role>", "user (default), operator (answers human handoffs) or admin (also reads the audit log)")
+  .option("-s, --scopes <scopes>", "comma-separated key scopes: read (GET endpoints), run (agent runs and writes)", "read,run")
+  .action((opts: { user: string; name: string; role?: string; scopes: string }) => keyCreate({ ...globals(), ...opts }));
+
+program
+  .command("audit")
+  .description("show the security audit log (postgres storage)")
+  .option("-a, --action <action>", "filter, e.g. auth.failed, key.created, tool.denied, handoff.replied")
+  .option("-n, --limit <n>", "maximum events", "50")
+  .action((opts: { action?: string; limit: string }) => auditList({ ...globals(), ...opts }));
 key
   .command("list")
   .description("list API keys")
@@ -178,4 +195,6 @@ try {
   // Run errors were already rendered by the event stream.
   if (!(error instanceof AgentRunError)) console.error(red(`✖ ${describe(error)}`));
   process.exitCode = 1;
+} finally {
+  await telemetry.shutdown();
 }

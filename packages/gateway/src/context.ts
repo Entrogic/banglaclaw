@@ -3,7 +3,7 @@ import type { AgentRuntime } from "@banglaclaw/agent";
 import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
 import type { ApiKeyAuthenticator, Principal } from "@banglaclaw/auth";
 import type { Deliver, RunStore, Session, SessionStore } from "@banglaclaw/session";
-import { ConcurrencyLimiter, RateLimiter, type BanglaClawConfig, type Logger } from "@banglaclaw/shared";
+import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type Logger } from "@banglaclaw/shared";
 import type { SkillSet } from "@banglaclaw/skills";
 import type { PermissionPolicy, ToolRegistry } from "@banglaclaw/tools";
 import { HttpError } from "./errors.js";
@@ -30,7 +30,19 @@ export interface GatewayDeps {
   memory?: LongTermMemory;
   /** Delivers operator replies to channel users (Telegram, WhatsApp). */
   deliver?: Deliver;
+  /** Security audit log; admins read it at GET /v1/audit. */
+  audit?: AuditStore;
+  /** Prometheus metrics served at GET /metrics (bearer `token` required when set). */
+  metrics?: GatewayMetrics;
   logger?: Logger;
+}
+
+export interface GatewayMetrics {
+  observeHttp(method: string, route: string, status: number, durationMs: number): void;
+  requestStarted(): () => void;
+  render(): Promise<string>;
+  readonly contentType: string;
+  token?: string;
 }
 
 export const API_CHANNEL = "api";

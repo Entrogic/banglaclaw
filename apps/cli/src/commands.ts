@@ -8,11 +8,14 @@ import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
 import { ApiKeyAuthenticator } from "@banglaclaw/auth";
 import { TelegramApi } from "@banglaclaw/channels";
 import { startGateway, type RunningGateway } from "@banglaclaw/gateway";
-import { BanglaClawError, createLogger, parseLogLevel, type LoadedConfig } from "@banglaclaw/shared";
+import { BanglaClawError, auditRecorder, createLogger, parseLogLevel, type AuditAction, type LoadedConfig } from "@banglaclaw/shared";
 import { AllowlistPolicy } from "@banglaclaw/tools";
 import type { McpManager, McpServerStatus } from "@banglaclaw/mcp";
 import { buildRegistry, connectMcp, createRuntime, load, loadAgents, loadSkills, openPostgres, openServices, type GlobalOptions, type Services } from "./bootstrap.js";
+import { Metrics } from "@banglaclaw/observability";
 import { createDeliver, setupChannels } from "./channels.js";
+import { loadPlugins } from "./plugins.js";
+import { VERSION } from "./version.js";
 import { setupKnowledge, type KnowledgeSetup } from "./knowledge.js";
 import { bold, createRenderer, dim, green, red, yellow } from "./render.js";
 
@@ -397,6 +400,8 @@ channels:
     allowedNumbers: []           # e.g. ["8801712345678"]
     rateLimitPerMinute: 10
 
+plugins: []                      # e.g. [examples/plugins/bd-phone] — trusted code only (docs/23)
+
 mcp:
   servers: {}
   # Example: the bundled Bangladesh reference-data server (run from the repo root).
@@ -507,6 +512,18 @@ export async function doctor(options: GlobalOptions): Promise<void> {
   } catch (error) {
     fail(describe(error));
   }
+  const otel = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT ?? process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+  ok(otel !== undefined && otel !== "" ? `Tracing: OTLP → ${otel}` : "Tracing: off (set OTEL_EXPORTER_OTLP_ENDPOINT to export traces)");
+  try {
+    const plugins = await loadPlugins(loaded);
+    if (plugins.length > 0) {
+      ok(`Plugins: ${plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(", ")}`);
+      const tools = plugins.flatMap((p) => p.plugin.tools ?? []).filter((t) => !new AllowlistPolicy(config.tools.allow).check(t).allowed);
+      if (tools.length > 0) warn(`Plugin tools not in tools.allow: ${tools.map((t) => t.name).join(", ")}`);
+    }
+  } catch (error) {
+    fail(describe(error));
+  }
   if (config.handoff.enabled) ok(`Human handoff: enabled${secrets.handoffWebhookUrl !== undefined ? ", webhook notifications on" : " (set HANDOFF_WEBHOOK_URL to notify operators)"}`);
 
   if (config.knowledge.enabled || config.memory.longTerm.enabled) {
@@ -588,7 +605,8 @@ export function describe(error: unknown): string {
 }
 
 export async function serve(options: GlobalOptions & { port?: string; host?: string }): Promise<void> {
-  const bundle = await createRuntime(options);
+  const metrics = new Metrics({ version: VERSION });
+  const bundle = await createRuntime(options, { onRunComplete: metrics.observeRun });
   const { services, mcp } = bundle;
   const config = services.loaded.config;
   const gatewayConfig = {
@@ -635,13 +653,17 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       skills: bundle.skills,
       agent: { name: config.agent.name, model: bundle.providerId },
       config: gatewayConfig,
-      version: "0.7.0",
+      version: VERSION,
       logger,
       routes: channels.routes,
       webChat: config.channels.web.enabled,
       ...(bundle.knowledge.kb !== undefined && { knowledge: { kb: bundle.knowledge.kb, searchLimit: config.knowledge.searchLimit, minScore: config.knowledge.minScore } }),
       ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
       deliver: createDeliver(services.loaded, logger),
+      audit: services.audit,
+      ...(config.gateway.metrics && {
+        metrics: Object.assign(metrics, services.loaded.secrets.metricsToken !== undefined ? { token: services.loaded.secrets.metricsToken } : {}),
+      }),
     });
   } catch (error) {
     await services.close();
@@ -656,9 +678,11 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   }
 
   if (bundle.profiles.length > 0) console.log(dim(`  agents: supervisor → ${bundle.profiles.map((p) => p.name).join(", ")}`));
+  if (bundle.plugins.length > 0) console.log(dim(`  plugins: ${bundle.plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(", ")}`));
   console.log(`${green("✔")} BanglaClaw gateway listening on ${bold(gateway.url)} ${dim(`(${bundle.providerId}, ${services.persistent ? "postgres" : "memory"} storage)`)}`);
   reportMcpFailures(mcp);
   if (config.channels.web.enabled) console.log(`  web chat: ${gateway.url}/chat`);
+  if (config.gateway.metrics) console.log(dim(`  metrics: ${gateway.url}/metrics${services.loaded.secrets.metricsToken !== undefined ? " (METRICS_TOKEN required)" : ""}`));
   for (const line of channels.summary) console.log(`  ${line}`);
   for (const line of channels.warnings) console.log(yellow(`! ${line}`));
   if (devToken !== undefined) {
@@ -698,14 +722,19 @@ async function withPersistentAuth<T>(options: GlobalOptions, fn: (auth: ApiKeyAu
   }
 }
 
-export async function keyCreate(options: GlobalOptions & { user: string; name: string; role?: string }): Promise<void> {
-  if (options.role !== undefined && options.role !== "user" && options.role !== "operator") {
-    throw new BanglaClawError("INVALID_ROLE", "--role must be user or operator");
+export async function keyCreate(options: GlobalOptions & { user: string; name: string; role?: string; scopes: string }): Promise<void> {
+  if (options.role !== undefined && !["user", "operator", "admin"].includes(options.role)) {
+    throw new BanglaClawError("INVALID_ROLE", "--role must be user, operator or admin");
   }
-  const role = options.role as "user" | "operator" | undefined;
-  await withPersistentAuth(options, async (auth) => {
-    const issued = await auth.issueKey(options.user, options.name, role);
-    console.log(`${green("✔")} Created key ${bold(issued.key.id)} "${issued.key.name}" for ${issued.user.role} ${bold(issued.user.name)}`);
+  const scopes = options.scopes.split(",").map((s) => s.trim()).filter((s) => s !== "");
+  if (scopes.length === 0 || scopes.some((s) => s !== "read" && s !== "run")) {
+    throw new BanglaClawError("INVALID_SCOPES", "--scopes must be a comma-separated list of read, run");
+  }
+  const role = options.role as "user" | "operator" | "admin" | undefined;
+  await withPersistentAuth(options, async (auth, services) => {
+    const issued = await auth.issueKey(options.user, options.name, role, scopes as ("read" | "run")[]);
+    await services.audit.record({ action: "key.created", outcome: "success", actorId: "cli", actorName: process.env.USER ?? "cli", target: issued.key.id, metadata: { user: issued.user.name, role: issued.user.role, scopes: issued.key.scopes } });
+    console.log(`${green("✔")} Created key ${bold(issued.key.id)} "${issued.key.name}" [${issued.key.scopes.join(",")}] for ${issued.user.role} ${bold(issued.user.name)}`);
     console.log(yellow("  Store this token now — it cannot be shown again:"));
     console.log(`  ${issued.token}`);
   });
@@ -730,8 +759,9 @@ export async function keyList(options: GlobalOptions & { user?: string }): Promi
 }
 
 export async function keyRevoke(id: string, options: GlobalOptions): Promise<void> {
-  await withPersistentAuth(options, async (auth) => {
+  await withPersistentAuth(options, async (auth, services) => {
     if (!(await auth.store.revokeApiKey(id))) throw new BanglaClawError("KEY_NOT_FOUND", `No active key with id ${id}`);
+    await services.audit.record({ action: "key.revoked", outcome: "success", actorId: "cli", actorName: process.env.USER ?? "cli", target: id });
     console.log(`${green("✔")} Revoked key ${id}`);
   });
 }
@@ -848,7 +878,7 @@ async function withDesk<T>(options: GlobalOptions, fn: (desk: HandoffDesk, servi
       throw new BanglaClawError("STORAGE_REQUIRED", "Handoff queues need postgres storage so the CLI can see sessions of the running gateway.");
     }
     const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
-    return await fn(new HandoffDesk(services.sessions, services.runs, createDeliver(services.loaded, logger)), services);
+    return await fn(new HandoffDesk(services.sessions, services.runs, createDeliver(services.loaded, logger), auditRecorder(services.audit, logger)), services);
   } finally {
     await services.close();
   }
@@ -885,9 +915,25 @@ export async function handoffReply(id: string, text: string, options: GlobalOpti
   });
 }
 
-export async function handoffRelease(id: string, options: GlobalOptions): Promise<void> {
+export async function handoffRelease(id: string, options: GlobalOptions & { as: string }): Promise<void> {
   await withDesk(options, async (desk) => {
-    await desk.release(id);
+    await desk.release(id, options.as);
     console.log(`${green("✔")} Session ${id} is back with the bot`);
   });
+}
+
+export async function auditList(options: GlobalOptions & { action?: string; limit: string }): Promise<void> {
+  const services = await openServices(options);
+  try {
+    if (!services.persistent) throw new BanglaClawError("STORAGE_REQUIRED", "The audit log persists only with postgres storage");
+    const events = await services.audit.list({ ...(options.action !== undefined && { action: options.action as AuditAction }), limit: Number(options.limit) });
+    if (events.length === 0) console.log(dim("No audit events."));
+    for (const e of events) {
+      const outcome = e.outcome === "success" ? green(e.outcome) : e.outcome === "denied" ? yellow(e.outcome) : red(e.outcome);
+      const who = e.actorName ?? e.actorId ?? "-";
+      console.log(`${dim(e.at.toISOString())} ${bold(e.action.padEnd(18))} ${outcome.padEnd(8)} ${who.padEnd(14)} ${e.target ?? ""} ${dim([e.ip, e.metadata !== undefined ? JSON.stringify(e.metadata) : ""].filter(Boolean).join(" "))}`);
+    }
+  } finally {
+    await services.close();
+  }
 }

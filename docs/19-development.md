@@ -39,7 +39,7 @@ banglaclaw/
 └── turbo.json
 ```
 
-## Implemented so far (v0.7)
+## Implemented so far (v1.0)
 
 ```text
 apps/cli            banglaclaw CLI (commander)
@@ -55,6 +55,10 @@ packages/gateway    Hono HTTP gateway: REST, SSE, WebSocket, rate limits, reques
 packages/channels   ChannelRouter + Telegram (polling/webhook) and WhatsApp Cloud API adapters
 packages/knowledge  embeddings, vector stores (memory/Qdrant), chunking, loaders, KnowledgeBase, LongTermMemory
 packages/agents     AGENT.md specialist profiles (parse/load)
+packages/observability  OpenTelemetry setup (initTelemetry) and Prometheus Metrics
+packages/client     typed @banglaclaw/client SDK (REST + SSE)
+packages/plugin-sdk definePlugin/defineTool/z for plugin authors
+examples/plugins    example bd-phone plugin
 examples/agents     sample sales and support specialists
 packages/agent      language detection, prompts, LangGraph graph, AgentRuntime
 mcp-servers/        bundled MCP servers (bangladesh)
@@ -71,6 +75,10 @@ TEST_QDRANT_URL=http://localhost:56333 pnpm test
 ```
 
 Workspace packages export `src/index.ts` under the `@banglaclaw/source` condition, so tsx, Vitest and `tsc --noEmit` use sources directly; `pnpm build` emits `dist/` in dependency order via Turborepo. TypeScript is pinned to 6.x until typescript-eslint supports 7.x.
+
+## CI and releases
+
+`.github/workflows/ci.yml` runs lint, typecheck, tests (with PostgreSQL and Qdrant services), build and `pnpm audit --audit-level high` on every push and pull request. Release notes go in `CHANGELOG.md`; contribution rules are in `CONTRIBUTING.md`.
 
 ## Development principle
 

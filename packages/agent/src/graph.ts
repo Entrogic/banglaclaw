@@ -1,4 +1,5 @@
 import { END, START, StateGraph, type BaseCheckpointSaver } from "@langchain/langgraph";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { AIMessage, SystemMessage, ToolMessage, type AIMessageChunk } from "@langchain/core/messages";
 import { transferToolName, type AgentProfile } from "@banglaclaw/agents";
 import type { RunEvent, ToolAuditEvent, ToolSpec } from "@banglaclaw/shared";
@@ -8,6 +9,8 @@ import { executeTool, type AnyTool, type PermissionPolicy, type ToolRegistry } f
 import { detectLanguage } from "./language.js";
 import { HANDOFF_MESSAGES, LIMIT_MESSAGES, buildSystemPrompt, teamRole } from "./prompts.js";
 import { AgentStateAnnotation, type AgentState, type AgentStateUpdate } from "./state.js";
+
+const tracer = trace.getTracer("banglaclaw.agent");
 
 export const SUPERVISOR = "supervisor";
 export const REQUEST_HUMAN_TOOL = "request_human";
@@ -153,12 +156,34 @@ export function buildAgentGraph(options: AgentGraphOptions) {
       }),
     );
 
-    let merged: AIMessageChunk | undefined;
-    for await (const chunk of provider.stream([system, ...state.messages], { tools: view.specs, signal })) {
-      const text = chunk.text;
-      if (text.length > 0) emit({ type: "token", runId, text });
-      merged = merged === undefined ? chunk : merged.concat(chunk);
-    }
+    const [providerSystem, requestModel] = splitProviderId(provider.id);
+    const merged = await tracer.startActiveSpan(`chat ${requestModel}`, async (span) => {
+      span.setAttributes({
+        "gen_ai.operation.name": "chat",
+        "gen_ai.system": providerSystem,
+        "gen_ai.request.model": requestModel,
+        "banglaclaw.agent": state.activeAgent,
+        "banglaclaw.run_id": runId,
+      });
+      try {
+        let acc: AIMessageChunk | undefined;
+        for await (const chunk of provider.stream([system, ...state.messages], { tools: view.specs, signal })) {
+          const text = chunk.text;
+          if (text.length > 0) emit({ type: "token", runId, text });
+          acc = acc === undefined ? chunk : acc.concat(chunk);
+        }
+        const usage = acc?.usage_metadata;
+        if (usage !== undefined) span.setAttributes({ "gen_ai.usage.input_tokens": usage.input_tokens, "gen_ai.usage.output_tokens": usage.output_tokens });
+        span.setAttribute("gen_ai.response.tool_calls", acc?.tool_calls?.length ?? 0);
+        return acc;
+      } catch (error) {
+        span.recordException(error as Error);
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        throw error;
+      } finally {
+        span.end();
+      }
+    });
 
     const message = new AIMessage({
       content: merged?.content ?? "",
@@ -166,7 +191,12 @@ export function buildAgentGraph(options: AgentGraphOptions) {
       ...(merged?.id !== undefined && { id: merged.id }),
       ...(merged?.usage_metadata !== undefined && { usage_metadata: merged.usage_metadata }),
     });
-    return { messages: [message], iterations: state.iterations + 1 };
+    return {
+      messages: [message],
+      iterations: state.iterations + 1,
+      inputTokens: state.inputTokens + (merged?.usage_metadata?.input_tokens ?? 0),
+      outputTokens: state.outputTokens + (merged?.usage_metadata?.output_tokens ?? 0),
+    };
   };
 
   const route = (state: AgentState): "tools" | "limit" | "finalize" => {
@@ -235,10 +265,19 @@ export function buildAgentGraph(options: AgentGraphOptions) {
       }
 
       regular += 1;
-      const result = await executeTool(
-        { id, name: call.name, args: call.args },
-        { registry, policy: scoped, ctx: { runId, sessionId: state.sessionId, timezone: options.timezone, signal }, onAudit },
-      );
+      const result = await tracer.startActiveSpan(`execute_tool ${call.name}`, async (span) => {
+        try {
+          const r = await executeTool(
+            { id, name: call.name, args: call.args },
+            { registry, policy: scoped, ctx: { runId, sessionId: state.sessionId, timezone: options.timezone, signal }, onAudit },
+          );
+          span.setAttributes({ "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": call.name, "banglaclaw.tool.status": r.audit.status, "banglaclaw.agent": view.name });
+          if (r.audit.status !== "ok") span.setStatus({ code: SpanStatusCode.ERROR, message: r.audit.status });
+          return r;
+        } finally {
+          span.end();
+        }
+      });
       emit({ type: "tool_end", runId, audit: result.audit });
       messages.push(new ToolMessage({ tool_call_id: id, name: call.name, content: result.content }));
     }
@@ -297,6 +336,12 @@ export function buildAgentGraph(options: AgentGraphOptions) {
     .addEdge("limit", END)
     .addEdge("finalize", END)
     .compile(options.checkpointer !== undefined ? { checkpointer: options.checkpointer } : {});
+}
+
+/** "openai-compatible:gpt-4o-mini" → ["openai-compatible", "gpt-4o-mini"] */
+function splitProviderId(id: string): [string, string] {
+  const i = id.indexOf(":");
+  return i === -1 ? [id, id] : [id.slice(0, i), id.slice(i + 1)];
 }
 
 function withRole(role: string | undefined): { role?: string } {

@@ -227,3 +227,88 @@ describe("gateway human handoff", () => {
     expect(await (await app.request("/v1/me", get(ops))).json()).toMatchObject({ user: { role: "operator" } });
   });
 });
+
+describe("gateway security", () => {
+  it("enforces key scopes, admin-only audit and records security events", async () => {
+    const { InMemoryAuditStore } = await import("@banglaclaw/shared");
+    const { deps, alice } = await makeDeps();
+    const audit = new InMemoryAuditStore();
+    const app = createGatewayApp({ ...deps, audit, config: { ...deps.config, trustProxy: true } });
+    const reader = (await deps.auth.issueKey("reader", "ro", undefined, ["read"])).token;
+    const admin = (await deps.auth.issueKey("root", "admin", "admin")).token;
+
+    const me = await app.request("/v1/me", get(reader));
+    expect(me.status).toBe(200);
+    expect(me.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(me.headers.get("cache-control")).toBe("no-store");
+    expect(await me.json()).toMatchObject({ key: { scopes: ["read"] } });
+    const run = await app.request("/v1/agents/run", json(reader, { text: "hi" }));
+    expect(run.status).toBe(403);
+    expect(await run.json()).toMatchObject({ error: { code: "insufficient_scope" } });
+
+    await app.request("/v1/me", { headers: { Authorization: "Bearer bck_000000000000_" + "a".repeat(40), "X-Forwarded-For": "203.0.113.7, 10.0.0.1" } });
+    expect((await app.request("/v1/audit", get(alice))).status).toBe(403);
+    // Admins pass operator checks too.
+    expect((await app.request("/v1/handoffs", get(admin))).status).toBe(200);
+
+    const events = (await (await app.request("/v1/audit", get(admin))).json()) as { events: { action: string; ip?: string; metadata?: Record<string, unknown> }[] };
+    const actions = events.events.map((e) => e.action);
+    expect(actions).toContain("auth.failed");
+    expect(actions).toContain("auth.forbidden");
+    expect(events.events.find((e) => e.action === "auth.failed")?.ip).toBe("203.0.113.7");
+    expect(events.events.find((e) => e.metadata?.missingScope === "run")).toBeDefined();
+    const filtered = (await (await app.request("/v1/audit?action=auth.failed", get(admin))).json()) as { events: unknown[] };
+    expect(filtered.events).toHaveLength(1);
+  });
+
+  it("throttles audit writes for repeated failed logins", async () => {
+    const { InMemoryAuditStore } = await import("@banglaclaw/shared");
+    const { deps } = await makeDeps();
+    const audit = new InMemoryAuditStore();
+    const app = createGatewayApp({ ...deps, audit });
+    for (let i = 0; i < 30; i++) await app.request("/v1/me");
+    expect((await audit.list({ action: "auth.failed" })).length).toBeLessThanOrEqual(10);
+  });
+});
+
+describe("gateway metrics", () => {
+  it("serves Prometheus metrics with route labels and an optional token", async () => {
+    const { Metrics } = await import("@banglaclaw/observability");
+    const { deps, alice } = await makeDeps();
+    const metrics = Object.assign(new Metrics({ defaultMetrics: false }), { token: "scrape-secret" });
+    const app = createGatewayApp({ ...deps, metrics });
+    await app.request("/v1/agents/run", json(alice, { text: "hi" }));
+    const s = (await (await app.request("/v1/sessions", get(alice))).json()) as { sessions: { id: string }[] };
+    await app.request(`/v1/sessions/${s.sessions[0]?.id}`, get(alice));
+
+    expect((await app.request("/metrics")).status).toBe(401);
+    const res = await app.request("/metrics", { headers: { Authorization: "Bearer scrape-secret" } });
+    const text = await res.text();
+    expect(res.headers.get("content-type")).toContain("text/plain");
+    expect(text).toContain('banglaclaw_http_requests_total{method="POST",route="/v1/agents/run",status="200"} 1');
+    expect(text).toContain('route="/v1/sessions/:id"');
+    expect(text).not.toContain(s.sessions[0]?.id ?? "none");
+  });
+});
+
+describe("OpenAPI", () => {
+  it("documents every registered route", async () => {
+    const { Metrics } = await import("@banglaclaw/observability");
+    const { deps } = await makeDeps();
+    const upgrade = (() => () => new Response()) as never;
+    const app = createGatewayApp({ ...deps, metrics: new Metrics({ defaultMetrics: false }) }, upgrade);
+    const res = await app.request("/v1/openapi.json");
+    expect(res.status).toBe(200);
+    const spec = (await res.json()) as { openapi: string; paths: Record<string, Record<string, unknown>> };
+    expect(spec.openapi).toBe("3.1.0");
+
+    const registered = new Set(
+      app.routes
+        .filter((r) => r.method !== "ALL" && r.path !== "/*" && !r.path.startsWith("/channels") && r.path !== "/chat")
+        .map((r) => `${r.method.toLowerCase()} ${r.path.replace(/:(\w+)/g, "{$1}")}`),
+    );
+    const documented = new Set(Object.entries(spec.paths).flatMap(([path, ops]) => Object.keys(ops).map((m) => `${m} ${path}`)));
+    expect([...registered].filter((r) => !documented.has(r))).toEqual([]);
+    expect([...documented].filter((d) => !registered.has(d))).toEqual([]);
+  });
+});

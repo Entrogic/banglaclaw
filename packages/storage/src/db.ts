@@ -5,6 +5,7 @@ import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import pg from "pg";
 import { ConfigError } from "@banglaclaw/shared";
 import * as schema from "./schema.js";
+import { PostgresAuditStore } from "./audit.js";
 import { PostgresAuthStore } from "./auth.js";
 import { PostgresRunStore } from "./runs.js";
 import { PostgresSessionStore } from "./sessions.js";
@@ -29,6 +30,7 @@ export class PostgresStorage {
   readonly sessions: PostgresSessionStore;
   readonly runs: PostgresRunStore;
   readonly auth: PostgresAuthStore;
+  readonly audit: PostgresAuditStore;
   #checkpointer: PostgresSaver | undefined;
 
   constructor(databaseUrl: string, options: PostgresStorageOptions = {}) {
@@ -40,6 +42,7 @@ export class PostgresStorage {
     this.sessions = new PostgresSessionStore(this.db);
     this.runs = new PostgresRunStore(this.db);
     this.auth = new PostgresAuthStore(this.db);
+    this.audit = new PostgresAuditStore(this.db);
   }
 
   get checkpointer(): PostgresSaver {
