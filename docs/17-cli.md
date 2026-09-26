@@ -51,8 +51,9 @@ Global options work before or after the subcommand (`banglaclaw tool list --json
 When stdin and stdout are a terminal, `banglaclaw chat` opens an Ink-based UI:
 
 - **A banner** with the model, storage, session id, and any agents, MCP servers, plugins, knowledge or memory in use.
-- **The transcript** goes to your terminal's normal scrollback. Replies render as markdown (bold, lists, code, tables). Tool calls show as compact `⚙ calculator(25*4) → 100 · 2ms` lines, agent transfers as `↪ sales`, and handoffs as a banner.
-- **A status bar** shows a spinner with what the agent is doing ("thinking…", "running calculator…", "writing…") and the elapsed time. After each run it summarizes the status, the agent path, duration, tool count and tokens in/out, and it always shows the active agent and session.
+- **The transcript** goes to your terminal's normal scrollback. Replies render as markdown (bold, lists, code, tables). Each reply's tool calls fold under a `▸ Worked for 1.2s · 2 tools` line with compact `⚙ calculator(25*4) → 100 · 2ms` rows; Ctrl+O redraws the transcript with full tool cards (input and result JSON) and back. Agent transfers show as `↪ sales`, and handoffs as a banner.
+- **A status bar** shows a spinner with what the agent is doing ("thinking…", "running calculator…", "writing…") and the elapsed time. After each run it summarizes the status, the agent path, duration, tool count and tokens in/out.
+- **A footer** under the input always shows the active agent, session, model and last token count, plus the Ctrl+O / Ctrl+P hints.
 
 | Key | Action |
 |---|---|
@@ -61,11 +62,13 @@ When stdin and stdout are a terminal, `banglaclaw chat` opens an Ink-based UI:
 | ↑ / ↓ | Input history (saved in `~/.config/banglaclaw/history`; `BANGLACLAW_HISTORY_FILE=` disables it) |
 | ← → Home End, Ctrl+A/E/U | Edit the line |
 | `/` then Tab or ↑↓ | Slash-command menu |
+| Ctrl+O | Expand or collapse tool cards (`/details`) |
+| Ctrl+P | Switch to a recent session of this channel (`/sessions`); the transcript is reloaded from storage |
 | Esc | Cancel a running reply, or clear the input |
 | Ctrl+C | Cancel a reply, or clear the input; press twice to quit |
 | Ctrl+D | Quit (on empty input) |
 
-Slash commands: `/help`, `/new`, `/history`, `/session`, `/agents`, `/tools`, `/skills`, `/clear`, `/exit`.
+Slash commands: `/help`, `/new`, `/sessions`, `/details`, `/history`, `/session`, `/agents`, `/tools`, `/skills`, `/clear`, `/exit`.
 
 With pipes, SSH without a TTY, or `--plain`, the chat falls back to line mode with the same slash commands:
 

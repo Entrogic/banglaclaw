@@ -6,7 +6,7 @@ import { ink, sym } from "../ui/theme.js";
 import { VERSION } from "../version.js";
 import { appendHistory, loadHistory } from "./history.js";
 import { renderMarkdown } from "./markdown.js";
-import { SLASH_COMMANDS, useChat, type Item, type RunSummary } from "./useChat.js";
+import { SLASH_COMMANDS, useChat, type Item, type RunSummary, type SessionChoice } from "./useChat.js";
 
 const segmenter = new Intl.Segmenter();
 const graphemes = (s: string) => [...segmenter.segment(s)].map((g) => g.segment);
@@ -23,6 +23,18 @@ function toolArgs(input: unknown): string {
     if (values.length === 1 && typeof values[0] === "string") return short(values[0], 60);
   }
   return short(input, 60);
+}
+
+/** Pretty JSON (or text) cut to a few lines for an expanded tool card. */
+function block(value: unknown, maxLines = 10): string[] {
+  const text = typeof value === "string" ? value : (JSON.stringify(value, null, 2) ?? "");
+  const lines = text.split("\n");
+  return lines.length > maxLines ? [...lines.slice(0, maxLines), `… ${lines.length - maxLines} more lines`] : lines;
+}
+
+function duration(ms: number | undefined): string {
+  if (ms === undefined) return "";
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 }
 
 function toolResult(output: unknown): string {
@@ -70,7 +82,35 @@ function Banner({ bundle, session }: { bundle: RuntimeBundle; session: Session }
   );
 }
 
-function ItemView({ item, width, bundle, session }: { item: Item; width: number; bundle: RuntimeBundle; session: Session }) {
+function ToolCard({ item }: { item: Extract<Item, { kind: "tool" }> }) {
+  const pending = item.status === undefined;
+  const ok = item.status === "ok";
+  const color = ink(pending ? "pending" : ok ? "brand" : "warn");
+  return (
+    // Left rule only (see Banner): a right edge would drift on Bengali text.
+    <Box flexDirection="column" marginLeft={4} paddingLeft={1} borderStyle="single" borderColor={color} borderTop={false} borderRight={false} borderBottom={false}>
+      <Text>
+        <Text color={color} bold>
+          {sym.tool} {item.tool}
+        </Text>
+        <Text dimColor> {pending ? "running…" : ok ? `${sym.ok} ${duration(item.ms)}` : `${sym.fail} ${item.status}`}</Text>
+      </Text>
+      <Text dimColor>input</Text>
+      {block(item.input).map((l, i) => (
+        <Text key={`i${i}`}>{"  " + l}</Text>
+      ))}
+      {!pending && <Text dimColor>{ok ? "result" : "error"}</Text>}
+      {!pending &&
+        block(ok ? item.output : (item.error ?? "")).map((l, i) => (
+          <Text key={`o${i}`} {...(ok ? {} : { color: ink("warn") })}>
+            {"  " + l}
+          </Text>
+        ))}
+    </Box>
+  );
+}
+
+function ItemView({ item, width, bundle, session, expanded }: { item: Item; width: number; bundle: RuntimeBundle; session: Session; expanded: boolean }) {
   switch (item.kind) {
     case "banner":
       return <Banner bundle={bundle} session={session} />;
@@ -95,10 +135,20 @@ function ItemView({ item, width, bundle, session }: { item: Item; width: number;
           <Text>{renderMarkdown(item.text, Math.max(20, width - 4))}</Text>
         </Box>
       );
+    case "worked":
+      return (
+        <Box paddingLeft={2} marginTop={1}>
+          <Text dimColor>
+            {expanded ? "▾" : "▸"} {item.seconds === undefined ? "Used" : `Worked for ${item.seconds.toFixed(1)}s ·`} {item.tools} tool{item.tools === 1 ? "" : "s"}
+            {expanded ? "" : "  (Ctrl+O details)"}
+          </Text>
+        </Box>
+      );
     case "tool": {
+      if (expanded) return <ToolCard item={item} />;
       const color = ink(item.status === undefined ? "pending" : item.status === "ok" ? "ok" : "warn");
       return (
-        <Box paddingLeft={2}>
+        <Box paddingLeft={4}>
           <Text color={color}>
             {sym.tool} {item.tool}
             <Text dimColor>({toolArgs(item.input)})</Text>
@@ -143,7 +193,7 @@ function ItemView({ item, width, bundle, session }: { item: Item; width: number;
   }
 }
 
-function StatusBar({ running, activity, startedAt, last, agent, session, notice }: { running: boolean; activity: string; startedAt: number; last: RunSummary | undefined; agent: string; session: Session; notice: string | undefined }) {
+function StatusBar({ running, activity, startedAt, last, notice }: { running: boolean; activity: string; startedAt: number; last: RunSummary | undefined; notice: string | undefined }) {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (!running) return;
@@ -166,9 +216,13 @@ function StatusBar({ running, activity, startedAt, last, agent, session, notice 
   ) : (
     <Text dimColor>ready</Text>
   );
+  return <Box>{notice !== undefined ? <Text color={ink("warn")}>{notice}</Text> : left}</Box>;
+}
+
+/** OpenClaw-style footer: who is answering, where, with what, and the view toggles. */
+function Footer({ agent, session, provider, last, expanded }: { agent: string; session: Session; provider: string; last: RunSummary | undefined; expanded: boolean }) {
   return (
-    <Box justifyContent="space-between">
-      {notice !== undefined ? <Text color={ink("warn")}>{notice}</Text> : left}
+    <Box justifyContent="space-between" flexWrap="wrap" columnGap={3}>
       <Text>
         {session.status === "handoff" ? (
           <Text color={ink("accent")} bold inverse>
@@ -176,9 +230,42 @@ function StatusBar({ running, activity, startedAt, last, agent, session, notice 
           </Text>
         ) : null}
         <Text dimColor>
-          {session.status === "handoff" ? " · " : ""}agent <Text bold>{agent}</Text> · {session.id.slice(0, 8)}
+          {session.status === "handoff" ? " " : ""}agent <Text bold>{agent}</Text> · session {session.id.slice(0, 8)} · {provider}
+          {last?.tokens !== undefined ? ` · ${last.tokens.input}→${last.tokens.output} tok` : ""}
         </Text>
       </Text>
+      <Text dimColor>
+        <Text bold>^O</Text> {expanded ? "collapse" : "details"} · <Text bold>^P</Text> sessions · <Text bold>/</Text> commands
+      </Text>
+    </Box>
+  );
+}
+
+function SessionPicker({ choices, selected, current }: { choices: SessionChoice[]; selected: number; current: string }) {
+  const start = Math.max(0, Math.min(selected - 4, choices.length - 10));
+  return (
+    <Box flexDirection="column" borderStyle="round" borderColor={ink("brand")} borderLeft={false} borderRight={false}>
+      <Text>
+        <Text bold color={ink("brand")}>
+          Sessions
+        </Text>
+        <Text dimColor> ↑↓ choose · Enter open · Esc close</Text>
+      </Text>
+      {choices.slice(start, start + 10).map((c, i) => {
+        const index = start + i;
+        const active = index === selected;
+        return (
+          <Text key={c.session.id} {...(active ? { color: ink("brand"), bold: true } : {})}>
+            {active ? "▸ " : "  "}
+            <Text dimColor={!active}>{c.session.updatedAt.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).padEnd(17)}</Text> {short(c.title, 60)}
+            <Text dimColor>
+              {" "}
+              {c.session.id.slice(0, 8)}
+              {c.session.id === current ? " · current" : ""}
+            </Text>
+          </Text>
+        );
+      })}
     </Box>
   );
 }
@@ -243,6 +330,8 @@ export function App({ bundle, initial, onExit }: AppProps) {
   const [selected, setSelected] = useState(0);
   const [notice, setNotice] = useState<string | undefined>();
   const [armedExit, setArmedExit] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const [picker, setPicker] = useState<{ choices: SessionChoice[]; selected: number } | undefined>();
 
   const matches = useMemo(() => (value.startsWith("/") && !value.includes(" ") && !value.includes("\n") ? SLASH_COMMANDS.filter((c) => c.name.startsWith(value.toLowerCase())) : []), [value]);
   const menuOpen = matches.length > 0 && !chat.running;
@@ -257,6 +346,14 @@ export function App({ bundle, initial, onExit }: AppProps) {
     setSelected(0);
   };
 
+  const toggleDetails = () => {
+    setExpanded((e) => !e);
+    chat.reprint();
+  };
+  const openPicker = () => {
+    void chat.listSessions().then((choices) => setPicker({ choices, selected: Math.max(0, choices.findIndex((c) => c.session.id === chat.session.id)) }));
+  };
+
   const submit = (raw: string) => {
     const text = raw.trim();
     if (text === "") return;
@@ -264,6 +361,8 @@ export function App({ bundle, initial, onExit }: AppProps) {
     history.push(text);
     setHistoryIndex(undefined);
     setText("");
+    if (text === "/sessions") return openPicker();
+    if (text === "/details") return toggleDetails();
     if (text.startsWith("/")) {
       void chat.command(text).then((r) => {
         if (r === "exit") quit();
@@ -286,6 +385,22 @@ export function App({ bundle, initial, onExit }: AppProps) {
     }
     if (key.ctrl && input === "d") {
       if (value === "") quit();
+      return;
+    }
+    if (picker !== undefined) {
+      const n = picker.choices.length;
+      if (key.escape || (key.ctrl && input === "p")) return setPicker(undefined);
+      if (n > 0 && (key.upArrow || key.downArrow)) return setPicker({ ...picker, selected: (picker.selected + (key.upArrow ? n - 1 : 1)) % n });
+      if (key.return) {
+        const choice = picker.choices[picker.selected];
+        setPicker(undefined);
+        if (choice !== undefined && choice.session.id !== chat.session.id) void chat.switchSession(choice.session);
+      }
+      return;
+    }
+    if (key.ctrl && input === "o") return toggleDetails();
+    if (key.ctrl && input === "p") {
+      if (!chat.running) openPicker();
       return;
     }
     if (key.escape) {
@@ -350,19 +465,19 @@ export function App({ bundle, initial, onExit }: AppProps) {
   return (
     <Box flexDirection="column">
       <Static key={chat.epoch} items={chat.items}>
-        {(item) => <ItemView key={item.id} item={item} width={width} bundle={bundle} session={chat.session} />}
+        {(item) => <ItemView key={item.id} item={item} width={width} bundle={bundle} session={chat.session} expanded={expanded} />}
       </Static>
       {chat.live.map((item) => (
-        <ItemView key={item.id} item={item} width={width} bundle={bundle} session={chat.session} />
+        <ItemView key={item.id} item={item} width={width} bundle={bundle} session={chat.session} expanded={expanded} />
       ))}
       <Box marginTop={1} flexDirection="column">
-        <InputBox value={value} cursor={cursor} disabled={chat.running} />
-        {menuOpen && <SlashMenu matches={matches} selected={selected} />}
-        <Box paddingX={1} flexDirection="column">
-          <StatusBar running={chat.running} activity={chat.activity} startedAt={chat.startedAt} last={chat.last} agent={chat.agent} session={chat.session} notice={notice} />
-          <Text dimColor>
-            <Text bold>Enter</Text> send · <Text bold>Alt+Enter</Text> newline · <Text bold>↑↓</Text> history · <Text bold>/</Text> commands · <Text bold>Ctrl+C</Text> twice quit
-          </Text>
+        <Box paddingX={1}>
+          <StatusBar running={chat.running} activity={chat.activity} startedAt={chat.startedAt} last={chat.last} notice={notice} />
+        </Box>
+        {picker !== undefined ? <SessionPicker choices={picker.choices} selected={picker.selected} current={chat.session.id} /> : <InputBox value={value} cursor={cursor} disabled={chat.running} />}
+        {menuOpen && picker === undefined && <SlashMenu matches={matches} selected={selected} />}
+        <Box paddingX={1}>
+          <Footer agent={chat.agent} session={chat.session} provider={bundle.providerId} last={chat.last} expanded={expanded} />
         </Box>
       </Box>
     </Box>

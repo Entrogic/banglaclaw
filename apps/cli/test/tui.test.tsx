@@ -134,6 +134,43 @@ describe("chat TUI", () => {
   });
 });
 
+describe("chat TUI tool cards and sessions", () => {
+  const calc: ScriptedTurn[] = [{ toolCalls: [{ name: "calculator", args: { expression: "25*4" } }] }, { content: "১০০" }];
+
+  it("folds tool calls under Worked for and expands them with Ctrl+O", async () => {
+    const { app } = await setup(new FakeProvider(calc));
+    cleanup = app.unmount;
+    app.stdin.write("25*4?\r");
+    const done = await until(app.lastFrame, (f) => f.includes("completed"));
+    expect(done).toMatch(/Worked for \d+\.\ds · 1 tool/);
+    expect(done).toContain("⚙ calculator(25*4) → 100");
+    app.stdin.write("\u000f");
+    const open = await until(app.lastFrame, (f) => f.includes("result"));
+    expect(open).toContain('"expression": "25*4"');
+    expect(open).toContain('"result": 100');
+    expect(open).toContain("^O collapse");
+  });
+
+  it("switches to an earlier session from the Ctrl+P picker", async () => {
+    const { app } = await setup(new FakeProvider(calc));
+    cleanup = app.unmount;
+    app.stdin.write("pichhoner prosno\r");
+    await until(app.lastFrame, (f) => f.includes("completed"));
+    app.stdin.write("/new\r");
+    await until(app.lastFrame, (f) => f.includes("New session"));
+    app.stdin.write("\u0010");
+    const list = await until(app.lastFrame, (f) => f.includes("Enter open"));
+    expect(list).toContain("pichhoner prosno");
+    expect(list).toContain("· current");
+    app.stdin.write("\u001b[B");
+    await tick(50);
+    app.stdin.write("\r");
+    const back = await until(app.lastFrame, (f) => f.includes("Used 1 tool"));
+    expect(back).toContain("› pichhoner prosno");
+    expect(back).toContain("১০০");
+  });
+});
+
 describe("chat TUI input", () => {
   it("sends text and Enter that arrive in one chunk", async () => {
     const { app } = await setup(new FakeProvider([{ content: "five" }]));

@@ -94,7 +94,7 @@ voice:
 
 ## Web
 
-`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. It follows the OS light/dark preference, and a header button overrides it (saved in localStorage). It's intended for developers and internal users. A public, anonymous website widget needs a separate visitor-auth model and is planned.
+`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. The layout follows OpenClaw's Control UI: a sidebar of the key's own sessions (`GET /v1/sessions`, labelled by their first message, grouped by day) that reloads a transcript from `GET /v1/sessions/:id/messages`, a flat reply stream rendered as markdown while it streams (lists, tables, code blocks with Copy; only http(s) links, everything else escaped), tool calls as expandable cards that fold into a "Worked for 1.2s · 2 tools" line when the run ends, and a composer with a Stop button, `/new`, `/sessions`, `/theme` and `/logout` commands and a footer with the agent, session and token count. It follows the OS light/dark preference, and a sidebar button overrides it (saved in localStorage). It's intended for developers and internal users. A public, anonymous website widget needs a separate visitor-auth model and is planned.
 
 ## Configuration
 

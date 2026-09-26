@@ -1,6 +1,7 @@
+import type { BaseMessage } from "@langchain/core/messages";
 import { useCallback, useRef, useState } from "react";
 import { AgentRunError } from "@banglaclaw/agent";
-import type { RunRecord, Session } from "@banglaclaw/session";
+import { isOperatorMessage, type RunRecord, type Session } from "@banglaclaw/session";
 import type { RunEvent } from "@banglaclaw/shared";
 import { AllowlistPolicy } from "@banglaclaw/tools";
 import type { RuntimeBundle } from "../bootstrap.js";
@@ -12,6 +13,7 @@ export type Item =
   | { id: number; kind: "user"; text: string }
   | { id: number; kind: "assistant"; text: string; agent: string }
   | { id: number; kind: "tool"; tool: string; input: unknown; status?: string; output?: unknown; error?: string; ms?: number }
+  | { id: number; kind: "worked"; seconds?: number; tools: number }
   | { id: number; kind: "transfer"; to: string }
   | { id: number; kind: "handoff"; reason: string; pending: boolean }
   | { id: number; kind: "info"; title?: string; lines: string[] }
@@ -27,9 +29,16 @@ export interface RunSummary {
 
 const isControl = (tool: string) => tool.startsWith("transfer_to_") || tool === "request_human";
 
+export interface SessionChoice {
+  session: Session;
+  title: string;
+}
+
 export const SLASH_COMMANDS: readonly { name: string; description: string }[] = [
   { name: "/help", description: "Commands and keyboard shortcuts" },
   { name: "/new", description: "Start a new session" },
+  { name: "/sessions", description: "Switch to a recent session (Ctrl+P)" },
+  { name: "/details", description: "Expand or collapse tool cards (Ctrl+O)" },
   { name: "/history", description: "Show recent messages of this session" },
   { name: "/session", description: "Show the session id (resume with --session)" },
   { name: "/agents", description: "Supervisor and specialist agents" },
@@ -38,6 +47,51 @@ export const SLASH_COMMANDS: readonly { name: string; description: string }[] = 
   { name: "/clear", description: "Clear the screen" },
   { name: "/exit", description: "Quit" },
 ];
+
+/** Tool output as stored in a ToolMessage is JSON text; parse it back for display. */
+function parseOutput(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
+}
+
+/** Rebuilds transcript items from stored messages, folding each reply's tool calls under a "worked" line. */
+export function historyItems(messages: BaseMessage[], nextId: () => number): Item[] {
+  const items: Item[] = [];
+  const tools = new Map<string, Extract<Item, { kind: "tool" }>>();
+  let worked: Extract<Item, { kind: "worked" }> | undefined;
+  for (const m of messages) {
+    const type = m.getType();
+    if (type === "human") {
+      worked = undefined;
+      items.push({ id: nextId(), kind: "user", text: m.text });
+    } else if (type === "ai") {
+      const calls = "tool_calls" in m && Array.isArray(m.tool_calls) ? (m.tool_calls as { id?: string; name: string; args: unknown }[]).filter((c) => !isControl(c.name)) : [];
+      if (calls.length > 0) {
+        if (worked === undefined) {
+          worked = { id: nextId(), kind: "worked", tools: 0 };
+          items.push(worked);
+        }
+        for (const c of calls) {
+          const item: Extract<Item, { kind: "tool" }> = { id: nextId(), kind: "tool", tool: c.name, input: c.args, status: "ok" };
+          if (c.id !== undefined) tools.set(c.id, item);
+          items.push(item);
+          worked.tools++;
+        }
+      }
+      if (m.text.trim() !== "") items.push({ id: nextId(), kind: "assistant", text: m.text, agent: isOperatorMessage(m) ? "operator" : "supervisor" });
+    } else if (type === "tool" && "tool_call_id" in m && typeof m.tool_call_id === "string") {
+      const item = tools.get(m.tool_call_id);
+      if (item !== undefined) {
+        const failed = "status" in m && m.status === "error";
+        Object.assign(item, failed ? { status: "error", error: m.text } : { output: parseOutput(m.text) });
+      }
+    }
+  }
+  return items;
+}
 
 /** Bridges AgentRuntime runs and RunEvents to React state. No agent logic lives here (ADR-0005). */
 export function useChat(bundle: RuntimeBundle, initial: Session) {
@@ -138,7 +192,14 @@ export function useChat(bundle: RuntimeBundle, initial: Session) {
         if (flushTimer !== undefined) clearTimeout(flushTimer);
         controller.current = undefined;
         if (record?.status === "aborted") segments.push({ id: id(), kind: "info", lines: ["Cancelled."] });
-        setItems((prev) => [...prev, ...segments.filter((s) => s.kind !== "assistant" || s.text.trim() !== "")]);
+        const committed = segments.filter((s) => s.kind !== "assistant" || s.text.trim() !== "");
+        // Fold the run's tool calls under one "Worked for …" line, placed before the first of them.
+        const firstTool = committed.findIndex((s) => s.kind === "tool");
+        if (firstTool >= 0) {
+          const tools = committed.filter((s) => s.kind === "tool").length;
+          committed.splice(firstTool, 0, { id: id(), kind: "worked", tools, ...(record !== undefined && { seconds: record.durationMs / 1000 }) });
+        }
+        setItems((prev) => [...prev, ...committed]);
         setLive([]);
         setRunning(false);
         if (record !== undefined) {
@@ -163,6 +224,41 @@ export function useChat(bundle: RuntimeBundle, initial: Session) {
 
   const cancel = useCallback(() => controller.current?.abort(), []);
 
+  /** Redraws the whole transcript, e.g. after tool cards were expanded or collapsed. */
+  const reprint = useCallback(() => {
+    process.stdout.write("\x1b[2J\x1b[3J\x1b[H");
+    setEpoch((e) => e + 1);
+  }, []);
+
+  /** Recent CLI sessions, newest first, labelled with their first message. */
+  const listSessions = useCallback(async (): Promise<SessionChoice[]> => {
+    const store = bundle.runtime.sessions;
+    const recent = await store.list({ channel: sessionRef.current.channel, limit: 30 });
+    if (!recent.some((s) => s.id === sessionRef.current.id)) recent.unshift(sessionRef.current);
+    return Promise.all(
+      recent.map(async (session) => {
+        const messages = await store.recentMessages(session.id, 50);
+        const first = messages.find((m) => m.getType() === "human" && m.text.trim() !== "");
+        return { session, title: first === undefined ? "(empty)" : first.text.replace(/\s+/g, " ").trim() };
+      }),
+    );
+  }, [bundle]);
+
+  /** Opens another session: the screen is redrawn with its stored transcript. */
+  const switchSession = useCallback(
+    async (target: Session) => {
+      const messages = await bundle.runtime.sessions.recentMessages(target.id, 200);
+      sessionRef.current = target;
+      setSession(target);
+      setAgent(target.activeAgent ?? "supervisor");
+      setLast(undefined);
+      process.stdout.write("\x1b[2J\x1b[3J\x1b[H");
+      setItems([{ id: id(), kind: "banner" }, ...historyItems(messages, id)]);
+      setEpoch((e) => e + 1);
+    },
+    [bundle],
+  );
+
   const command = useCallback(
     async (input: string): Promise<"exit" | undefined> => {
       const [name] = input.trim().split(/\s+/);
@@ -176,6 +272,7 @@ export function useChat(bundle: RuntimeBundle, initial: Session) {
               ...SLASH_COMMANDS.map((c) => `${c.name.padEnd(10)} ${c.description}`),
               "",
               "Enter send · Alt+Enter or Ctrl+J newline · ↑/↓ history · Tab complete",
+              "Ctrl+O expand/collapse tool cards · Ctrl+P switch session",
               "Esc cancel a reply / clear input · Ctrl+C twice or Ctrl+D quit",
             ],
             "Help",
@@ -232,5 +329,5 @@ export function useChat(bundle: RuntimeBundle, initial: Session) {
     [bundle, info],
   );
 
-  return { items, live, running, activity, startedAt, last, session, agent, epoch, send, cancel, command, info };
+  return { items, live, running, activity, startedAt, last, session, agent, epoch, send, cancel, command, info, reprint, listSessions, switchSession };
 }
