@@ -52,6 +52,41 @@ export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
 const AccessSchema = z.enum(["allowlist", "open"]);
 
+/** A site allowed to embed the widget: an origin such as https://shop.example.com, or "*" for any (development only). */
+const WidgetOrigin = z.union([
+  z.literal("*"),
+  z
+    .url({ protocol: /^https?$/ })
+    .refine((u) => new URL(u).origin === u.replace(/\/$/, ""), "must be an origin (scheme://host[:port]) without a path")
+    .transform((u) => new URL(u).origin),
+], { error: 'must be an origin such as https://shop.example.com (no path), or "*"' });
+
+export const WidgetChannelSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  /** Sites allowed to embed the widget (enforced with CSP frame-ancestors). Required when enabled. */
+  allowedOrigins: z.array(WidgetOrigin).default([]),
+  /** Shown in the widget header. */
+  title: z.string().min(1).max(60).default("BanglaClaw"),
+  /** First message shown to every visitor (not stored). */
+  greeting: z.string().min(1).max(500).default("আসসালামু আলাইকুম! কীভাবে সাহায্য করতে পারি?"),
+  /** Accent colour of the bubble, header and visitor messages. */
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "must be a hex colour like #0b6b4f")
+    .default("#0b6b4f"),
+  position: z.enum(["right", "left"]).default("right"),
+  /** Messages per visitor per minute. */
+  messagesPerMinute: z.int().min(1).max(120).default(10),
+  /** New visitor sessions per client IP per minute. */
+  sessionsPerMinute: z.int().min(1).max(600).default(10),
+  /** Maximum characters per visitor message. */
+  maxInputChars: z.int().min(1).max(8_000).default(1_000),
+  /** Visitor replies being generated at once, across all visitors. */
+  maxConcurrentRuns: z.int().min(1).max(200).default(10),
+  /** Days a visitor keeps the same conversation before getting a new one. */
+  visitorTtlDays: z.int().min(1).max(365).default(30),
+});
+
 export const TelegramChannelSchema = z.strictObject({
   enabled: z.boolean().default(false),
   /** polling: no public URL needed. webhook: Telegram POSTs to <webhookUrl>/channels/telegram/webhook on the gateway. */
@@ -213,6 +248,8 @@ export const ConfigSchema = z.strictObject({
       messenger: MessengerChannelSchema.prefault({}),
       /** Serve the browser chat page at /chat on the gateway. */
       web: z.strictObject({ enabled: z.boolean().default(true) }).prefault({}),
+      /** Embeddable website chat widget for anonymous visitors (GET /widget.js, docs/11). */
+      widget: WidgetChannelSchema.prefault({}),
     })
     .prefault({}),
   agents: z
@@ -274,6 +311,8 @@ export interface Secrets {
   handoffWebhookUrl?: string;
   /** Bearer token required to scrape GET /metrics (optional). */
   metricsToken?: string;
+  /** Signs widget visitor tokens (32+ characters). Without it tokens stop working when the gateway restarts. */
+  widgetSecret?: string;
 }
 
 export interface LoadConfigOptions {
@@ -353,6 +392,7 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
     ["transcriptionApiKey", "TRANSCRIPTION_API_KEY"],
     ["handoffWebhookUrl", "HANDOFF_WEBHOOK_URL"],
     ["metricsToken", "METRICS_TOKEN"],
+    ["widgetSecret", "BANGLACLAW_WIDGET_SECRET"],
   ];
   for (const [key, name] of secretEnv) {
     const value = nonEmpty(env[name]);

@@ -4,6 +4,9 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Website widget** (`channels.widget`, ADR-0013): `<script src="https://<gateway>/widget.js" async></script>` adds a chat bubble to any allowed site. Anonymous visitors get HMAC-signed tokens instead of API keys, the frame is limited to `allowedOrigins` with CSP `frame-ancestors`, replies stream as markdown, operator replies arrive live during a handoff, and tool details never reach the browser. It has per-visitor and per-IP limits, a global reply cap, `BANGLACLAW_WIDGET_SECRET`, doctor checks, a demo page in `examples/widget/`, and docs/11.
+- The web chat and widget share one escaping markdown renderer (`packages/gateway/src/browser-markdown.ts`), now covered by an XSS test.
+
 - **Built-in skills in the npm CLI:** `calculation` and `time-and-date` ship inside `@entrogic-net/cli` and load without config. A configured skill with the same name overrides them, and `skills.builtin: false` turns them off (docs/08).
 - Metrics use `@prometheus-io/client`, the official successor of the deprecated `prom-client` (same API and output).
 - `marked` is pinned back to 15.x, the range `marked-terminal` supports, and Dependabot ignores its majors.

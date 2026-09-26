@@ -12,6 +12,12 @@ import { SessionEvents } from "./session-events.js";
 
 export type GatewayConfig = BanglaClawConfig["gateway"];
 
+/** Hono variables set by the gateway's request middleware. */
+export type GatewayEnv = { Variables: { requestId: string; principal: Principal; log: Logger; ip: string | undefined } };
+
+/** The embeddable widget (channels.widget without `enabled`), plus the secret that signs visitor tokens. */
+export type WidgetOptions = Omit<BanglaClawConfig["channels"]["widget"], "enabled"> & { secret: string };
+
 export interface GatewayDeps {
   runtime: AgentRuntime;
   sessions: SessionStore;
@@ -27,6 +33,8 @@ export interface GatewayDeps {
   routes?: Hono[];
   /** Serve the browser chat page at /chat. */
   webChat?: boolean;
+  /** Serve the embeddable website widget (/widget.js, /widget/frame, /widget/api/*) for anonymous visitors. */
+  widget?: WidgetOptions;
   knowledge?: { kb: KnowledgeBase; searchLimit: number; minScore: number };
   memory?: LongTermMemory;
   /** Delivers operator replies to channel users (Telegram, WhatsApp). API clients get them as session events. */

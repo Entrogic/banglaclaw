@@ -94,15 +94,47 @@ voice:
 
 ## Web
 
-`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. The layout follows OpenClaw's Control UI: a sidebar of the key's own sessions (`GET /v1/sessions`, labelled by their first message, grouped by day) that reloads a transcript from `GET /v1/sessions/:id/messages`, a flat reply stream rendered as markdown while it streams (lists, tables, code blocks with Copy; only http(s) links, everything else escaped), tool calls as expandable cards that fold into a "Worked for 1.2s · 2 tools" line when the run ends, and a composer with a Stop button, `/new`, `/sessions`, `/theme` and `/logout` commands and a footer with the agent, session and token count. It follows the OS light/dark preference, and a sidebar button overrides it (saved in localStorage). It's intended for developers and internal users. A public, anonymous website widget needs a separate visitor-auth model and is planned.
+`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. The layout follows OpenClaw's Control UI: a sidebar of the key's own sessions (`GET /v1/sessions`, labelled by their first message, grouped by day) that reloads a transcript from `GET /v1/sessions/:id/messages`, a flat reply stream rendered as markdown while it streams (lists, tables, code blocks with Copy; only http(s) links, everything else escaped), tool calls as expandable cards that fold into a "Worked for 1.2s · 2 tools" line when the run ends, and a composer with a Stop button, `/new`, `/sessions`, `/theme` and `/logout` commands and a footer with the agent, session and token count. It follows the OS light/dark preference, and a sidebar button overrides it (saved in localStorage). It's intended for developers and internal users. For your website's visitors, use the widget below.
+
+## Website widget
+
+A chat bubble for any website, answered by the agent, for anonymous visitors ([ADR-0013](adr/0013-website-widget.md)). Enable it and list the sites that may embed it:
+
+```yaml
+channels:
+  widget:
+    enabled: true
+    allowedOrigins: [https://shop.example.com]    # required; "*" allows any site (development only)
+    title: Dokan সহায়তা
+    greeting: আসসালামু আলাইকুম! শাড়ি, দাম বা ডেলিভারি নিয়ে জিজ্ঞেস করুন।
+    color: "#0b6b4f"
+    position: right                               # right | left
+```
+
+Set `BANGLACLAW_WIDGET_SECRET` (32+ characters, for example `openssl rand -hex 32`), run `banglaclaw serve`, and add one line to your pages. `serve` prints it with the gateway's address:
+
+```html
+<script src="https://bot.example.com/widget.js" async></script>
+```
+
+How it works:
+
+- **Loader.** `/widget.js` (about 4 KB, settings baked in) adds a bubble in a shadow root and, on first open, an iframe with `/widget/frame`. It exposes `window.BanglaClaw.open()`, `.close()` and `.toggle()`, shows an unread dot when a reply arrives while closed, and goes full screen on phones.
+- **Frame.** The chat page is same-origin with the gateway, so it needs no CORS. `Content-Security-Policy: frame-ancestors <allowedOrigins>` makes browsers refuse to show it on any other site. It streams replies as markdown with the same escaping renderer as the web chat, reloads the conversation, keeps following it for operator replies during a handoff, and has a "new conversation" button.
+- **Visitors.** A visitor gets a signed token (`POST /widget/api/session`, HMAC-SHA256 with the widget secret, 30 days by default) instead of an API key. The token's random id keys one `widget` session (`externalId`), which appears in the admin dashboard and the handoff queue like any channel. Renewing a valid token keeps the conversation, and "new conversation" detaches it.
+- **Privacy.** Visitors see replies only: tool names, inputs and outputs are never sent to the browser, and the history endpoint returns text messages only.
+- **Limits.** `messagesPerMinute` per visitor (and 5× that per IP), `sessionsPerMinute` new visitors per IP, one reply at a time per visitor, `maxConcurrentRuns` across all visitors, and `maxInputChars` per message. Behind a reverse proxy set `gateway.trustProxy: true`, or every visitor shares the proxy's IP. Allowed tools (`tools.allow`) are available to anyone who can open your site, so keep that list to what the public may use.
+
+`examples/widget/index.html` is a demo shop page: serve it from an allowed origin (for example `python3 -m http.server 5173` with `allowedOrigins: [http://localhost:5173]`) and point its script tag at your gateway.
 
 ## Configuration
 
-See docs/16. Secrets come from environment variables only: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `MESSENGER_PAGE_ACCESS_TOKEN`, `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN`. `banglaclaw serve` starts the enabled channels; `banglaclaw doctor` validates them (Telegram `getMe`, the Messenger page behind the token).
+See docs/16. Secrets come from environment variables only: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `MESSENGER_PAGE_ACCESS_TOKEN`, `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN`, `BANGLACLAW_WIDGET_SECRET`. `banglaclaw serve` starts the enabled channels; `banglaclaw doctor` validates them (Telegram `getMe`, the Messenger page behind the token).
 
 ## Planned
 
 - Telegram groups (mention/reply triggers), voice notes via speech-to-text, images
 - Streaming replies by editing messages
-- Discord, Messenger, and a public web widget with visitor sessions
+- Discord
+- Widget: file and image uploads, visitor identity from the host site (signed user hints)
 - Linking channel identities to gateway users

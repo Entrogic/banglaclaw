@@ -149,6 +149,14 @@ export async function collectChecks(options: GlobalOptions): Promise<Check[]> {
     }
   }
 
+  const widget = config.channels.widget;
+  if (widget.enabled) {
+    if (widget.allowedOrigins.length === 0) add("Integrations", "fail", "Widget: channels.widget.allowedOrigins is empty");
+    else add("Integrations", widget.allowedOrigins.includes("*") ? "warn" : "ok", `Widget for ${widget.allowedOrigins.join(", ")}${widget.allowedOrigins.includes("*") ? " — any site may embed it" : ""}`);
+    if (secrets.widgetSecret === undefined) add("Integrations", "warn", "Widget: BANGLACLAW_WIDGET_SECRET is not set (visitors lose their conversation on restart)");
+    else if (secrets.widgetSecret.length < 32) add("Integrations", "fail", "Widget: BANGLACLAW_WIDGET_SECRET is shorter than 32 characters");
+  }
+
   if (config.voice.enabled) {
     const keyed = secrets.transcriptionApiKey !== undefined || secrets.openaiApiKey !== undefined || config.voice.baseUrl !== undefined;
     add(

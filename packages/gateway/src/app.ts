@@ -11,8 +11,8 @@ import { getConnInfo } from "@hono/node-server/conninfo";
 import { hasRole, type Principal } from "@entrogic-net/auth";
 import { ownerForUser } from "@entrogic-net/knowledge";
 import { HandoffDesk, HandoffError, type Deliver } from "@entrogic-net/session";
-import { RateLimiter, auditRecorder, createLogger, type AuditAction, type Logger, type NewAuditEvent } from "@entrogic-net/shared";
-import { GatewayContext, type GatewayDeps } from "./context.js";
+import { RateLimiter, auditRecorder, createLogger, type AuditAction, type NewAuditEvent } from "@entrogic-net/shared";
+import { GatewayContext, type GatewayDeps, type GatewayEnv } from "./context.js";
 import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
 import { respondWithSessionEvents } from "./events.js";
 import { respondWithRun } from "./run.js";
@@ -21,9 +21,10 @@ import { adminRoutes, dashboardRoutes } from "./admin.js";
 import { openApiSpec } from "./openapi.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
 import { WEB_CHAT_CSP, WEB_CHAT_HTML } from "./web-chat.js";
+import { widgetRoutes } from "./widget/routes.js";
 import { websocketHandler } from "./ws.js";
 
-type Env = { Variables: { requestId: string; principal: Principal; log: Logger; ip: string | undefined } };
+type Env = GatewayEnv;
 
 const REQUEST_ID = /^[A-Za-z0-9._-]{1,128}$/;
 const tracer = trace.getTracer("banglaclaw.gateway");
@@ -146,6 +147,8 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
       return c.html(WEB_CHAT_HTML);
     });
   }
+
+  if (deps.widget !== undefined) app.route("/", widgetRoutes(gw, deps.widget, audit));
 
   for (const routes of deps.routes ?? []) app.route("/", routes);
   if (deps.dashboardDir !== undefined) app.route("/", dashboardRoutes(deps.dashboardDir));

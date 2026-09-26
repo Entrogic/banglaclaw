@@ -69,6 +69,18 @@ skills:
 channels:
   web:
     enabled: true            # /chat page on the gateway
+  widget:                    # embeddable website chat for anonymous visitors (docs/11)
+    enabled: false
+    allowedOrigins: []       # required when enabled, e.g. [https://shop.example.com]; "*" = any site (dev only)
+    title: BanglaClaw
+    greeting: আসসালামু আলাইকুম! কীভাবে সাহায্য করতে পারি?
+    color: "#0b6b4f"
+    position: right          # right | left
+    messagesPerMinute: 10    # per visitor (5× per IP)
+    sessionsPerMinute: 10    # new visitors per IP
+    maxInputChars: 1000
+    maxConcurrentRuns: 10    # replies in flight across all visitors
+    visitorTtlDays: 30
   telegram:
     enabled: false
     mode: polling            # polling | webhook
@@ -159,6 +171,7 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `TRANSCRIPTION_API_KEY` | Voice-note transcription key (defaults to `OPENAI_API_KEY`) |
 | `MESSENGER_PAGE_ACCESS_TOKEN`, `MESSENGER_APP_SECRET`, `MESSENGER_VERIFY_TOKEN` | Facebook Messenger channel (docs/11) |
 | `METRICS_TOKEN` | Bearer token required for `GET /metrics` |
+| `BANGLACLAW_WIDGET_SECRET` | Signs widget visitor tokens (32+ characters). Without it a random secret is used and visitors lose their conversation on restart |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` (+ standard `OTEL_*`) | Enables OpenTelemetry trace export (docs/15) |
 | `HANDOFF_WEBHOOK_URL` | Receives `POST {event: "handoff", sessionId, channel, reason, at}` |
 | `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |

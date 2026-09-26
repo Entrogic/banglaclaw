@@ -43,7 +43,7 @@ $ banglaclaw agent run "২৫ * ৪ কত?"
 | **Skills** | `SKILL.md` instruction packs selected by deterministic Bangla and Latin triggers |
 | **Memory & knowledge** | Sessions in memory or PostgreSQL, RAG over txt, md, html, pdf, docx and URLs (Qdrant or in-memory vectors), and owner-scoped long-term memory |
 | **Multi-agent** | A supervisor that routes to `AGENT.md` specialists with scoped tools, plus human handoff with an operator queue |
-| **Channels** | Telegram, WhatsApp Cloud API and Facebook Messenger, including voice-note transcription, and a built-in web chat |
+| **Channels** | Telegram, WhatsApp Cloud API and Facebook Messenger, including voice-note transcription, a built-in web chat, and an embeddable **website widget** for anonymous visitors |
 | **Gateway** | A stable `/v1` HTTP API with REST, SSE and WebSocket, API keys with scopes and roles, rate limits, an OpenAPI spec and a typed TypeScript client |
 | **Interfaces** | A full-screen terminal chat, the web chat at `/chat`, and an admin dashboard at `/admin` (analytics, sessions, handoffs, keys, audit) |
 | **Production** | An audit log, OpenTelemetry tracing, Prometheus metrics, token and cost tracking, plugins, and a non-root Docker image |
@@ -176,6 +176,27 @@ pnpm banglaclaw serve                     # long polling; also serves the web ch
 ```
 
 WhatsApp Cloud API and Facebook Messenger use signed webhooks. Voice notes are transcribed and answered like text.
+
+</details>
+
+<details>
+<summary><b>Chat widget for your website</b> · <a href="docs/11-channels.md#website-widget">docs</a></summary>
+
+```yaml
+# banglaclaw.yaml
+channels:
+  widget:
+    enabled: true
+    allowedOrigins: [https://shop.example.com]
+    title: Dokan সহায়তা
+```
+
+```bash
+export BANGLACLAW_WIDGET_SECRET=$(openssl rand -hex 32)
+pnpm banglaclaw serve
+```
+
+Then add one line to your site: `<script src="https://<your-gateway>/widget.js" async></script>`. Visitors chat without an API key, operators can take over through the handoff queue, and only the listed sites can embed it.
 
 </details>
 

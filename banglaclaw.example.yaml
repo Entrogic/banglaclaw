@@ -79,6 +79,12 @@ handoff:
 channels:
   web:
     enabled: true                # browser chat at http://<gateway>/chat
+  widget:
+    enabled: false               # chat bubble for your website: <script src="https://<gateway>/widget.js" async></script>
+    allowedOrigins: []           # sites that may embed it, e.g. [https://shop.example.com]; needs BANGLACLAW_WIDGET_SECRET
+    title: BanglaClaw
+    # greeting: আসসালামু আলাইকুম! কীভাবে সাহায্য করতে পারি?
+    # color: "#0b6b4f"
   telegram:
     enabled: false               # needs TELEGRAM_BOT_TOKEN (from @BotFather)
     mode: polling                # polling (no public URL) | webhook (needs webhookUrl + TELEGRAM_WEBHOOK_SECRET)

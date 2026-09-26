@@ -9,6 +9,7 @@ import { createDeliver, setupChannels } from "../channels.js";
 import { print, printAlways, warn } from "../ui/output.js";
 import { c, sym } from "../ui/theme.js";
 import { VERSION } from "../version.js";
+import { resolveWidget } from "../widget.js";
 import { prepareKnowledge, reportMcpFailures } from "./shared.js";
 
 export async function serve(options: GlobalOptions & { port?: string; host?: string }): Promise<void> {
@@ -26,11 +27,13 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   let gateway: RunningGateway;
   let channels: ReturnType<typeof setupChannels>;
   let devToken: string | undefined;
+  let widget: ReturnType<typeof resolveWidget> = { warnings: [] };
   const dashboardDir = config.gateway.dashboardDir === undefined ? undefined : resolve(services.loaded.baseDir, config.gateway.dashboardDir);
   try {
     if (!Number.isInteger(gatewayConfig.port) || gatewayConfig.port < 0 || gatewayConfig.port > 65_535) throw new BanglaClawError("INVALID_PORT", `Invalid port: ${options.port ?? ""}`);
     await prepareKnowledge(bundle.knowledge, true);
     channels = setupChannels(services.loaded, bundle.runtime, services.sessions, logger);
+    widget = resolveWidget(services.loaded);
     if (dashboardDir !== undefined && !existsSync(join(dashboardDir, "index.html"))) {
       throw new ConfigError(`gateway.dashboardDir has no index.html: ${dashboardDir}`);
     }
@@ -52,6 +55,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       logger,
       routes: channels.routes,
       webChat: config.channels.web.enabled,
+      ...(widget.options !== undefined && { widget: widget.options }),
       ...(bundle.knowledge.kb !== undefined && { knowledge: { kb: bundle.knowledge.kb, searchLimit: config.knowledge.searchLimit, minScore: config.knowledge.minScore } }),
       ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
       deliver: createDeliver(services.loaded, logger),
@@ -82,6 +86,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
     ["Storage", services.persistent ? "postgres" : c.yellow("memory (not persisted)")],
   ];
   if (config.channels.web.enabled) rows.push(["Web chat", `${gateway.url}/chat`]);
+  if (widget.options !== undefined) rows.push(["Widget", `<script src="${gateway.url}/widget.js" async></script> ${c.dim(`(${widget.options.allowedOrigins.join(", ")})`)}`]);
   if (dashboardDir !== undefined) rows.push(["Admin", `${gateway.url}/admin/ ${c.dim("(admin API key)")}`]);
   if (config.gateway.metrics) rows.push(["Metrics", `${gateway.url}/metrics${services.loaded.secrets.metricsToken !== undefined ? c.dim(" (METRICS_TOKEN)") : ""}`]);
   if (bundle.profiles.length > 0) rows.push(["Agents", `supervisor → ${bundle.profiles.map((p) => p.name).join(", ")}`]);
@@ -92,6 +97,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   print();
   reportMcpFailures(mcp);
   for (const line of channels.warnings) warn(line);
+  for (const line of widget.warnings) warn(line);
   if (devToken !== undefined) {
     printAlways(c.yellow(`${sym.warn} Temporary admin API key (memory storage, valid until exit):`));
     printAlways(`  ${devToken}`);

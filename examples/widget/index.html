@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dokan — BanglaClaw widget demo</title>
+<style>
+  body { margin: 0; font: 16px/1.6 system-ui, "Noto Sans Bengali", sans-serif; background: #f7f6f2; color: #15201b; }
+  header { padding: 18px 24px; background: #fff; border-bottom: 1px solid #e6e4dc; font-weight: 700; font-size: 20px; }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .card { background: #fff; border: 1px solid #e6e4dc; border-radius: 12px; padding: 16px; }
+  .price { color: #0b6b4f; font-weight: 700; }
+</style>
+</head>
+<body>
+<header>🛍️ Dokan</header>
+<main>
+  <h1>নতুন পণ্য</h1>
+  <p>This page stands in for your website. Serve it from an origin listed in <code>channels.widget.allowedOrigins</code>, for example with <code>npx serve examples/widget -l 5173</code>.</p>
+  <div class="grid">
+    <div class="card">জামদানি শাড়ি<br><span class="price">৳ ৪,৫০০</span></div>
+    <div class="card">নকশিকাঁথা<br><span class="price">৳ ২,২০০</span></div>
+    <div class="card">পাটের ব্যাগ<br><span class="price">৳ ৬৫০</span></div>
+  </div>
+</main>
+<!-- One line on any page: the gateway serves the loader, the chat opens in an iframe. -->
+<script src="http://127.0.0.1:3000/widget.js" async></script>
+</body>
+</html>

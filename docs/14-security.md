@@ -45,6 +45,7 @@ Security is a core architecture requirement, not a later feature.
   - Telegram webhook secret-token and WhatsApp/Messenger `X-Hub-Signature-256` verification (timing-safe)
   - tokens from the environment only, and never included in error messages
   - web chat served with a strict CSP — see docs/11
+  - website widget (ADR-0013): anonymous visitors hold HMAC-signed tokens (no API key in the page), the frame may only be embedded by `allowedOrigins` (CSP frame-ancestors), tool names, inputs and outputs never reach the browser, and messages, new visitors and concurrent replies are rate limited. Anything in `tools.allow` becomes usable by the public once the widget is on
 - Knowledge and memory:
   - memories are owner-scoped on the server side; secrets are refused by `remember`
   - retrieved passages and memories are framed as data, not instructions
