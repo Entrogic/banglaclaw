@@ -1,8 +1,31 @@
 {
   "name": "@banglaclaw/mcp-server-bangladesh",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "description": "MCP server with Bangladesh reference data (divisions, districts) for BanglaClaw and any MCP client",
+  "keywords": [
+    "banglaclaw",
+    "bangla",
+    "bengali",
+    "banglish",
+    "ai-agent",
+    "mcp",
+    "mcp-server",
+    "bangladesh"
+  ],
   "license": "Apache-2.0",
-  "private": true,
+  "author": "Entrogic",
+  "homepage": "https://github.com/Entrogic/banglaclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Entrogic/banglaclaw.git",
+    "directory": "mcp-servers/bangladesh"
+  },
+  "bugs": {
+    "url": "https://github.com/Entrogic/banglaclaw/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -13,6 +36,14 @@
   },
   "bin": {
     "banglaclaw-mcp-bangladesh": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

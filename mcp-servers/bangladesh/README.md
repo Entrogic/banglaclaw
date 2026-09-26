@@ -13,6 +13,10 @@ A read-only MCP server with Bangladesh reference data, bundled as an example for
 ## Run
 
 ```bash
+# from npm, with any MCP client (for example Claude Code)
+npx -y @banglaclaw/mcp-server-bangladesh
+claude mcp add bangladesh -- npx -y @banglaclaw/mcp-server-bangladesh
+
 # from the repo root, from source
 node --import tsx mcp-servers/bangladesh/src/bin.ts
 

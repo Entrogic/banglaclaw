@@ -1,8 +1,31 @@
 {
   "name": "@banglaclaw/client",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Typed client for the BanglaClaw gateway API (REST + SSE streaming)",
+  "keywords": [
+    "banglaclaw",
+    "bangla",
+    "bengali",
+    "banglish",
+    "ai-agent",
+    "client",
+    "sdk",
+    "sse"
+  ],
   "license": "Apache-2.0",
+  "author": "Entrogic",
+  "homepage": "https://github.com/Entrogic/banglaclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Entrogic/banglaclaw.git",
+    "directory": "packages/client"
+  },
+  "bugs": {
+    "url": "https://github.com/Entrogic/banglaclaw/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -12,8 +35,13 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

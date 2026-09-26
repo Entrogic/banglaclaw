@@ -1,8 +1,32 @@
 {
   "name": "@banglaclaw/providers",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "description": "Model providers for BanglaClaw: OpenAI-compatible (OpenAI, Ollama, vLLM) and Anthropic",
+  "keywords": [
+    "banglaclaw",
+    "bangla",
+    "bengali",
+    "banglish",
+    "ai-agent",
+    "llm",
+    "openai",
+    "anthropic",
+    "ollama"
+  ],
   "license": "Apache-2.0",
-  "private": true,
+  "author": "Entrogic",
+  "homepage": "https://github.com/Entrogic/banglaclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Entrogic/banglaclaw.git",
+    "directory": "packages/providers"
+  },
+  "bugs": {
+    "url": "https://github.com/Entrogic/banglaclaw/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -10,6 +34,14 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

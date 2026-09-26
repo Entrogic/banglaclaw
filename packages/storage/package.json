@@ -1,8 +1,31 @@
 {
   "name": "@banglaclaw/storage",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "description": "PostgreSQL storage for BanglaClaw (Drizzle): sessions, runs, keys, audit and checkpoints",
+  "keywords": [
+    "banglaclaw",
+    "bangla",
+    "bengali",
+    "banglish",
+    "ai-agent",
+    "postgres",
+    "drizzle",
+    "storage"
+  ],
   "license": "Apache-2.0",
-  "private": true,
+  "author": "Entrogic",
+  "homepage": "https://github.com/Entrogic/banglaclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Entrogic/banglaclaw.git",
+    "directory": "packages/storage"
+  },
+  "bugs": {
+    "url": "https://github.com/Entrogic/banglaclaw/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -13,8 +36,13 @@
   },
   "files": [
     "dist",
-    "drizzle"
+    "drizzle",
+    "src"
   ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json",

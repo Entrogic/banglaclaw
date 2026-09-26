@@ -40,5 +40,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - name: Pack and install the npm packages
+        run: pnpm verify:pack
       - name: Dependency audit (high and critical)
         run: pnpm audit --audit-level high
