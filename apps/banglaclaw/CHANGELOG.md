@@ -1,5 +1,13 @@
 # banglaclaw
 
+## 1.5.0
+
+### Patch Changes
+
+- Updated dependencies [bab41ba]
+- Updated dependencies [e1eb01e]
+  - @entrogic-net/cli@1.5.0
+
 ## 1.4.0
 
 ### Patch Changes

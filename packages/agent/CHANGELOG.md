@@ -1,5 +1,15 @@
 # @entrogic-net/agent
 
+## 1.5.0
+
+### Patch Changes
+
+- Updated dependencies [bab41ba]
+  - @entrogic-net/shared@1.5.0
+  - @entrogic-net/providers@1.5.0
+  - @entrogic-net/skills@1.5.0
+  - @entrogic-net/tools@1.5.0
+
 ## 1.4.0
 
 ### Patch Changes

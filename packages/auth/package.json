@@ -1,6 +1,6 @@
 {
   "name": "@entrogic-net/auth",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "API keys, users, roles and scopes for the BanglaClaw gateway",
   "keywords": [
     "banglaclaw",

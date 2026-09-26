@@ -1,5 +1,12 @@
 # @entrogic-net/auth
 
+## 1.5.0
+
+### Patch Changes
+
+- Updated dependencies [bab41ba]
+  - @entrogic-net/shared@1.5.0
+
 ## 1.4.0
 
 ### Patch Changes

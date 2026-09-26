@@ -1,5 +1,16 @@
 # @entrogic-net/session
 
+## 1.5.0
+
+### Minor Changes
+
+- e1eb01e: Sessions carry a `title` (the first user message, at most 80 characters), returned by the API and typed client and searchable with `q`/`query`. Postgres migration `0005_session_titles` adds the column and backfills existing sessions; run `banglaclaw db migrate` after upgrading.
+
+### Patch Changes
+
+- Updated dependencies [bab41ba]
+  - @entrogic-net/shared@1.5.0
+
 ## 1.4.0
 
 ### Minor Changes

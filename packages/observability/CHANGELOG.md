@@ -1,5 +1,12 @@
 # @entrogic-net/observability
 
+## 1.5.0
+
+### Patch Changes
+
+- Updated dependencies [e1eb01e]
+  - @entrogic-net/session@1.5.0
+
 ## 1.4.0
 
 ### Patch Changes

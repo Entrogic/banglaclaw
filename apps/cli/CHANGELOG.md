@@ -1,5 +1,33 @@
 # @entrogic-net/cli
 
+## 1.5.0
+
+### Minor Changes
+
+- bab41ba: Files sent on Telegram, WhatsApp or Messenger are saved to the sender's workspace under `uploads/` (PDF, DOCX and HTML as extracted text), and the agent is told where to read them. Controlled by `workspace.uploads` and `workspace.maxUploadBytes`. Adds `extractText` to `@entrogic-net/knowledge`.
+
+### Patch Changes
+
+- e1eb01e: Sessions carry a `title` (the first user message, at most 80 characters), returned by the API and typed client and searchable with `q`/`query`. Postgres migration `0005_session_titles` adds the column and backfills existing sessions; run `banglaclaw db migrate` after upgrading.
+- Updated dependencies [bab41ba]
+- Updated dependencies [e1eb01e]
+  - @entrogic-net/channels@1.5.0
+  - @entrogic-net/knowledge@1.5.0
+  - @entrogic-net/shared@1.5.0
+  - @entrogic-net/session@1.5.0
+  - @entrogic-net/storage@1.5.0
+  - @entrogic-net/gateway@1.5.0
+  - @entrogic-net/agent@1.5.0
+  - @entrogic-net/agents@1.5.0
+  - @entrogic-net/auth@1.5.0
+  - @entrogic-net/mcp@1.5.0
+  - @entrogic-net/providers@1.5.0
+  - @entrogic-net/skills@1.5.0
+  - @entrogic-net/tools@1.5.0
+  - @entrogic-net/workspace@1.5.0
+  - @entrogic-net/observability@1.5.0
+  - @entrogic-net/plugin-sdk@1.5.0
+
 ## 1.4.0
 
 ### Minor Changes

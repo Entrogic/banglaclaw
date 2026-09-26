@@ -1,5 +1,15 @@
 # @entrogic-net/workspace
 
+## 1.5.0
+
+### Patch Changes
+
+- Updated dependencies [bab41ba]
+- Updated dependencies [e1eb01e]
+  - @entrogic-net/shared@1.5.0
+  - @entrogic-net/session@1.5.0
+  - @entrogic-net/tools@1.5.0
+
 ## 1.4.0
 
 ### Minor Changes
