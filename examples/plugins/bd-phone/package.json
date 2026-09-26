@@ -10,6 +10,6 @@
     "@banglaclaw/plugin-sdk": "workspace:*"
   },
   "peerDependencies": {
-    "@banglaclaw/plugin-sdk": "^1.0.0"
+    "@banglaclaw/plugin-sdk": "^1.2.0"
   }
 }

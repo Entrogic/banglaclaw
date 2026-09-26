@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/providers",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Model providers for BanglaClaw: OpenAI-compatible (OpenAI, Ollama, vLLM) and Anthropic",
   "keywords": [
     "banglaclaw",

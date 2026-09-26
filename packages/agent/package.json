@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/agent",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "LangGraph agent runtime for BanglaClaw: runs, limits, streaming events and multi-agent teams",
   "keywords": [
     "banglaclaw",

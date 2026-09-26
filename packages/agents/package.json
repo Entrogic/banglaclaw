@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/agents",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AGENT.md parser and team profiles for BanglaClaw multi-agent setups",
   "keywords": [
     "banglaclaw",

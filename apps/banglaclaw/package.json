@@ -1,6 +1,6 @@
 {
   "name": "banglaclaw",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Bangla-first AI agent runtime. Run `npx banglaclaw init` to start (installs @banglaclaw/cli).",
   "keywords": [
     "banglaclaw",

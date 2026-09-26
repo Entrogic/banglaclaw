@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/client",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Typed client for the BanglaClaw gateway API (REST + SSE streaming)",
   "keywords": [
     "banglaclaw",

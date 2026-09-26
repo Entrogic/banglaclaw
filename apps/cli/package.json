@@ -1,6 +1,6 @@
 {
   "name": "@banglaclaw/cli",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "BanglaClaw command-line interface: terminal chat, gateway server, setup wizard and admin commands",
   "keywords": [
     "banglaclaw",
