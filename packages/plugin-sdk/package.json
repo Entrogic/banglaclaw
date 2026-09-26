@@ -1,6 +1,6 @@
 {
   "name": "@entrogic-net/plugin-sdk",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Build BanglaClaw plugins: tools, skills, agents and context providers",
   "keywords": [
     "banglaclaw",

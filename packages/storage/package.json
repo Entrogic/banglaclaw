@@ -1,6 +1,6 @@
 {
   "name": "@entrogic-net/storage",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "PostgreSQL storage for BanglaClaw (Drizzle): sessions, runs, keys, audit and checkpoints",
   "keywords": [
     "banglaclaw",

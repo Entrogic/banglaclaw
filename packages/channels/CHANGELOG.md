@@ -1,5 +1,20 @@
 # @entrogic-net/channels
 
+## 1.4.0
+
+### Minor Changes
+
+- 62e3e8e: Live Telegram replies: the bot's message is edited as the answer is written (at most every 1.5 s), spilling into new messages past 4096 characters. Turn it off with `channels.telegram.liveReplies: false`. Channel adapters can opt in by exposing `editable`.
+
+### Patch Changes
+
+- Updated dependencies [44ca0e0]
+- Updated dependencies [62e3e8e]
+- Updated dependencies [44ca0e0]
+  - @entrogic-net/session@1.4.0
+  - @entrogic-net/shared@1.4.0
+  - @entrogic-net/agent@1.4.0
+
 ## 1.3.0
 
 ### Patch Changes

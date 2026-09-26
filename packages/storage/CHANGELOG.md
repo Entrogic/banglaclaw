@@ -1,5 +1,15 @@
 # @entrogic-net/storage
 
+## 1.4.0
+
+### Patch Changes
+
+- Updated dependencies [44ca0e0]
+- Updated dependencies [62e3e8e]
+- Updated dependencies [44ca0e0]
+  - @entrogic-net/session@1.4.0
+  - @entrogic-net/shared@1.4.0
+
 ## 1.3.0
 
 ### Patch Changes

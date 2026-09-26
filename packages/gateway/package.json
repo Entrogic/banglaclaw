@@ -1,6 +1,6 @@
 {
   "name": "@entrogic-net/gateway",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "HTTP gateway for BanglaClaw: /v1 REST, SSE and WebSocket API, web chat and admin API",
   "keywords": [
     "banglaclaw",

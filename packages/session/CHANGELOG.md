@@ -1,5 +1,18 @@
 # @entrogic-net/session
 
+## 1.4.0
+
+### Minor Changes
+
+- 44ca0e0: Workspace: sandboxed per-owner text files the agent can list, read, create, write, edit, delete and restore (`workspace_*` tools, off by default; enable `workspace.enabled` and allow `workspace_*`). Every overwrite, edit and delete can be undone from history or trash, and `banglaclaw workspace list | show | history | restore` manages the files. `sessionOwner` now lives in `@entrogic-net/session`.
+
+### Patch Changes
+
+- 44ca0e0: `/v1/admin/stats?days=N` no longer returns an extra day between local midnight and UTC midnight: the window now starts at local midnight in the configured timezone.
+- Updated dependencies [62e3e8e]
+- Updated dependencies [44ca0e0]
+  - @entrogic-net/shared@1.4.0
+
 ## 1.3.0
 
 ### Patch Changes

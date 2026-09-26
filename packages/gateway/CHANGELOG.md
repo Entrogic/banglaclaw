@@ -1,5 +1,21 @@
 # @entrogic-net/gateway
 
+## 1.4.0
+
+### Patch Changes
+
+- 44ca0e0: `/v1/admin/stats?days=N` no longer returns an extra day between local midnight and UTC midnight: the window now starts at local midnight in the configured timezone.
+- Updated dependencies [44ca0e0]
+- Updated dependencies [62e3e8e]
+- Updated dependencies [44ca0e0]
+  - @entrogic-net/session@1.4.0
+  - @entrogic-net/shared@1.4.0
+  - @entrogic-net/knowledge@1.4.0
+  - @entrogic-net/agent@1.4.0
+  - @entrogic-net/auth@1.4.0
+  - @entrogic-net/skills@1.4.0
+  - @entrogic-net/tools@1.4.0
+
 ## 1.3.0
 
 ### Minor Changes

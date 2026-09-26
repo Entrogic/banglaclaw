@@ -1,6 +1,6 @@
 {
   "name": "banglaclaw",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Bangla-first AI agent runtime. Run `npx banglaclaw init` to start (installs @entrogic-net/cli).",
   "keywords": [
     "banglaclaw",

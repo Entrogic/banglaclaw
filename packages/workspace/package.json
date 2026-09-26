@@ -1,6 +1,6 @@
 {
   "name": "@entrogic-net/workspace",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Sandboxed per-owner workspace and file tools for BanglaClaw agents (create, edit, undo)",
   "keywords": [
     "banglaclaw",

@@ -1,5 +1,12 @@
 # @entrogic-net/plugin-sdk
 
+## 1.4.0
+
+### Patch Changes
+
+- @entrogic-net/agent@1.4.0
+  - @entrogic-net/tools@1.4.0
+
 ## 1.3.0
 
 ### Patch Changes
