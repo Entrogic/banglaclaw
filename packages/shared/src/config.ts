@@ -98,6 +98,8 @@ export const TelegramChannelSchema = z.strictObject({
   allowedUserIds: z.array(z.union([z.int(), z.string().regex(/^\d+$/)]).transform(String)).default([]),
   /** Messages per chat per minute. */
   rateLimitPerMinute: z.int().min(1).max(1_000).default(10),
+  /** Stream replies by editing the message as it is written (about every 1.5 s). */
+  liveReplies: z.boolean().default(true),
 });
 
 export const WhatsAppChannelSchema = z.strictObject({

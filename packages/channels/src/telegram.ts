@@ -3,6 +3,7 @@ import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
 import { audioFilename, createLogger, type AudioInput, type Logger } from "@entrogic-net/shared";
 import type { ChannelAdapter, ChannelRouter, InboundMessage } from "./router.js";
+import type { EditableReplies } from "./stream.js";
 
 const UpdateSchema = z.object({
   update_id: z.number(),
@@ -18,6 +19,8 @@ const UpdateSchema = z.object({
     })
     .optional(),
 });
+
+const MessageRef = z.object({ message_id: z.number() });
 
 /** Bots may download files up to 20 MB (Bot API limit). */
 const MAX_TELEGRAM_FILE_BYTES = 20 * 1024 * 1024;
@@ -86,9 +89,24 @@ export class TelegramApi {
     });
   }
 
-  sendMessage(chatId: string, text: string) {
-    // Plain text (no parse_mode) so model output never breaks on Markdown escaping rules.
-    return this.call("sendMessage", { chat_id: chatId, text, link_preview_options: { is_disabled: true } });
+  /** Sends plain text (no parse_mode, so model output never breaks on Markdown escaping); returns the message id when Telegram reports one. */
+  async sendMessage(chatId: string, text: string): Promise<number | undefined> {
+    const sent = await this.call<unknown>("sendMessage", { chat_id: chatId, text, link_preview_options: { is_disabled: true } });
+    const ref = MessageRef.safeParse(sent);
+    return ref.success ? ref.data.message_id : undefined;
+  }
+
+  async editMessageText(chatId: string, messageId: number, text: string): Promise<void> {
+    try {
+      await this.call("editMessageText", { chat_id: chatId, message_id: messageId, text, link_preview_options: { is_disabled: true } });
+    } catch (error) {
+      // Editing to the same text is harmless; Telegram reports it as an error.
+      if (!(error instanceof TelegramApiError && error.message.includes("message is not modified"))) throw error;
+    }
+  }
+
+  async deleteMessage(chatId: string, messageId: number): Promise<void> {
+    await this.call("deleteMessage", { chat_id: chatId, message_id: messageId });
   }
 
   /** Downloads a file by id (getFile, then the file URL). */
@@ -141,6 +159,8 @@ export interface TelegramChannelOptions {
   logger?: Logger;
   /** Long-poll timeout (seconds). */
   pollTimeoutSeconds?: number;
+  /** Stream replies by editing the message as it is written (default true). */
+  liveReplies?: boolean;
 }
 
 /** Telegram channel: long polling (dev) or webhook (production, mounted on the gateway). */
@@ -152,9 +172,24 @@ export class TelegramChannel implements ChannelAdapter {
   #poller: AbortController | undefined;
   #polling: Promise<void> | undefined;
 
+  readonly editable: EditableReplies | undefined;
+
   constructor(options: TelegramChannelOptions) {
     this.#options = options;
     this.#logger = (options.logger ?? createLogger({ level: "warn" })).child({ channel: "telegram" });
+    const { api } = options;
+    this.editable =
+      options.liveReplies === false
+        ? undefined
+        : {
+            post: async (chatId, text) => {
+              const id = await api.sendMessage(chatId, text);
+              if (id === undefined) throw new Error("sendMessage returned no message_id");
+              return String(id);
+            },
+            edit: (chatId, messageId, text) => api.editMessageText(chatId, Number(messageId), text),
+            remove: (chatId, messageId) => api.deleteMessage(chatId, Number(messageId)),
+          };
   }
 
   async send(conversationId: string, text: string): Promise<void> {

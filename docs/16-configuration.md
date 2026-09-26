@@ -97,6 +97,7 @@ channels:
     access: allowlist        # allowlist | open
     allowedUserIds: []       # numeric Telegram user ids
     rateLimitPerMinute: 10   # per chat
+    liveReplies: true        # edit the reply as it is written
   whatsapp:
     enabled: false
     # phoneNumberId: "123456789012345"

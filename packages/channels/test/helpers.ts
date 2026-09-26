@@ -3,11 +3,11 @@ import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@entrogic-n
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
 import { createLogger } from "@entrogic-net/shared";
 import { AllowlistPolicy, ToolRegistry } from "@entrogic-net/tools";
-import { ChannelRouter, type AccessPolicy, type ChannelAdapter, type VoiceOptions } from "../src/index.js";
+import { ChannelRouter, type AccessPolicy, type ChannelAdapter, type LiveReplySettings, type VoiceOptions } from "../src/index.js";
 
 export const silent = createLogger({ write: () => {} });
 
-export function makeRouter(options: { script?: ScriptedTurn[]; provider?: ModelProvider; access?: AccessPolicy; rateLimitPerMinute?: number; voice?: VoiceOptions } = {}) {
+export function makeRouter(options: { script?: ScriptedTurn[]; provider?: ModelProvider; access?: AccessPolicy; rateLimitPerMinute?: number; voice?: VoiceOptions; liveReplies?: LiveReplySettings | false } = {}) {
   const sessions = new InMemorySessionStore();
   const fake = new FakeProvider(options.script ?? [{ content: "reply" }]);
   const provider = options.provider ?? fake;
@@ -21,6 +21,7 @@ export function makeRouter(options: { script?: ScriptedTurn[]; provider?: ModelP
     rateLimitPerMinute: options.rateLimitPerMinute ?? 100,
     logger: silent,
     ...(options.voice !== undefined && { voice: options.voice }),
+    ...(options.liveReplies !== undefined && { liveReplies: options.liveReplies }),
   });
   return { router, sessions, provider: fake };
 }

@@ -57,6 +57,7 @@
   },
   "devDependencies": {
     "@entrogic-net/providers": "workspace:*",
-    "@entrogic-net/tools": "workspace:*"
+    "@entrogic-net/tools": "workspace:*",
+    "@langchain/core": "^1.2.12"
   }
 }

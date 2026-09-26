@@ -1,4 +1,5 @@
-export { ChannelRouter, type AccessPolicy, type ChannelAdapter, type ChannelRouterOptions, type InboundAudio, type InboundMessage, type VoiceOptions } from "./router.js";
+export { ChannelRouter, type AccessPolicy, type ChannelAdapter, type ChannelRouterOptions, type InboundAudio, type InboundMessage, type LiveReplySettings, type VoiceOptions } from "./router.js";
+export { LiveReply, type EditableReplies, type LiveReplyOptions } from "./stream.js";
 export { TelegramApi, TelegramApiError, TelegramChannel, toInbound, TELEGRAM_WEBHOOK_PATH, type FetchLike, type TelegramUpdate } from "./telegram.js";
 export { WhatsAppApi, WhatsAppApiError, WhatsAppChannel, toInboundMessages, WHATSAPP_WEBHOOK_PATH, type WhatsAppWebhook } from "./whatsapp.js";
 export {

@@ -2,6 +2,7 @@ import { AgentRunError, detectLanguage, type AgentRuntime } from "@entrogic-net/
 import type { SessionStore } from "@entrogic-net/session";
 import { RateLimiter, createLogger, type AudioInput, type Logger, type Transcriber } from "@entrogic-net/shared";
 import { notice } from "./messages.js";
+import { LiveReply, type EditableReplies } from "./stream.js";
 import { splitMessage } from "./text.js";
 
 /** A message normalised from any platform (docs/11). */
@@ -42,6 +43,16 @@ export interface ChannelAdapter {
   send(conversationId: string, text: string): Promise<void>;
   /** Optional "typing…" indicator. */
   typing?(conversationId: string): Promise<void>;
+  /** Present when the platform can edit sent messages: replies are then streamed live (docs/11). */
+  readonly editable?: EditableReplies;
+}
+
+/** Live replies on platforms that can edit messages. */
+export interface LiveReplySettings {
+  /** Minimum milliseconds between edits of one reply. */
+  intervalMs: number;
+  /** Characters collected before the first message is posted. */
+  minChars: number;
 }
 
 export interface AccessPolicy {
@@ -57,9 +68,12 @@ export interface ChannelRouterOptions {
   rateLimitPerMinute: number;
   logger?: Logger;
   voice?: VoiceOptions;
+  /** Stream replies by editing messages where the adapter supports it; false turns it off. */
+  liveReplies?: LiveReplySettings | false;
 }
 
 const TYPING_INTERVAL_MS = 4_000;
+const DEFAULT_LIVE_REPLIES: LiveReplySettings = { intervalMs: 1_500, minChars: 30 };
 const DEFAULT_MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 /**
@@ -143,6 +157,7 @@ export class ChannelRouter {
 
     const typing = adapter.typing?.bind(adapter);
     let timer: NodeJS.Timeout | undefined;
+    let live: LiveReply | undefined;
     if (typing !== undefined) {
       const tick = () => void typing(message.conversationId).catch(() => {});
       tick();
@@ -158,17 +173,42 @@ export class ChannelRouter {
       const session =
         (await sessions.findByExternalId(adapter.name, message.conversationId)) ??
         (await sessions.create({ channel: adapter.name, externalId: message.conversationId, agentId: agentName }));
-      const record = await runtime.run(text, { sessionId: session.id });
+      const settings = this.#options.liveReplies === false ? undefined : (this.#options.liveReplies ?? DEFAULT_LIVE_REPLIES);
+      live =
+        adapter.editable !== undefined && settings !== undefined
+          ? new LiveReply(adapter.editable, message.conversationId, { ...settings, maxMessageLength: adapter.maxMessageLength }, log, () => clearInterval(timer))
+          : undefined;
+      const stream = live;
+      const record = await runtime.run(text, {
+        sessionId: session.id,
+        ...(stream !== undefined && {
+          onEvent: (e) => {
+            if (e.type === "token") stream.token(e.text);
+            else if (e.type === "tool_start") stream.toolStarted();
+          },
+        }),
+      });
       // Handed-off sessions: the message is stored for the operator and the bot stays silent.
-      if (record.status === "handoff" && record.output === undefined) return;
-      await this.#reply(adapter, message.conversationId, record.output ?? notice("failed", language));
-      log.info("channel reply sent", { runId: record.id, status: record.status });
+      if (record.status === "handoff" && record.output === undefined) {
+        if (live?.started === true) await this.#finishLive(adapter, message.conversationId, live, undefined);
+        return;
+      }
+      const reply = record.output ?? notice("failed", language);
+      if (live !== undefined) await this.#finishLive(adapter, message.conversationId, live, reply);
+      else await this.#reply(adapter, message.conversationId, reply);
+      log.info("channel reply sent", { runId: record.id, status: record.status, live: live?.started === true });
     } catch (error) {
       log.error("channel run failed", { error: error instanceof AgentRunError ? error.record.error : error });
-      await this.#reply(adapter, message.conversationId, notice("failed", language));
+      if (live?.started === true) await this.#finishLive(adapter, message.conversationId, live, notice("failed", language));
+      else await this.#reply(adapter, message.conversationId, notice("failed", language));
     } finally {
       clearInterval(timer);
     }
+  }
+
+  /** Settles a live reply on `text` (or on what was streamed), sending anything editing couldn't show. */
+  async #finishLive(adapter: ChannelAdapter, conversationId: string, live: LiveReply, text: string | undefined): Promise<void> {
+    for (const chunk of await live.finish(text)) await adapter.send(conversationId, chunk);
   }
 
   async #transcribe(audio: InboundAudio, voice: VoiceOptions, log: Logger): Promise<{ kind: "ok"; text: string } | { kind: "tooLong" | "failed" }> {

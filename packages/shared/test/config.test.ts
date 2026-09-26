@@ -26,7 +26,7 @@ describe("loadConfig", () => {
       host: "127.0.0.1", port: 3000, corsOrigins: [], maxInputChars: 8000, trustProxy: false, metrics: true,
       rateLimit: { requestsPerMinute: 60, maxConcurrentRuns: 2 },
     });
-    expect(config.channels.telegram).toEqual({ enabled: false, mode: "polling", access: "allowlist", allowedUserIds: [], rateLimitPerMinute: 10 });
+    expect(config.channels.telegram).toEqual({ enabled: false, mode: "polling", access: "allowlist", allowedUserIds: [], rateLimitPerMinute: 10, liveReplies: true });
     expect(config.channels.whatsapp).toMatchObject({ enabled: false, access: "allowlist", allowedNumbers: [] });
     expect(config.channels.web).toEqual({ enabled: true });
     expect(config.memory.longTerm).toEqual({ enabled: false, autoRecall: true, recallLimit: 5, maxPerOwner: 200, collection: "banglaclaw_memories" });

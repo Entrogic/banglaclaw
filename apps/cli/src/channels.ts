@@ -98,7 +98,7 @@ export function setupChannels(loaded: LoadedConfig, runtime: AgentRuntime, sessi
   if (tg.enabled) {
     if (secrets.telegramBotToken === undefined) throw new ConfigError("channels.telegram is enabled but TELEGRAM_BOT_TOKEN is not set");
     const api = new TelegramApi(secrets.telegramBotToken);
-    const channel = new TelegramChannel({ api, router: makeRouter(tg.access, tg.allowedUserIds, tg.rateLimitPerMinute, "telegram"), logger });
+    const channel = new TelegramChannel({ api, router: makeRouter(tg.access, tg.allowedUserIds, tg.rateLimitPerMinute, "telegram"), logger, liveReplies: tg.liveReplies });
     if (tg.mode === "polling") {
       starters.push(async () => {
         const me = await api.getMe();

@@ -42,6 +42,13 @@ Notices are localised in Bangla, Banglish and English using `detectLanguage`.
 - Bot API over `fetch` (no SDK). Plain-text replies (no `parse_mode`), so model output never breaks Markdown rules.
 - `mode: polling`: long polling with backoff. It calls `deleteWebhook` first. No public URL is needed, which makes it good for development.
 - `mode: webhook`: the gateway mounts `POST /channels/telegram/webhook`, verifies `X-Telegram-Bot-Api-Secret-Token` against `TELEGRAM_WEBHOOK_SECRET` with a timing-safe comparison, and registers `<webhookUrl>/channels/telegram/webhook` with `setWebhook` on startup. It answers 200 immediately and processes the message in the background.
+- **Live replies** (`liveReplies`, on by default): the reply appears while it's being written.
+  - The bot posts the reply once about 30 characters have arrived, then edits it with `editMessageText` at most every 1.5 s, with a `▍` cursor while writing.
+  - Past 4096 characters it continues in a new message.
+  - Text written before a tool call is replaced by the answer that follows it.
+  - The final edit shows the complete reply, and messages it no longer needs are deleted.
+  - Short replies are sent normally. If an edit fails, the rest goes out as normal messages.
+  - The router streams on any adapter that exposes `editable` (post, edit, remove). Messenger and WhatsApp can't edit sent messages, so they reply once.
 - v0.5 handles private chats only; group messages are ignored.
 - To find your user id for the allowlist: message the bot, then read `senderId` in the gateway log ("message from sender not in allowlist").
 
@@ -134,7 +141,6 @@ See docs/16. Secrets come from environment variables only: `TELEGRAM_BOT_TOKEN`,
 ## Planned
 
 - Telegram groups (mention/reply triggers), voice notes via speech-to-text, images
-- Streaming replies by editing messages
 - Discord
 - Widget: file and image uploads, visitor identity from the host site (signed user hints)
 - Linking channel identities to gateway users
