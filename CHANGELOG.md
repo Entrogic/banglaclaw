@@ -4,6 +4,10 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Built-in skills in the npm CLI:** `calculation` and `time-and-date` ship inside `@entrogic-net/cli` and load without config. A configured skill with the same name overrides them, and `skills.builtin: false` turns them off (docs/08).
+- Metrics use `@prometheus-io/client`, the official successor of the deprecated `prom-client` (same API and output).
+- `marked` is pinned back to 15.x, the range `marked-terminal` supports, and Dependabot ignores its majors.
+
 ## 1.2.0 — npm release
 
 First release on npm: `npx banglaclaw init`, `npm install -g @entrogic-net/cli`, and every library under [`@entrogic-net`](https://www.npmjs.com/org/entrogic-net).

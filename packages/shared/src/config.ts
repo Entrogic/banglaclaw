@@ -175,6 +175,8 @@ export const ConfigSchema = z.strictObject({
     .strictObject({
       /** Directories (relative to the config file / cwd) scanned for <name>/SKILL.md. */
       dirs: z.array(z.string().min(1)).default(["skills"]),
+      /** Also load the skills bundled with the CLI (calculation, time-and-date). A configured skill with the same name wins. */
+      builtin: z.boolean().default(true),
       /** Maximum skills activated for a single message. */
       maxActive: z.int().min(0).max(10).default(2),
     })

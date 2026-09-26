@@ -20,7 +20,7 @@ describe("loadConfig", () => {
     expect(config.timezone).toBe("Asia/Dhaka");
     expect(config.storage).toEqual({ provider: "memory", checkpoints: true });
     expect(config.memory.maxHistoryMessages).toBe(20);
-    expect(config.skills).toEqual({ dirs: ["skills"], maxActive: 2 });
+    expect(config.skills).toEqual({ dirs: ["skills"], builtin: true, maxActive: 2 });
     expect(config.mcp).toEqual({ servers: {} });
     expect(config.gateway).toEqual({
       host: "127.0.0.1", port: 3000, corsOrigins: [], maxInputChars: 8000, trustProxy: false, metrics: true,

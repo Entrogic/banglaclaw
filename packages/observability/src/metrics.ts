@@ -1,16 +1,16 @@
-import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from "prom-client";
+import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from "@prometheus-io/client";
 import type { RunRecord, Session } from "@entrogic-net/session";
 
 /** Prometheus metrics for runs, tools, tokens, handoffs and HTTP (scraped from GET /metrics). */
 export class Metrics {
   readonly registry = new Registry();
-  readonly #runs: Counter;
-  readonly #runDuration: Histogram;
-  readonly #toolCalls: Counter;
-  readonly #tokens: Counter;
-  readonly #handoffs: Counter;
-  readonly #http: Counter;
-  readonly #httpDuration: Histogram;
+  readonly #runs: Counter<"status" | "agent" | "channel">;
+  readonly #runDuration: Histogram<"status" | "channel">;
+  readonly #toolCalls: Counter<"tool" | "status">;
+  readonly #tokens: Counter<"direction" | "provider">;
+  readonly #handoffs: Counter<"channel">;
+  readonly #http: Counter<"method" | "route" | "status">;
+  readonly #httpDuration: Histogram<"method" | "route">;
   readonly #active: Gauge;
 
   constructor(options: { defaultMetrics?: boolean; version?: string } = {}) {

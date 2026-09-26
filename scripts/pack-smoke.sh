@@ -29,6 +29,8 @@ version=$(node -p "require('./node_modules/@entrogic-net/cli/package.json').vers
 test "$(node node_modules/@entrogic-net/cli/dist/index.js --version)" = "$version" || { echo "@entrogic-net/cli --version mismatch"; exit 1; }
 test "$(node node_modules/banglaclaw/bin.js --version)" = "$version" || { echo "banglaclaw wrapper --version mismatch"; exit 1; }
 npx --no-install banglaclaw --help >/dev/null
+# The built-in skills ship inside the CLI and load without any config.
+node node_modules/@entrogic-net/cli/dist/index.js skill list --json | grep -q '"calculation"' || { echo "built-in skills missing"; exit 1; }
 node --input-type=module -e '
   const libs = ["agent", "agents", "auth", "channels", "client", "gateway", "knowledge", "mcp", "observability", "plugin-sdk", "providers", "session", "shared", "skills", "storage", "tools"];
   for (const lib of libs) await import(`@entrogic-net/${lib}`);

@@ -63,6 +63,7 @@ knowledge:
 
 skills:
   dirs: [skills]
+  builtin: true              # also load the CLI's bundled skills (a same-named configured skill wins)
   maxActive: 2
 
 channels:

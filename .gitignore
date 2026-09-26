@@ -9,3 +9,5 @@ coverage/
 banglaclaw.yaml
 # Local agent profiles referenced by banglaclaw.yaml (examples live in examples/agents)
 /agents/
+# Built-in skills copied into the CLI package at build time (source of truth: /skills)
+/apps/cli/skills/

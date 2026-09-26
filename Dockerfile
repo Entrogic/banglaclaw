@@ -19,7 +19,6 @@ ENV NODE_ENV=production \
 WORKDIR /app
 COPY --from=build /out ./
 COPY --from=build /out-mcp ./mcp-servers/bangladesh
-COPY --from=build /repo/skills ./skills
 COPY --from=build /repo/examples ./examples
 COPY --from=build /repo/apps/dashboard/dist ./dashboard
 COPY docker/banglaclaw.docker.yaml ./banglaclaw.yaml

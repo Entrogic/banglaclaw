@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { AgentRuntime, type AgentRuntimeOptions } from "@entrogic-net/agent";
 import { loadAgentProfiles, type AgentProfile } from "@entrogic-net/agents";
@@ -61,8 +62,15 @@ function handoffNotifier(loaded: LoadedConfig) {
   };
 }
 
-export function loadSkills(loaded: LoadedConfig, plugins: readonly LoadedPlugin[] = []): SkillSet {
-  return new SkillSet(loadSkillsFromDirs([...loaded.config.skills.dirs, ...plugins.flatMap((p) => p.plugin.skillsDirs ?? [])], loaded.baseDir));
+/** Skills shipped inside this package: the repo's skills/, copied to apps/cli/skills by the build (scripts/copy-skills.mjs). */
+export const BUILTIN_SKILLS_DIR = fileURLToPath(new URL("../skills", import.meta.url));
+
+/** Configured and plugin skills, plus the built-in ones they don't override (skills.builtin). */
+export function loadSkills(loaded: LoadedConfig, plugins: readonly LoadedPlugin[] = [], builtinDir = BUILTIN_SKILLS_DIR): SkillSet {
+  const configured = loadSkillsFromDirs([...loaded.config.skills.dirs, ...plugins.flatMap((p) => p.plugin.skillsDirs ?? [])], loaded.baseDir);
+  if (!loaded.config.skills.builtin) return new SkillSet(configured);
+  const taken = new Set(configured.map((s) => s.name));
+  return new SkillSet([...configured, ...loadSkillsFromDirs([builtinDir]).filter((s) => !taken.has(s.name))]);
 }
 
 export interface Services {

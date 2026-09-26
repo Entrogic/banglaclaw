@@ -14,6 +14,8 @@ skills/
 
 Directories are configured with `skills.dirs` (default `[skills]`, relative to the config file or working directory). A folder without `SKILL.md` is ignored; an invalid `SKILL.md` or a duplicate skill name is an error, never silently skipped.
 
+The CLI also ships the repo's `skills/` as **built-in skills** (`calculation`, `time-and-date`). The build copies them into the `@entrogic-net/cli` package, so an npm install has them without any config. They are added after the configured and plugin skills, and a configured skill with the same name replaces the built-in one instead of raising a duplicate error. Set `skills.builtin: false` to load only your own.
+
 ## SKILL.md format
 
 ```markdown
