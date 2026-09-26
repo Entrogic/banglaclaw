@@ -1,11 +1,11 @@
 import { ToolMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph";
 import { describe, expect, it } from "vitest";
-import { createLogger, type RunEvent } from "@banglaclaw/shared";
-import { FakeProvider, type ScriptedTurn } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
-import { SkillSet, parseSkill } from "@banglaclaw/skills";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { createLogger, type RunEvent } from "@entrogic-net/shared";
+import { FakeProvider, type ScriptedTurn } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
+import { SkillSet, parseSkill } from "@entrogic-net/skills";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { AgentRunError, AgentRuntime, LIMIT_MESSAGES } from "../src/index.js";
 
 const silent = createLogger({ write: () => {} });

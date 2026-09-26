@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BanglaClawApiError, type AuditEvent } from "@banglaclaw/client";
+import { BanglaClawApiError, type AuditEvent } from "@entrogic-net/client";
 import { useAsync, useAuth } from "../api";
 import { StatusBadge } from "../components";
 import { fmtDateTime } from "../format";

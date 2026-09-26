@@ -1,4 +1,4 @@
-import type { Run } from "@banglaclaw/client";
+import type { Run } from "@entrogic-net/client";
 import { useAsync, useAuth } from "../api";
 import { fmtDateTime, fmtDuration, fmtInt } from "../format";
 import { Link } from "../router";

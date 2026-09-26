@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import type { AudioInput, Transcriber } from "@banglaclaw/shared";
+import type { AudioInput, Transcriber } from "@entrogic-net/shared";
 import { MessengerApi, MessengerChannel, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel, type VoiceOptions } from "../src/index.js";
 import { fakeFetch, makeRouter } from "./helpers.js";
 

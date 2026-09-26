@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
-import { ConfigError } from "@banglaclaw/shared";
+import { ConfigError } from "@entrogic-net/shared";
 
 /** Reserved: the supervisor/default agent and the pseudo-agent used while a human owns a session. */
 export const RESERVED_AGENT_NAMES = ["supervisor", "human"] as const;

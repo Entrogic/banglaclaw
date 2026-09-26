@@ -43,7 +43,7 @@ All packages share one version. Maintainers release by merging the automatic "ve
 - **Tests.** Agent tests are deterministic: use `FakeProvider`, never live model calls.
 - **Security.** Tools need input and output schemas and a `risk` level; the application, not the prompt, decides permissions (AGENT.md §32).
 - **API.** New gateway routes must be added to `packages/gateway/src/openapi.ts`; a contract test enforces it. `/v1` changes must be additive (docs/18).
-- **Database.** Schema changes: edit `packages/storage/src/schema.ts`, run `pnpm --filter @banglaclaw/storage db:generate`, and commit the generated migration.
+- **Database.** Schema changes: edit `packages/storage/src/schema.ts`, run `pnpm --filter @entrogic-net/storage db:generate`, and commit the generated migration.
 - **Commits.** Conventional prefixes: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`.
 - **Pull requests.** Fill in the PR template checklist. Maintainers review against it.
 - **Scope.** Keep PRs small and focused. New channels, tools, skills, MCP servers and plugins are especially welcome.

@@ -1,11 +1,11 @@
 import { AIMessageChunk } from "@langchain/core/messages";
-import { AgentRuntime } from "@banglaclaw/agent";
-import { ApiKeyAuthenticator, InMemoryAuthStore } from "@banglaclaw/auth";
-import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
-import { SkillSet, parseSkill } from "@banglaclaw/skills";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
+import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
+import { createLogger } from "@entrogic-net/shared";
+import { SkillSet, parseSkill } from "@entrogic-net/skills";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import type { GatewayConfig, GatewayDeps } from "../src/index.js";
 
 export const silent = createLogger({ write: () => {} });

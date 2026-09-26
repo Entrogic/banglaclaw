@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/shared",
+  "name": "@entrogic-net/shared",
   "version": "1.2.0",
   "description": "Shared types, config and logging for BanglaClaw",
   "keywords": [

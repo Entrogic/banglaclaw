@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { audioFilename, createLogger, type AudioInput, type Logger } from "@banglaclaw/shared";
+import { audioFilename, createLogger, type AudioInput, type Logger } from "@entrogic-net/shared";
 import type { ChannelAdapter, ChannelRouter, InboundMessage } from "./router.js";
 import { verifyHandshake, verifySignature } from "./meta.js";
 import type { FetchLike } from "./telegram.js";

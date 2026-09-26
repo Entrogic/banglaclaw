@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
-import type { Principal } from "@banglaclaw/auth";
-import type { Session } from "@banglaclaw/session";
+import type { Principal } from "@entrogic-net/auth";
+import type { Session } from "@entrogic-net/session";
 import { MAX_EVENT_STREAMS_PER_KEY, type GatewayContext } from "./context.js";
 import { HttpError } from "./errors.js";
 import type { SessionEvent } from "./session-events.js";

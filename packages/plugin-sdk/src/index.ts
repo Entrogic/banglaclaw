@@ -1,10 +1,10 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ContextProvider } from "@banglaclaw/agent";
-import type { AnyTool } from "@banglaclaw/tools";
+import type { ContextProvider } from "@entrogic-net/agent";
+import type { AnyTool } from "@entrogic-net/tools";
 
-export { defineTool, type AnyTool, type BanglaClawTool, type ToolContext, type ToolRisk } from "@banglaclaw/tools";
-export type { ContextProvider, RunContext } from "@banglaclaw/agent";
+export { defineTool, type AnyTool, type BanglaClawTool, type ToolContext, type ToolRisk } from "@entrogic-net/tools";
+export type { ContextProvider, RunContext } from "@entrogic-net/agent";
 /** Use this zod instance for tool schemas so they match the runtime's JSON Schema conversion. */
 export { z } from "zod";
 

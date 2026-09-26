@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import type { ToolAuditEvent } from "@banglaclaw/shared";
+import type { ToolAuditEvent } from "@entrogic-net/shared";
 import {
   AllowlistPolicy,
   ToolRegistry,

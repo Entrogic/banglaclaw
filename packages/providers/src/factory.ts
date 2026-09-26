@@ -1,6 +1,6 @@
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOpenAI } from "@langchain/openai";
-import { ConfigError, type BanglaClawConfig, type Secrets } from "@banglaclaw/shared";
+import { ConfigError, type BanglaClawConfig, type Secrets } from "@entrogic-net/shared";
 import { LangChainProvider } from "./langchain.js";
 import type { ModelProvider } from "./provider.js";
 

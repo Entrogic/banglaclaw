@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { BanglaClawClient, FetchLike, Me } from "@banglaclaw/client";
+import type { BanglaClawClient, FetchLike, Me } from "@entrogic-net/client";
 import { AuthContext, createClient, keyStore, useAuth, verifyAdmin, type Auth } from "./api";
 import { useAsync } from "./api";
 import { useInterval } from "./components";

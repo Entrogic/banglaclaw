@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline/promises";
-import { AgentRunError, type AgentRuntime } from "@banglaclaw/agent";
-import type { Session } from "@banglaclaw/session";
-import type { RunEvent } from "@banglaclaw/shared";
+import { AgentRunError, type AgentRuntime } from "@entrogic-net/agent";
+import type { Session } from "@entrogic-net/session";
+import type { RunEvent } from "@entrogic-net/shared";
 import type { RuntimeBundle } from "./bootstrap.js";
 import { resolveSession } from "./commands/shared.js";
 import { describe } from "./ui/errors.js";

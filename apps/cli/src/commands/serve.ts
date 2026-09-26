@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ApiKeyAuthenticator } from "@banglaclaw/auth";
-import { startGateway, type RunningGateway } from "@banglaclaw/gateway";
-import { Metrics } from "@banglaclaw/observability";
-import { BanglaClawError, ConfigError, createLogger, parseLogLevel } from "@banglaclaw/shared";
+import { ApiKeyAuthenticator } from "@entrogic-net/auth";
+import { startGateway, type RunningGateway } from "@entrogic-net/gateway";
+import { Metrics } from "@entrogic-net/observability";
+import { BanglaClawError, ConfigError, createLogger, parseLogLevel } from "@entrogic-net/shared";
 import { createRuntime, type GlobalOptions } from "../bootstrap.js";
 import { createDeliver, setupChannels } from "../channels.js";
 import { print, printAlways, warn } from "../ui/output.js";

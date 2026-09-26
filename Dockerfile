@@ -9,8 +9,8 @@ RUN corepack enable
 COPY . .
 RUN pnpm install --frozen-lockfile \
  && pnpm build \
- && pnpm --filter @banglaclaw/cli deploy --prod /out \
- && pnpm --filter @banglaclaw/mcp-server-bangladesh deploy --prod /out-mcp
+ && pnpm --filter @entrogic-net/cli deploy --prod /out \
+ && pnpm --filter @entrogic-net/mcp-server-bangladesh deploy --prod /out-mcp
 
 FROM node:24-alpine
 ENV NODE_ENV=production \

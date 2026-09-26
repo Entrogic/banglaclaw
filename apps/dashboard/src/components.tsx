@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Message } from "@banglaclaw/client";
+import type { Message } from "@entrogic-net/client";
 
 /** Session, run or audit status with an icon, so color never carries the meaning alone. */
 export function StatusBadge({ status, kind = "session" }: { status: string; kind?: "session" | "run" }) {

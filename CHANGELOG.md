@@ -17,15 +17,15 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
   - knowledge: ingested documents and a search tester
   - audit log with an action filter
   - API keys: issue (token shown once), list and revoke
-  - `pnpm --filter @banglaclaw/dashboard demo` for UI work with seeded data
-- `@banglaclaw/client` covers the admin endpoints.
+  - `pnpm --filter @entrogic-net/dashboard demo` for UI work with seeded data
+- `@entrogic-net/client` covers the admin endpoints.
 - **Voice notes:** Telegram, WhatsApp and Messenger voice messages are transcribed (OpenAI-compatible `/audio/transcriptions`, `voice.*` config, Bangla hint by default) and answered like text; downloads happen only after the access and rate checks, long notes are refused before download, and failures get localised notices (docs/11).
 - **DOCX and URL knowledge sources:** `.docx` files (read with Node's zlib, no new dependency, zip-bomb guarded) and `http(s)://` URLs (HTML, text, markdown, PDF, DOCX by content type; 20 s, 10 MB) in `knowledge.sources` and `kb ingest` (docs/07).
 - **Facebook Messenger channel** (`channels.messenger`): signed webhook with the Get Started button as /start, replies split at 2,000 characters with a typing indicator, page filter, allowlist or open access, operator replies (optionally with the HUMAN_AGENT tag), and a `doctor` check of the page behind the token. Meta signature and handshake code is shared with WhatsApp (docs/11).
 - **BanglaClaw as an MCP server:** `banglaclaw mcp serve` (stdio) offers `ask` (the agent, with per-conversation history, skills, tools and permission policy) and read-only `search_knowledge`, for Claude Desktop, Cursor, Claude Code and other MCP clients (docs/10).
 - **Live operator replies for API clients:** follow a session with WebSocket `subscribe` or `GET /v1/sessions/:id/events` (SSE) to receive `operator_message` and `handoff_released` events; the web chat follows its session automatically, and `delivered` is true when a follower got the reply. SDK: `sessions.events(id, { signal })`; `parseSSE` takes an optional `signal`.
 - **Refreshed UI** in one shared "Bangladesh green" palette: the admin dashboard (restyled, self-hosted Inter and Noto Sans Bengali, light/dark/system toggle), the web chat (status dot, message bubbles, composer, theme toggle; still no external assets) and the terminal chat (brand colours, left rule on replies, handoff pill). `--no-color` now reaches the Ink chat directly.
-- **Published to npm:** every runtime package under `@banglaclaw/*`, plus the unscoped `banglaclaw` wrapper for `npx banglaclaw init`. Versions are lockstep and released with Changesets and a GitHub release workflow (npm provenance), and CI installs the packed tarballs as a smoke test (ADR-0012).
+- **Published to npm:** every runtime package under `@entrogic-net/*`, plus the unscoped `banglaclaw` wrapper for `npx banglaclaw init`. Versions are lockstep and released with Changesets and a GitHub release workflow (npm provenance), and CI installs the packed tarballs as a smoke test (ADR-0012).
 - **OpenClaw-style chat UIs:** the web chat gets a session sidebar with history reload, a flat markdown stream (tables, code blocks with Copy), tool cards that fold into "Worked for …", slash commands, a Stop button and an agent/session/token footer; the terminal chat folds tool calls under "Worked for …", expands full tool cards with Ctrl+O (`/details`), switches sessions with Ctrl+P (`/sessions`) and shows a footer with agent, session, model and tokens (docs/11, docs/17).
 - With memory storage, the temporary key printed by `serve` is now an admin key, so the dashboard works without Postgres.
 
@@ -56,8 +56,8 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
   - security response headers and `gateway.trustProxy`
   - CI with a dependency audit
 - **Observability:** OpenTelemetry tracing (runs, model calls, tool calls, HTTP), Prometheus `/metrics`, and token usage per run.
-- **Stable API:** an OpenAPI 3.1 spec at `/v1/openapi.json` with a route-coverage contract test, a versioning and deprecation policy, and the typed `@banglaclaw/client` SDK.
-- **Plugins:** `@banglaclaw/plugin-sdk` and `plugins:` in the config (tools, skills, agents, context providers), with the example `bd-phone` plugin.
+- **Stable API:** an OpenAPI 3.1 spec at `/v1/openapi.json` with a route-coverage contract test, a versioning and deprecation policy, and the typed `@entrogic-net/client` SDK.
+- **Plugins:** `@entrogic-net/plugin-sdk` and `plugins:` in the config (tools, skills, agents, context providers), with the example `bd-phone` plugin.
 - **Deployment:** a production Dockerfile (non-root, healthcheck), `docker/compose.prod.yaml`, and deployment, operations and plugin guides.
 - Licensed under Apache-2.0.
 

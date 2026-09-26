@@ -1,5 +1,5 @@
 // @ts-check
-import { definePlugin, defineTool, pluginDir, z } from "@banglaclaw/plugin-sdk";
+import { definePlugin, defineTool, pluginDir, z } from "@entrogic-net/plugin-sdk";
 
 const BANGLA_DIGITS = "০১২৩৪৫৬৭৮৯";
 

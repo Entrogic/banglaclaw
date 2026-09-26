@@ -1,11 +1,11 @@
 import type { Hono } from "hono";
-import type { AgentRuntime } from "@banglaclaw/agent";
-import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
-import type { ApiKeyAuthenticator, Principal } from "@banglaclaw/auth";
-import type { Deliver, RunStore, Session, SessionStore } from "@banglaclaw/session";
-import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type Logger } from "@banglaclaw/shared";
-import type { SkillSet } from "@banglaclaw/skills";
-import type { PermissionPolicy, ToolRegistry } from "@banglaclaw/tools";
+import type { AgentRuntime } from "@entrogic-net/agent";
+import type { KnowledgeBase, LongTermMemory } from "@entrogic-net/knowledge";
+import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
+import type { Deliver, RunStore, Session, SessionStore } from "@entrogic-net/session";
+import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type Logger } from "@entrogic-net/shared";
+import type { SkillSet } from "@entrogic-net/skills";
+import type { PermissionPolicy, ToolRegistry } from "@entrogic-net/tools";
 import { HttpError } from "./errors.js";
 import { scopedExternalId } from "./serialize.js";
 import { SessionEvents } from "./session-events.js";

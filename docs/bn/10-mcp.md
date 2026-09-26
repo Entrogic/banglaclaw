@@ -72,7 +72,7 @@ pnpm banglaclaw doctor
 
 ## সাথে দেওয়া উদাহরণ সার্ভার
 
-`mcp-servers/bangladesh` (`@banglaclaw/mcp-server-bangladesh`) একটি শুধু-পড়া (read-only) রেফারেন্স-ডেটা সার্ভার:
+`mcp-servers/bangladesh` (`@entrogic-net/mcp-server-bangladesh`) একটি শুধু-পড়া (read-only) রেফারেন্স-ডেটা সার্ভার:
 
 | টুল | কাজ |
 |---|---|

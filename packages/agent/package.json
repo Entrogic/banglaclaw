@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/agent",
+  "name": "@entrogic-net/agent",
   "version": "1.2.0",
   "description": "LangGraph agent runtime for BanglaClaw: runs, limits, streaming events and multi-agent teams",
   "keywords": [
@@ -48,18 +48,18 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/providers": "workspace:*",
-    "@banglaclaw/shared": "workspace:*",
-    "@banglaclaw/skills": "workspace:*",
-    "@banglaclaw/tools": "workspace:*",
+    "@entrogic-net/providers": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
+    "@entrogic-net/skills": "workspace:*",
+    "@entrogic-net/tools": "workspace:*",
     "@langchain/core": "^1.2.12",
     "@langchain/langgraph": "^1.4.17",
     "@opentelemetry/api": "^1.9.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@banglaclaw/agents": "workspace:*",
-    "@banglaclaw/session": "workspace:*",
+    "@entrogic-net/agents": "workspace:*",
+    "@entrogic-net/session": "workspace:*",
     "@opentelemetry/sdk-trace-base": "^2.11.0",
     "@opentelemetry/sdk-trace-node": "^2.11.0"
   }

@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { MessengerApi, TelegramApi } from "@banglaclaw/channels";
-import { requiredApiKeyEnv } from "@banglaclaw/providers";
-import { InMemorySessionStore } from "@banglaclaw/session";
-import { createLogger, type LoadedConfig } from "@banglaclaw/shared";
-import { AllowlistPolicy, type AnyTool } from "@banglaclaw/tools";
+import { MessengerApi, TelegramApi } from "@entrogic-net/channels";
+import { requiredApiKeyEnv } from "@entrogic-net/providers";
+import { InMemorySessionStore } from "@entrogic-net/session";
+import { createLogger, type LoadedConfig } from "@entrogic-net/shared";
+import { AllowlistPolicy, type AnyTool } from "@entrogic-net/tools";
 import { buildRegistry, connectMcp, load, loadAgents, loadSkills, openPostgres, type GlobalOptions } from "../bootstrap.js";
 import { setupKnowledge } from "../knowledge.js";
 import { loadPlugins } from "../plugins.js";

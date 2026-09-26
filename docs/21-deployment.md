@@ -63,7 +63,7 @@ Requires Node.js 22+ and pnpm.
 
 ```bash
 pnpm install --frozen-lockfile && pnpm build
-pnpm --filter @banglaclaw/cli deploy --prod /opt/banglaclaw
+pnpm --filter @entrogic-net/cli deploy --prod /opt/banglaclaw
 node /opt/banglaclaw/dist/index.js db migrate
 node /opt/banglaclaw/dist/index.js serve
 ```

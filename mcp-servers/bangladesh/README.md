@@ -1,4 +1,4 @@
-# @banglaclaw/mcp-server-bangladesh
+# @entrogic-net/mcp-server-bangladesh
 
 A read-only MCP server with Bangladesh reference data, bundled as an example for BanglaClaw (docs/10-mcp.md). It works with any MCP client over stdio.
 
@@ -14,8 +14,8 @@ A read-only MCP server with Bangladesh reference data, bundled as an example for
 
 ```bash
 # from npm, with any MCP client (for example Claude Code)
-npx -y @banglaclaw/mcp-server-bangladesh
-claude mcp add bangladesh -- npx -y @banglaclaw/mcp-server-bangladesh
+npx -y @entrogic-net/mcp-server-bangladesh
+claude mcp add bangladesh -- npx -y @entrogic-net/mcp-server-bangladesh
 
 # from the repo root, from source
 node --import tsx mcp-servers/bangladesh/src/bin.ts
@@ -40,5 +40,5 @@ mcp:
 ## Test
 
 ```bash
-pnpm --filter @banglaclaw/mcp-server-bangladesh test
+pnpm --filter @entrogic-net/mcp-server-bangladesh test
 ```

@@ -80,4 +80,4 @@
 - Router/planner/verifier graph nodes; streaming replies by editing channel messages
 - Discord channel, a public web widget with visitor sessions (Facebook Messenger shipped after 1.1)
 - Images, sitemap crawling, spoken replies (voice notes, DOCX and URL loaders shipped after 1.1)
-- Publishing `@banglaclaw/*` packages to npm; MCP resources and prompts for the BanglaClaw MCP server
+- Publishing `@entrogic-net/*` packages to npm; MCP resources and prompts for the BanglaClaw MCP server

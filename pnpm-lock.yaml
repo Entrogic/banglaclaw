@@ -193,60 +193,60 @@ importers:
 
   apps/banglaclaw:
     dependencies:
-      '@banglaclaw/cli':
+      '@entrogic-net/cli':
         specifier: workspace:*
         version: link:../cli
 
   apps/cli:
     dependencies:
-      '@banglaclaw/agent':
-        specifier: workspace:*
-        version: link:../../packages/agent
-      '@banglaclaw/agents':
-        specifier: workspace:*
-        version: link:../../packages/agents
-      '@banglaclaw/auth':
-        specifier: workspace:*
-        version: link:../../packages/auth
-      '@banglaclaw/channels':
-        specifier: workspace:*
-        version: link:../../packages/channels
-      '@banglaclaw/gateway':
-        specifier: workspace:*
-        version: link:../../packages/gateway
-      '@banglaclaw/knowledge':
-        specifier: workspace:*
-        version: link:../../packages/knowledge
-      '@banglaclaw/mcp':
-        specifier: workspace:*
-        version: link:../../packages/mcp
-      '@banglaclaw/observability':
-        specifier: workspace:*
-        version: link:../../packages/observability
-      '@banglaclaw/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
-      '@banglaclaw/providers':
-        specifier: workspace:*
-        version: link:../../packages/providers
-      '@banglaclaw/session':
-        specifier: workspace:*
-        version: link:../../packages/session
-      '@banglaclaw/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@banglaclaw/skills':
-        specifier: workspace:*
-        version: link:../../packages/skills
-      '@banglaclaw/storage':
-        specifier: workspace:*
-        version: link:../../packages/storage
-      '@banglaclaw/tools':
-        specifier: workspace:*
-        version: link:../../packages/tools
       '@clack/prompts':
         specifier: ^1.8.1
         version: 1.8.1
+      '@entrogic-net/agent':
+        specifier: workspace:*
+        version: link:../../packages/agent
+      '@entrogic-net/agents':
+        specifier: workspace:*
+        version: link:../../packages/agents
+      '@entrogic-net/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
+      '@entrogic-net/channels':
+        specifier: workspace:*
+        version: link:../../packages/channels
+      '@entrogic-net/gateway':
+        specifier: workspace:*
+        version: link:../../packages/gateway
+      '@entrogic-net/knowledge':
+        specifier: workspace:*
+        version: link:../../packages/knowledge
+      '@entrogic-net/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
+      '@entrogic-net/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
+      '@entrogic-net/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      '@entrogic-net/providers':
+        specifier: workspace:*
+        version: link:../../packages/providers
+      '@entrogic-net/session':
+        specifier: workspace:*
+        version: link:../../packages/session
+      '@entrogic-net/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@entrogic-net/skills':
+        specifier: workspace:*
+        version: link:../../packages/skills
+      '@entrogic-net/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
+      '@entrogic-net/tools':
+        specifier: workspace:*
+        version: link:../../packages/tools
       '@langchain/core':
         specifier: ^1.2.12
         version: 1.2.12(@opentelemetry/api@1.9.1)(@opentelemetry/sdk-trace-base@2.11.0(@opentelemetry/api@1.9.1))(openai@7.23.0(ws@8.21.3)(zod@4.6.5))(ws@8.21.3)
@@ -296,7 +296,7 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@banglaclaw/client':
+      '@entrogic-net/client':
         specifier: workspace:*
         version: link:../../packages/client
       '@fontsource/inter':
@@ -312,31 +312,31 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
     devDependencies:
-      '@banglaclaw/agent':
+      '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../../packages/agent
-      '@banglaclaw/auth':
+      '@entrogic-net/auth':
         specifier: workspace:*
         version: link:../../packages/auth
-      '@banglaclaw/gateway':
+      '@entrogic-net/gateway':
         specifier: workspace:*
         version: link:../../packages/gateway
-      '@banglaclaw/knowledge':
+      '@entrogic-net/knowledge':
         specifier: workspace:*
         version: link:../../packages/knowledge
-      '@banglaclaw/providers':
+      '@entrogic-net/providers':
         specifier: workspace:*
         version: link:../../packages/providers
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../../packages/session
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@banglaclaw/skills':
+      '@entrogic-net/skills':
         specifier: workspace:*
         version: link:../../packages/skills
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../../packages/tools
       '@testing-library/react':
@@ -363,7 +363,7 @@ importers:
 
   examples/plugins/bd-phone:
     devDependencies:
-      '@banglaclaw/plugin-sdk':
+      '@entrogic-net/plugin-sdk':
         specifier: workspace:*
         version: link:../../../packages/plugin-sdk
 
@@ -378,16 +378,16 @@ importers:
 
   packages/agent:
     dependencies:
-      '@banglaclaw/providers':
+      '@entrogic-net/providers':
         specifier: workspace:*
         version: link:../providers
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
-      '@banglaclaw/skills':
+      '@entrogic-net/skills':
         specifier: workspace:*
         version: link:../skills
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
       '@langchain/core':
@@ -403,10 +403,10 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@banglaclaw/agents':
+      '@entrogic-net/agents':
         specifier: workspace:*
         version: link:../agents
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../session
       '@opentelemetry/sdk-trace-base':
@@ -418,7 +418,7 @@ importers:
 
   packages/agents:
     dependencies:
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
       yaml:
@@ -430,19 +430,19 @@ importers:
 
   packages/auth:
     dependencies:
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
 
   packages/channels:
     dependencies:
-      '@banglaclaw/agent':
+      '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../agent
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../session
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
       hono:
@@ -452,61 +452,61 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@banglaclaw/providers':
+      '@entrogic-net/providers':
         specifier: workspace:*
         version: link:../providers
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
 
   packages/client:
     devDependencies:
-      '@banglaclaw/agent':
+      '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../agent
-      '@banglaclaw/auth':
+      '@entrogic-net/auth':
         specifier: workspace:*
         version: link:../auth
-      '@banglaclaw/gateway':
+      '@entrogic-net/gateway':
         specifier: workspace:*
         version: link:../gateway
-      '@banglaclaw/providers':
+      '@entrogic-net/providers':
         specifier: workspace:*
         version: link:../providers
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../session
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
-      '@banglaclaw/skills':
+      '@entrogic-net/skills':
         specifier: workspace:*
         version: link:../skills
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
 
   packages/gateway:
     dependencies:
-      '@banglaclaw/agent':
+      '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../agent
-      '@banglaclaw/auth':
+      '@entrogic-net/auth':
         specifier: workspace:*
         version: link:../auth
-      '@banglaclaw/knowledge':
+      '@entrogic-net/knowledge':
         specifier: workspace:*
         version: link:../knowledge
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../session
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
-      '@banglaclaw/skills':
+      '@entrogic-net/skills':
         specifier: workspace:*
         version: link:../skills
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
       '@hono/node-server':
@@ -528,10 +528,10 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@banglaclaw/observability':
+      '@entrogic-net/observability':
         specifier: workspace:*
         version: link:../observability
-      '@banglaclaw/providers':
+      '@entrogic-net/providers':
         specifier: workspace:*
         version: link:../providers
       '@types/ws':
@@ -543,13 +543,13 @@ importers:
 
   packages/knowledge:
     dependencies:
-      '@banglaclaw/agent':
+      '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../agent
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
       unpdf:
@@ -559,19 +559,19 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
     devDependencies:
-      '@banglaclaw/providers':
+      '@entrogic-net/providers':
         specifier: workspace:*
         version: link:../providers
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../session
 
   packages/mcp:
     dependencies:
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
       '@modelcontextprotocol/sdk':
@@ -583,7 +583,7 @@ importers:
 
   packages/observability:
     dependencies:
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../session
       '@opentelemetry/api':
@@ -610,10 +610,10 @@ importers:
 
   packages/plugin-sdk:
     dependencies:
-      '@banglaclaw/agent':
+      '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../agent
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
       zod:
@@ -622,7 +622,7 @@ importers:
 
   packages/providers:
     dependencies:
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
       '@langchain/anthropic':
@@ -640,7 +640,7 @@ importers:
 
   packages/session:
     dependencies:
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
       '@langchain/core':
@@ -658,7 +658,7 @@ importers:
 
   packages/skills:
     dependencies:
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
       yaml:
@@ -670,10 +670,10 @@ importers:
 
   packages/storage:
     dependencies:
-      '@banglaclaw/session':
+      '@entrogic-net/session':
         specifier: workspace:*
         version: link:../session
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
       '@langchain/core':
@@ -692,16 +692,16 @@ importers:
         specifier: ^8.23.0
         version: 8.23.0
     devDependencies:
-      '@banglaclaw/agent':
+      '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../agent
-      '@banglaclaw/auth':
+      '@entrogic-net/auth':
         specifier: workspace:*
         version: link:../auth
-      '@banglaclaw/providers':
+      '@entrogic-net/providers':
         specifier: workspace:*
         version: link:../providers
-      '@banglaclaw/tools':
+      '@entrogic-net/tools':
         specifier: workspace:*
         version: link:../tools
       '@types/pg':
@@ -713,7 +713,7 @@ importers:
 
   packages/tools:
     dependencies:
-      '@banglaclaw/shared':
+      '@entrogic-net/shared':
         specifier: workspace:*
         version: link:../shared
       zod:

@@ -3,8 +3,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { ConfigError, createLogger, type McpServerConfig } from "@banglaclaw/shared";
-import { AllowlistPolicy, ToolRegistry, executeTool, type ToolContext } from "@banglaclaw/tools";
+import { ConfigError, createLogger, type McpServerConfig } from "@entrogic-net/shared";
+import { AllowlistPolicy, ToolRegistry, executeTool, type ToolContext } from "@entrogic-net/tools";
 import { McpManager, flattenResult, interpolate, toolNameFor } from "../src/index.js";
 
 const silent = createLogger({ write: () => {} });

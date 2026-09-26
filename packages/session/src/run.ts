@@ -1,4 +1,4 @@
-import type { Language, StopReason, ToolAuditEvent } from "@banglaclaw/shared";
+import type { Language, StopReason, ToolAuditEvent } from "@entrogic-net/shared";
 
 /** "handoff": the session is (or just became) owned by a human operator. */
 export type RunStatus = "completed" | "limited" | "error" | "aborted" | "handoff";

@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/observability",
+  "name": "@entrogic-net/observability",
   "version": "1.2.0",
   "description": "OpenTelemetry tracing and Prometheus metrics for BanglaClaw",
   "keywords": [
@@ -48,7 +48,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/session": "workspace:*",
+    "@entrogic-net/session": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.222.0",
     "@opentelemetry/resources": "^2.11.0",

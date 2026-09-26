@@ -1,8 +1,8 @@
-import { AgentRuntime } from "@banglaclaw/agent";
-import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
-import { AllowlistPolicy, ToolRegistry } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
+import { createLogger } from "@entrogic-net/shared";
+import { AllowlistPolicy, ToolRegistry } from "@entrogic-net/tools";
 import { ChannelRouter, type AccessPolicy, type ChannelAdapter, type VoiceOptions } from "../src/index.js";
 
 export const silent = createLogger({ write: () => {} });

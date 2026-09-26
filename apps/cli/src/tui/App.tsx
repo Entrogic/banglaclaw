@@ -1,6 +1,6 @@
 import { Box, Static, Text, useApp, useInput, useStdout } from "ink";
 import { useEffect, useMemo, useState } from "react";
-import type { Session } from "@banglaclaw/session";
+import type { Session } from "@entrogic-net/session";
 import type { RuntimeBundle } from "../bootstrap.js";
 import { ink, sym } from "../ui/theme.js";
 import { VERSION } from "../version.js";

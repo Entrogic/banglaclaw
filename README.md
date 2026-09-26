@@ -8,7 +8,7 @@ Stateful, tool-using, multi-channel agents that understand **বাংলা**, 
 
 [![CI](https://github.com/Entrogic/banglaclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/Entrogic/banglaclaw/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-0b6b4f.svg)](LICENSE)
-[![npm](https://img.shields.io/npm/v/@banglaclaw/cli?color=0b6b4f&label=npm)](https://www.npmjs.com/package/@banglaclaw/cli)
+[![npm](https://img.shields.io/npm/v/@entrogic-net/cli?color=0b6b4f&label=npm)](https://www.npmjs.com/package/@entrogic-net/cli)
 ![Node.js](https://img.shields.io/badge/node-%E2%89%A522-339933.svg?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)
 
@@ -58,10 +58,10 @@ Requires **Node.js 22+**.
 npx banglaclaw init         # guided setup: provider, key check, storage, features
 npx banglaclaw chat         # full-screen chat
 
-npm install -g @banglaclaw/cli   # or install the `banglaclaw` command globally
+npm install -g @entrogic-net/cli   # or install the `banglaclaw` command globally
 ```
 
-Libraries are published under the [`@banglaclaw`](https://www.npmjs.com/org/banglaclaw) scope, for example [`@banglaclaw/client`](https://www.npmjs.com/package/@banglaclaw/client) (typed API client) and [`@banglaclaw/plugin-sdk`](https://www.npmjs.com/package/@banglaclaw/plugin-sdk).
+Libraries are published under the [`@entrogic-net`](https://www.npmjs.com/org/entrogic-net) scope, for example [`@entrogic-net/client`](https://www.npmjs.com/package/@entrogic-net/client) (typed API client) and [`@entrogic-net/plugin-sdk`](https://www.npmjs.com/package/@entrogic-net/plugin-sdk).
 
 ### From source
 

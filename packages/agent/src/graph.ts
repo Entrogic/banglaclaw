@@ -1,11 +1,11 @@
 import { END, START, StateGraph, type BaseCheckpointSaver } from "@langchain/langgraph";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { AIMessage, SystemMessage, ToolMessage, type AIMessageChunk } from "@langchain/core/messages";
-import { transferToolName, type AgentProfile } from "@banglaclaw/agents";
-import type { RunEvent, ToolAuditEvent, ToolSpec } from "@banglaclaw/shared";
-import type { ModelProvider } from "@banglaclaw/providers";
-import type { Skill } from "@banglaclaw/skills";
-import { executeTool, type AnyTool, type PermissionPolicy, type ToolRegistry } from "@banglaclaw/tools";
+import { transferToolName, type AgentProfile } from "@entrogic-net/agents";
+import type { RunEvent, ToolAuditEvent, ToolSpec } from "@entrogic-net/shared";
+import type { ModelProvider } from "@entrogic-net/providers";
+import type { Skill } from "@entrogic-net/skills";
+import { executeTool, type AnyTool, type PermissionPolicy, type ToolRegistry } from "@entrogic-net/tools";
 import { detectLanguage } from "./language.js";
 import { HANDOFF_MESSAGES, LIMIT_MESSAGES, buildSystemPrompt, teamRole } from "./prompts.js";
 import { AgentStateAnnotation, type AgentState, type AgentStateUpdate } from "./state.js";

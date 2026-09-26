@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import type { BanglaClawClient, Me } from "@banglaclaw/client";
+import type { BanglaClawClient, Me } from "@entrogic-net/client";
 import { errorMessage, verifyAdmin } from "../api";
 import { ThemeToggle } from "../theme";
 

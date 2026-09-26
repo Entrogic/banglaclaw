@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/session",
+  "name": "@entrogic-net/session",
   "version": "1.2.0",
   "description": "Session, run and handoff stores for BanglaClaw",
   "keywords": [
@@ -47,7 +47,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/shared": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
     "@langchain/core": "^1.2.12"
   }
 }

@@ -1,5 +1,5 @@
 import { and, desc, eq, gte } from "drizzle-orm";
-import type { AuditAction, AuditEvent, AuditOutcome, AuditStore, NewAuditEvent } from "@banglaclaw/shared";
+import type { AuditAction, AuditEvent, AuditOutcome, AuditStore, NewAuditEvent } from "@entrogic-net/shared";
 import type { Database } from "./db.js";
 import { auditLogs } from "./schema.js";
 

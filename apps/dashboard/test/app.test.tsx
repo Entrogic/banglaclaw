@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { AgentRuntime } from "@banglaclaw/agent";
-import { ApiKeyAuthenticator, InMemoryAuthStore } from "@banglaclaw/auth";
-import { BanglaClawClient } from "@banglaclaw/client";
-import { createGatewayApp } from "@banglaclaw/gateway";
-import { FakeProvider } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
-import { InMemoryAuditStore, createLogger } from "@banglaclaw/shared";
-import { SkillSet } from "@banglaclaw/skills";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
+import { BanglaClawClient } from "@entrogic-net/client";
+import { createGatewayApp } from "@entrogic-net/gateway";
+import { FakeProvider } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
+import { InMemoryAuditStore, createLogger } from "@entrogic-net/shared";
+import { SkillSet } from "@entrogic-net/skills";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { App } from "../src/App";
 
 /** A real gateway app with one completed run; the dashboard talks to it through `fetch`. */

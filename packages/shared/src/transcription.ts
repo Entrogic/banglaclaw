@@ -7,7 +7,7 @@ export interface AudioInput {
   filename: string;
 }
 
-/** Speech to text (voice notes, docs/11). Implementations live in @banglaclaw/providers. */
+/** Speech to text (voice notes, docs/11). Implementations live in @entrogic-net/providers. */
 export interface Transcriber {
   readonly id: string;
   transcribe(audio: AudioInput, options?: { language?: string; signal?: AbortSignal }): Promise<string>;

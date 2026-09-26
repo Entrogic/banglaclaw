@@ -4,8 +4,8 @@ import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotoc
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
-import { createLogger, type Logger, type McpServerConfig } from "@banglaclaw/shared";
-import type { AnyTool } from "@banglaclaw/tools";
+import { createLogger, type Logger, type McpServerConfig } from "@entrogic-net/shared";
+import type { AnyTool } from "@entrogic-net/tools";
 import { toolFromMcp } from "./convert.js";
 import { interpolate, interpolateMap } from "./interpolate.js";
 

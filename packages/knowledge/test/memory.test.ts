@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { InMemorySessionStore } from "@banglaclaw/session";
-import { AllowlistPolicy, ToolRegistry, executeTool } from "@banglaclaw/tools";
+import { InMemorySessionStore } from "@entrogic-net/session";
+import { AllowlistPolicy, ToolRegistry, executeTool } from "@entrogic-net/tools";
 import { HashEmbedder, InMemoryVectorStore, LongTermMemory, createMemoryTools, memoryContextProvider, memoryOwner } from "../src/index.js";
 
 function setup(maxPerOwner = 10) {

@@ -1,11 +1,11 @@
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { AgentRuntime } from "@banglaclaw/agent";
-import { FakeProvider } from "@banglaclaw/providers";
-import { ApiKeyAuthenticator } from "@banglaclaw/auth";
-import { SessionManager, type RunRecord } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { FakeProvider } from "@entrogic-net/providers";
+import { ApiKeyAuthenticator } from "@entrogic-net/auth";
+import { SessionManager, type RunRecord } from "@entrogic-net/session";
+import { createLogger } from "@entrogic-net/shared";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { PostgresStorage } from "../src/index.js";
 
 /**

@@ -24,7 +24,7 @@ Closes #
 - [ ] Behavior or design changes update the relevant `docs/` page; significant decisions add an ADR in `docs/adr/`
 - [ ] If `docs/05`, `08`, `10` or `11` changed, `docs/bn/` is updated too
 - [ ] New gateway routes are documented in `packages/gateway/src/openapi.ts`, and `/v1` changes are additive
-- [ ] Schema changes include a generated migration (`pnpm --filter @banglaclaw/storage db:generate`)
+- [ ] Schema changes include a generated migration (`pnpm --filter @entrogic-net/storage db:generate`)
 - [ ] New tools declare input/output schemas and a `risk` level; permissions are enforced in code, not prompts
 - [ ] Changes to published packages include a changeset (`pnpm changeset`)
 - [ ] User-visible changes have an entry under `## Unreleased` in `CHANGELOG.md`

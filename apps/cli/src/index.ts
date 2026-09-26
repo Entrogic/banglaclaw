@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { initTelemetry } from "@banglaclaw/observability";
+import { initTelemetry } from "@entrogic-net/observability";
 import { loadDotEnv } from "./env.js";
 import { buildProgram } from "./program.js";
 import { EXIT, printError, toCliError } from "./ui/errors.js";

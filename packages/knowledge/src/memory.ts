@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Session } from "@banglaclaw/session";
+import type { Session } from "@entrogic-net/session";
 import type { Embedder } from "./embeddings.js";
 import type { VectorStore } from "./vector-store.js";
 

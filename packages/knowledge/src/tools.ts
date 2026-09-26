@@ -1,8 +1,8 @@
 import { z } from "zod";
-import type { ContextProvider } from "@banglaclaw/agent";
-import type { SessionStore } from "@banglaclaw/session";
-import { ToolExecutionError } from "@banglaclaw/shared";
-import { defineTool, type AnyTool, type ToolContext } from "@banglaclaw/tools";
+import type { ContextProvider } from "@entrogic-net/agent";
+import type { SessionStore } from "@entrogic-net/session";
+import { ToolExecutionError } from "@entrogic-net/shared";
+import { defineTool, type AnyTool, type ToolContext } from "@entrogic-net/tools";
 import type { KnowledgeBase } from "./knowledge-base.js";
 import { memoryOwner, type LongTermMemory } from "./memory.js";
 

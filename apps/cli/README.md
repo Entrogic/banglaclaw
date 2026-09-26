@@ -1,4 +1,4 @@
-# @banglaclaw/cli
+# @entrogic-net/cli
 
 The `banglaclaw` command: a full-screen terminal chat, the HTTP gateway (`serve`), a setup wizard, and admin commands for sessions, keys, handoffs, the knowledge base and MCP.
 
@@ -9,7 +9,7 @@ Part of [BanglaClaw](https://github.com/Entrogic/banglaclaw), a Bangla-first, op
 ```bash
 npx banglaclaw init            # guided setup, no install needed
 # or
-npm install -g @banglaclaw/cli
+npm install -g @entrogic-net/cli
 banglaclaw init
 banglaclaw chat
 ```

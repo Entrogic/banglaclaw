@@ -1,11 +1,11 @@
-# @banglaclaw/plugin-sdk
+# @entrogic-net/plugin-sdk
 
 Build BanglaClaw plugins: tools, skills, agents and context providers.
 
 Part of [BanglaClaw](https://github.com/Entrogic/banglaclaw), a Bangla-first, open-source AI agent runtime built with TypeScript, LangGraph and MCP.
 
 ```bash
-npm install @banglaclaw/plugin-sdk
+npm install @entrogic-net/plugin-sdk
 ```
 
 Requires Node.js 22+. The package is ESM-only and ships TypeScript types.

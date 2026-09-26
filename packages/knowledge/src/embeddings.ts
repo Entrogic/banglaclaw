@@ -1,4 +1,4 @@
-import { ConfigError } from "@banglaclaw/shared";
+import { ConfigError } from "@entrogic-net/shared";
 
 export interface Embedder {
   /** e.g. "openai-compatible:text-embedding-3-small" */

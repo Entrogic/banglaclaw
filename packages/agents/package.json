@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/agents",
+  "name": "@entrogic-net/agents",
   "version": "1.2.0",
   "description": "AGENT.md parser and team profiles for BanglaClaw multi-agent setups",
   "keywords": [
@@ -47,7 +47,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/shared": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
     "yaml": "^2.9.1",
     "zod": "^4.6.5"
   }

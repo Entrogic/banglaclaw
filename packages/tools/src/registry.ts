@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ToolSpec } from "@banglaclaw/shared";
+import type { ToolSpec } from "@entrogic-net/shared";
 import type { AnyTool } from "./tool.js";
 
 const TOOL_NAME = /^[a-z][a-z0-9_]{0,63}$/;

@@ -1,4 +1,4 @@
-import { AllowlistPolicy } from "@banglaclaw/tools";
+import { AllowlistPolicy } from "@entrogic-net/tools";
 import type { GlobalOptions } from "../bootstrap.js";
 import { buildRegistry, connectMcp, load, loadAgents, loadSkills } from "../bootstrap.js";
 import { loadPlugins } from "../plugins.js";

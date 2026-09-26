@@ -7,7 +7,7 @@ npx banglaclaw init    # guided setup
 npx banglaclaw chat    # terminal chat
 ```
 
-This package only provides the `banglaclaw` command and installs [`@banglaclaw/cli`](https://www.npmjs.com/package/@banglaclaw/cli), which contains the implementation. To install globally, use `npm install -g @banglaclaw/cli`.
+This package only provides the `banglaclaw` command and installs [`@entrogic-net/cli`](https://www.npmjs.com/package/@entrogic-net/cli), which contains the implementation. To install globally, use `npm install -g @entrogic-net/cli`.
 
 ## License
 

@@ -1,9 +1,9 @@
-import type { AgentRuntime } from "@banglaclaw/agent";
-import { ApiKeyAuthenticator } from "@banglaclaw/auth";
-import type { KnowledgeBase, LongTermMemory } from "@banglaclaw/knowledge";
-import type { McpManager } from "@banglaclaw/mcp";
-import { HandoffDesk, InMemorySessionStore, SessionManager, isOperatorMessage, type Session } from "@banglaclaw/session";
-import { BanglaClawError, auditRecorder, createLogger, parseLogLevel, type LoadedConfig } from "@banglaclaw/shared";
+import type { AgentRuntime } from "@entrogic-net/agent";
+import { ApiKeyAuthenticator } from "@entrogic-net/auth";
+import type { KnowledgeBase, LongTermMemory } from "@entrogic-net/knowledge";
+import type { McpManager } from "@entrogic-net/mcp";
+import { HandoffDesk, InMemorySessionStore, SessionManager, isOperatorMessage, type Session } from "@entrogic-net/session";
+import { BanglaClawError, auditRecorder, createLogger, parseLogLevel, type LoadedConfig } from "@entrogic-net/shared";
 import type { BaseMessage } from "@langchain/core/messages";
 import { load, openServices, type GlobalOptions, type Services } from "../bootstrap.js";
 import { createDeliver } from "../channels.js";

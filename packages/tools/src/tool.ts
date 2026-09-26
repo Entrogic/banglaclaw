@@ -1,6 +1,6 @@
 import type { z } from "zod";
 
-export type { ToolSpec } from "@banglaclaw/shared";
+export type { ToolSpec } from "@entrogic-net/shared";
 
 /**
  * Risk level drives the permission policy:

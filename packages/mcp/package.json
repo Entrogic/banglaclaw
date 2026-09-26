@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/mcp",
+  "name": "@entrogic-net/mcp",
   "version": "1.2.0",
   "description": "Model Context Protocol client for BanglaClaw: MCP servers as permission-checked tools",
   "keywords": [
@@ -47,8 +47,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/shared": "workspace:*",
-    "@banglaclaw/tools": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
+    "@entrogic-net/tools": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.1",
     "zod": "^4.6.5"
   }

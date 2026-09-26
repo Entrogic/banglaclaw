@@ -1,5 +1,5 @@
 import { render } from "ink";
-import type { Session } from "@banglaclaw/session";
+import type { Session } from "@entrogic-net/session";
 import type { RuntimeBundle } from "../bootstrap.js";
 import { App } from "./App.js";
 

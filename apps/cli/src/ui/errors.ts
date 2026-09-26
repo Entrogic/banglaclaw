@@ -1,5 +1,5 @@
-import { AgentRunError } from "@banglaclaw/agent";
-import { BanglaClawError, ConfigError } from "@banglaclaw/shared";
+import { AgentRunError } from "@entrogic-net/agent";
+import { BanglaClawError, ConfigError } from "@entrogic-net/shared";
 import { isJson } from "./output.js";
 import { c, sym } from "./theme.js";
 

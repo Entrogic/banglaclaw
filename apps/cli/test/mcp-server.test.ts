@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { AgentRuntime } from "@banglaclaw/agent";
-import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@banglaclaw/knowledge";
-import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@entrogic-net/knowledge";
+import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
+import { createLogger } from "@entrogic-net/shared";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { MCP_CHANNEL, createBanglaClawMcpServer } from "../src/mcp-server.js";
 
 /** A model provider that is down. */

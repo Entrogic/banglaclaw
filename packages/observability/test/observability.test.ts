@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { RunRecord, Session } from "@banglaclaw/session";
+import type { RunRecord, Session } from "@entrogic-net/session";
 import { Metrics, initTelemetry } from "../src/index.js";
 
 const session: Session = { id: "s", channel: "telegram", agentId: "a", status: "active", createdAt: new Date(), updatedAt: new Date() };

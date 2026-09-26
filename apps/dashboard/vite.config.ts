@@ -2,7 +2,7 @@ import react from "@vitejs/plugin-react";
 import { defaultClientConditions } from "vite";
 import { defineConfig } from "vitest/config";
 
-// Dev: `pnpm --filter @banglaclaw/dashboard dev` proxies /v1 to a running gateway (`banglaclaw serve`).
+// Dev: `pnpm --filter @entrogic-net/dashboard dev` proxies /v1 to a running gateway (`banglaclaw serve`).
 const gateway = process.env.BANGLACLAW_GATEWAY_URL ?? "http://127.0.0.1:3000";
 
 export default defineConfig({

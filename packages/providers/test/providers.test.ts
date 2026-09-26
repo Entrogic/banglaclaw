@@ -1,6 +1,6 @@
 import { AIMessageChunk, HumanMessage } from "@langchain/core/messages";
 import { describe, expect, it } from "vitest";
-import { ConfigError } from "@banglaclaw/shared";
+import { ConfigError } from "@entrogic-net/shared";
 import { FakeProvider, createProvider, requiredApiKeyEnv } from "../src/index.js";
 
 describe("createProvider", () => {

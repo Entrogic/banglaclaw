@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { AgentRunError, type AgentRuntime } from "@banglaclaw/agent";
-import type { KnowledgeBase } from "@banglaclaw/knowledge";
-import { SessionManager, type RunRecord } from "@banglaclaw/session";
+import { AgentRunError, type AgentRuntime } from "@entrogic-net/agent";
+import type { KnowledgeBase } from "@entrogic-net/knowledge";
+import { SessionManager, type RunRecord } from "@entrogic-net/session";
 
 /** Session channel for conversations that arrive through `banglaclaw mcp serve`. */
 export const MCP_CHANNEL = "mcp";

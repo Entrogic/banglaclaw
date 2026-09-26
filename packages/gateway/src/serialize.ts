@@ -1,5 +1,5 @@
 import type { BaseMessage } from "@langchain/core/messages";
-import { isOperatorMessage, type RunRecord, type Session } from "@banglaclaw/session";
+import { isOperatorMessage, type RunRecord, type Session } from "@entrogic-net/session";
 
 /** Channel-native ids are namespaced per user so two API users can't collide or probe each other. */
 export function scopedExternalId(userId: string, externalId: string): string {

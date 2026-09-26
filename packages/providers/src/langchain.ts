@@ -1,6 +1,6 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { AIMessage, AIMessageChunk, BaseMessage } from "@langchain/core/messages";
-import { ProviderError } from "@banglaclaw/shared";
+import { ProviderError } from "@entrogic-net/shared";
 import type { ModelCallOptions, ModelProvider } from "./provider.js";
 
 /** Adapts any LangChain chat model with tool-calling support to {@link ModelProvider}. */

@@ -1,6 +1,6 @@
-import { AgentRunError, detectLanguage, type AgentRuntime } from "@banglaclaw/agent";
-import type { SessionStore } from "@banglaclaw/session";
-import { RateLimiter, createLogger, type AudioInput, type Logger, type Transcriber } from "@banglaclaw/shared";
+import { AgentRunError, detectLanguage, type AgentRuntime } from "@entrogic-net/agent";
+import type { SessionStore } from "@entrogic-net/session";
+import { RateLimiter, createLogger, type AudioInput, type Logger, type Transcriber } from "@entrogic-net/shared";
 import { notice } from "./messages.js";
 import { splitMessage } from "./text.js";
 

@@ -1,4 +1,4 @@
-import type { Language } from "@banglaclaw/shared";
+import type { Language } from "@entrogic-net/shared";
 
 const BENGALI = /\p{Script=Bengali}/u;
 const WORDLIKE = /[\p{L}\p{N}]/u;

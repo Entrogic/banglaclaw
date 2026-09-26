@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/providers",
+  "name": "@entrogic-net/providers",
   "version": "1.2.0",
   "description": "Model providers for BanglaClaw: OpenAI-compatible (OpenAI, Ollama, vLLM) and Anthropic",
   "keywords": [
@@ -49,7 +49,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/shared": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
     "@langchain/anthropic": "^1.5.11",
     "@langchain/core": "^1.2.12",
     "@langchain/openai": "^1.5.13",

@@ -2,11 +2,11 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AgentRuntime } from "@banglaclaw/agent";
-import { FakeProvider } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore, type Session } from "@banglaclaw/session";
-import { ConfigError, createLogger, loadConfig } from "@banglaclaw/shared";
-import { AllowlistPolicy, ToolRegistry } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { FakeProvider } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore, type Session } from "@entrogic-net/session";
+import { ConfigError, createLogger, loadConfig } from "@entrogic-net/shared";
+import { AllowlistPolicy, ToolRegistry } from "@entrogic-net/tools";
 import { createDeliver, createTranscriber, setupChannels } from "../src/channels.js";
 
 const silent = createLogger({ write: () => {} });

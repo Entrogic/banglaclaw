@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/storage",
+  "name": "@entrogic-net/storage",
   "version": "1.2.0",
   "description": "PostgreSQL storage for BanglaClaw (Drizzle): sessions, runs, keys, audit and checkpoints",
   "keywords": [
@@ -51,8 +51,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@banglaclaw/session": "workspace:*",
-    "@banglaclaw/shared": "workspace:*",
+    "@entrogic-net/session": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
     "@langchain/core": "^1.2.12",
     "@langchain/langgraph": "^1.4.17",
     "@langchain/langgraph-checkpoint-postgres": "^1.0.5",
@@ -60,10 +60,10 @@
     "pg": "^8.23.0"
   },
   "devDependencies": {
-    "@banglaclaw/agent": "workspace:*",
-    "@banglaclaw/auth": "workspace:*",
-    "@banglaclaw/providers": "workspace:*",
-    "@banglaclaw/tools": "workspace:*",
+    "@entrogic-net/agent": "workspace:*",
+    "@entrogic-net/auth": "workspace:*",
+    "@entrogic-net/providers": "workspace:*",
+    "@entrogic-net/tools": "workspace:*",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.11"
   }

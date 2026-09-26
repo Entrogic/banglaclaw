@@ -1,20 +1,20 @@
 /**
  * Gateway with seeded in-memory data for working on the dashboard without a model key or database.
- *   pnpm --filter @banglaclaw/dashboard demo        # API on :3000, prints an admin key
- *   pnpm --filter @banglaclaw/dashboard dev         # Vite on :5173/admin/, proxies /v1 to it
- * After `pnpm --filter @banglaclaw/dashboard build`, the built page is also served at :3000/admin/.
+ *   pnpm --filter @entrogic-net/dashboard demo        # API on :3000, prints an admin key
+ *   pnpm --filter @entrogic-net/dashboard dev         # Vite on :5173/admin/, proxies /v1 to it
+ * After `pnpm --filter @entrogic-net/dashboard build`, the built page is also served at :3000/admin/.
  */
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { AgentRuntime } from "@banglaclaw/agent";
-import { ApiKeyAuthenticator, InMemoryAuthStore } from "@banglaclaw/auth";
-import { startGateway } from "@banglaclaw/gateway";
-import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@banglaclaw/knowledge";
-import { FakeProvider } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@banglaclaw/session";
-import { InMemoryAuditStore, createLogger } from "@banglaclaw/shared";
-import { SkillSet, loadSkillsFromDirs } from "@banglaclaw/skills";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
+import { startGateway } from "@entrogic-net/gateway";
+import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@entrogic-net/knowledge";
+import { FakeProvider } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@entrogic-net/session";
+import { InMemoryAuditStore, createLogger } from "@entrogic-net/shared";
+import { SkillSet, loadSkillsFromDirs } from "@entrogic-net/skills";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 
 const DAY = 86_400_000;
 const logger = createLogger({ write: () => {} });

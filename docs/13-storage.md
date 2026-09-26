@@ -21,7 +21,7 @@ PostgreSQL is the initial recommended relational database.
 | `tool_calls` | run_id + seq, tool, input/output jsonb, status, error, duration |
 | `checkpoints*` | LangGraph `PostgresSaver` tables, one thread per run (`thread_id = runId`) |
 
-- The schema lives in `packages/storage/src/schema.ts`, and migrations are generated into `packages/storage/drizzle/` with `pnpm --filter @banglaclaw/storage db:generate` and committed.
+- The schema lives in `packages/storage/src/schema.ts`, and migrations are generated into `packages/storage/drizzle/` with `pnpm --filter @entrogic-net/storage db:generate` and committed.
 - `banglaclaw db migrate` applies the migrations and creates the checkpoint tables. With the postgres provider, the runtime refuses to start while migrations are pending.
 - A run and its tool calls are inserted in a single transaction. Messages are appended in a transaction that also bumps `sessions.updated_at`.
 - Local database: `docker compose -f docker/compose.yaml up -d` starts PostgreSQL 17 on `localhost:54329`, and also creates a `banglaclaw_test` database for integration tests.

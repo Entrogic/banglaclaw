@@ -1,6 +1,6 @@
 import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages, type BaseMessage } from "@langchain/core/messages";
-import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "@banglaclaw/session";
+import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "@entrogic-net/session";
 import type { Database } from "./db.js";
 import { messages, sessions } from "./schema.js";
 

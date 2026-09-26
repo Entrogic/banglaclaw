@@ -1,9 +1,9 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import { useCallback, useRef, useState } from "react";
-import { AgentRunError } from "@banglaclaw/agent";
-import { isOperatorMessage, type RunRecord, type Session } from "@banglaclaw/session";
-import type { RunEvent } from "@banglaclaw/shared";
-import { AllowlistPolicy } from "@banglaclaw/tools";
+import { AgentRunError } from "@entrogic-net/agent";
+import { isOperatorMessage, type RunRecord, type Session } from "@entrogic-net/session";
+import type { RunEvent } from "@entrogic-net/shared";
+import { AllowlistPolicy } from "@entrogic-net/tools";
 import type { RuntimeBundle } from "../bootstrap.js";
 import { resolveSession } from "../commands/shared.js";
 import { describe } from "../ui/errors.js";

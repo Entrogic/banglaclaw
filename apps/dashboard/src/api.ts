@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { BanglaClawApiError, BanglaClawClient, type FetchLike, type Me } from "@banglaclaw/client";
+import { BanglaClawApiError, BanglaClawClient, type FetchLike, type Me } from "@entrogic-net/client";
 
 const STORAGE_KEY = "banglaclaw.adminKey";
 

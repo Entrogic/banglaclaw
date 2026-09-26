@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
-import type { NewAuditEvent } from "@banglaclaw/shared";
+import type { NewAuditEvent } from "@entrogic-net/shared";
 import type { RunStore } from "./run.js";
 import type { Session, SessionStore } from "./session.js";
 

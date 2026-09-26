@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { BanglaClawError } from "@banglaclaw/shared";
+import { BanglaClawError } from "@entrogic-net/shared";
 
 interface Node {
   name: string;

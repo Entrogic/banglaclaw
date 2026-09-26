@@ -16,7 +16,7 @@ tools:
 
 ```js
 // index.js
-import { definePlugin, defineTool, pluginDir, z } from "@banglaclaw/plugin-sdk";
+import { definePlugin, defineTool, pluginDir, z } from "@entrogic-net/plugin-sdk";
 
 const lookupOrder = defineTool({
   name: "lookup_order",                  // snake_case, unique
@@ -42,7 +42,7 @@ export default definePlugin({
 });
 ```
 
-- Use the `z` exported by `@banglaclaw/plugin-sdk`, so schemas convert correctly to the JSON Schema shown to the model.
+- Use the `z` exported by `@entrogic-net/plugin-sdk`, so schemas convert correctly to the JSON Schema shown to the model.
 - `definePlugin` stamps `apiVersion: 1`. BanglaClaw refuses plugins built for a newer plugin API.
 - `banglaclaw doctor` loads configured plugins and warns about plugin tools missing from `tools.allow`. `serve` prints the loaded plugins.
 

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ConfigError } from "@banglaclaw/shared";
+import { ConfigError } from "@entrogic-net/shared";
 import { SkillSet, loadSkillsFromDirs, parseSkill } from "../src/index.js";
 
 const calc = `---

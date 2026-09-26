@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/plugin-sdk",
+  "name": "@entrogic-net/plugin-sdk",
   "version": "1.2.0",
   "description": "Build BanglaClaw plugins: tools, skills, agents and context providers",
   "keywords": [
@@ -47,8 +47,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/agent": "workspace:*",
-    "@banglaclaw/tools": "workspace:*",
+    "@entrogic-net/agent": "workspace:*",
+    "@entrogic-net/tools": "workspace:*",
     "zod": "^4.6.5"
   }
 }

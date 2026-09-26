@@ -175,7 +175,7 @@ describe("gateway extras", () => {
 
 describe("gateway knowledge and memory", () => {
   it("searches the knowledge base and manages the caller's memories", async () => {
-    const { HashEmbedder, InMemoryVectorStore, KnowledgeBase, LongTermMemory, ownerForUser } = await import("@banglaclaw/knowledge");
+    const { HashEmbedder, InMemoryVectorStore, KnowledgeBase, LongTermMemory, ownerForUser } = await import("@entrogic-net/knowledge");
     const { deps, alice, bob } = await makeDeps();
     const kb = new KnowledgeBase({ store: new InMemoryVectorStore(), embedder: new HashEmbedder(), collection: "kb", chunkSize: 500, chunkOverlap: 0 });
     await kb.ingestText({ source: "faq.md", text: "Delivery inside Dhaka costs 60 taka." });
@@ -230,7 +230,7 @@ describe("gateway human handoff", () => {
 
 describe("gateway security", () => {
   it("enforces key scopes, admin-only audit and records security events", async () => {
-    const { InMemoryAuditStore } = await import("@banglaclaw/shared");
+    const { InMemoryAuditStore } = await import("@entrogic-net/shared");
     const { deps, alice } = await makeDeps();
     const audit = new InMemoryAuditStore();
     const app = createGatewayApp({ ...deps, audit, config: { ...deps.config, trustProxy: true } });
@@ -262,7 +262,7 @@ describe("gateway security", () => {
   });
 
   it("throttles audit writes for repeated failed logins", async () => {
-    const { InMemoryAuditStore } = await import("@banglaclaw/shared");
+    const { InMemoryAuditStore } = await import("@entrogic-net/shared");
     const { deps } = await makeDeps();
     const audit = new InMemoryAuditStore();
     const app = createGatewayApp({ ...deps, audit });
@@ -273,7 +273,7 @@ describe("gateway security", () => {
 
 describe("gateway metrics", () => {
   it("serves Prometheus metrics with route labels and an optional token", async () => {
-    const { Metrics } = await import("@banglaclaw/observability");
+    const { Metrics } = await import("@entrogic-net/observability");
     const { deps, alice } = await makeDeps();
     const metrics = Object.assign(new Metrics({ defaultMetrics: false }), { token: "scrape-secret" });
     const app = createGatewayApp({ ...deps, metrics });
@@ -293,7 +293,7 @@ describe("gateway metrics", () => {
 
 describe("OpenAPI", () => {
   it("documents every registered route", async () => {
-    const { Metrics } = await import("@banglaclaw/observability");
+    const { Metrics } = await import("@entrogic-net/observability");
     const { deps } = await makeDeps();
     const upgrade = (() => () => new Response()) as never;
     const app = createGatewayApp({ ...deps, metrics: new Metrics({ defaultMetrics: false }), dashboardDir: "/nonexistent" }, upgrade);
@@ -315,7 +315,7 @@ describe("OpenAPI", () => {
 
 describe("admin API and dashboard", () => {
   it("serves analytics with cost estimates, all-user sessions and key management to admins only", async () => {
-    const { InMemoryAuditStore } = await import("@banglaclaw/shared");
+    const { InMemoryAuditStore } = await import("@entrogic-net/shared");
     const { deps, alice, bob } = await makeDeps({ script: [{ content: "hi", usage: { input: 1_000_000, output: 500_000 } }] });
     const audit = new InMemoryAuditStore();
     const app = createGatewayApp({ ...deps, audit, pricing: { "fake:scripted": { input: 0.15, output: 0.6 } }, timezone: "Asia/Dhaka" });

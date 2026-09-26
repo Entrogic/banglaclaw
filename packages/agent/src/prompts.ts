@@ -1,5 +1,5 @@
-import type { Language } from "@banglaclaw/shared";
-import type { Skill } from "@banglaclaw/skills";
+import type { Language } from "@entrogic-net/shared";
+import type { Skill } from "@entrogic-net/skills";
 
 export const SYSTEM_PROMPT_VERSION = "2026-09-25.6";
 

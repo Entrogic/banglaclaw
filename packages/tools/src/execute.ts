@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ToolAuditEvent } from "@banglaclaw/shared";
+import type { ToolAuditEvent } from "@entrogic-net/shared";
 import type { PermissionPolicy } from "./policy.js";
 import type { ToolRegistry } from "./registry.js";
 import type { ToolContext } from "./tool.js";

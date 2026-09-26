@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
-import type { ApiKeyRecord, ApiKeyScope, AuthStore, User, UserRole } from "@banglaclaw/auth";
+import type { ApiKeyRecord, ApiKeyScope, AuthStore, User, UserRole } from "@entrogic-net/auth";
 import type { Database } from "./db.js";
 import { apiKeys, users } from "./schema.js";
 

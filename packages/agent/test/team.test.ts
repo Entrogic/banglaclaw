@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseAgentProfile } from "@banglaclaw/agents";
-import { FakeProvider, type ScriptedTurn } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore, type Session } from "@banglaclaw/session";
-import { createLogger, type NewAuditEvent, type RunEvent } from "@banglaclaw/shared";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { parseAgentProfile } from "@entrogic-net/agents";
+import { FakeProvider, type ScriptedTurn } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore, type Session } from "@entrogic-net/session";
+import { createLogger, type NewAuditEvent, type RunEvent } from "@entrogic-net/shared";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { AgentRuntime, HANDOFF_MESSAGES } from "../src/index.js";
 
 const silent = createLogger({ write: () => {} });

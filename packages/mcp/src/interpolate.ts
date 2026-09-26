@@ -1,4 +1,4 @@
-import { ConfigError } from "@banglaclaw/shared";
+import { ConfigError } from "@entrogic-net/shared";
 
 const VAR = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 

@@ -1,5 +1,5 @@
 import type { AIMessage, AIMessageChunk, BaseMessage } from "@langchain/core/messages";
-import type { ToolSpec } from "@banglaclaw/shared";
+import type { ToolSpec } from "@entrogic-net/shared";
 
 export interface ModelCallOptions {
   tools?: ToolSpec[];

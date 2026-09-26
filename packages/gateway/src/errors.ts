@@ -1,5 +1,5 @@
-import { AgentRunError } from "@banglaclaw/agent";
-import { BanglaClawError } from "@banglaclaw/shared";
+import { AgentRunError } from "@entrogic-net/agent";
+import { BanglaClawError } from "@entrogic-net/shared";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 export class HttpError extends Error {

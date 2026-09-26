@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { ConfigSchema } from "@banglaclaw/shared";
+import { ConfigSchema } from "@entrogic-net/shared";
 import { buildConfigYaml, envKeys, mergeEnv } from "../src/init/config.js";
 
 describe("buildConfigYaml", () => {

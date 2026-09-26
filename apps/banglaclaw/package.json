@@ -1,7 +1,7 @@
 {
   "name": "banglaclaw",
   "version": "1.2.0",
-  "description": "Bangla-first AI agent runtime. Run `npx banglaclaw init` to start (installs @banglaclaw/cli).",
+  "description": "Bangla-first AI agent runtime. Run `npx banglaclaw init` to start (installs @entrogic-net/cli).",
   "keywords": [
     "banglaclaw",
     "bangla",
@@ -39,6 +39,6 @@
     "provenance": true
   },
   "dependencies": {
-    "@banglaclaw/cli": "workspace:*"
+    "@entrogic-net/cli": "workspace:*"
   }
 }

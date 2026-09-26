@@ -1,8 +1,8 @@
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { CallToolResult, Tool as McpTool } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import { ToolExecutionError } from "@banglaclaw/shared";
-import { defineTool, type AnyTool, type ToolRisk } from "@banglaclaw/tools";
+import { ToolExecutionError } from "@entrogic-net/shared";
+import { defineTool, type AnyTool, type ToolRisk } from "@entrogic-net/tools";
 import { toolNameFor } from "./names.js";
 
 const MAX_DESCRIPTION = 1024;

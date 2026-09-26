@@ -1,11 +1,11 @@
-# @banglaclaw/client
+# @entrogic-net/client
 
 Typed client for the BanglaClaw gateway API (REST + SSE streaming).
 
 Part of [BanglaClaw](https://github.com/Entrogic/banglaclaw), a Bangla-first, open-source AI agent runtime built with TypeScript, LangGraph and MCP.
 
 ```bash
-npm install @banglaclaw/client
+npm install @entrogic-net/client
 ```
 
 Requires Node.js 22+. The package is ESM-only and ships TypeScript types.

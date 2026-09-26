@@ -7,9 +7,9 @@
   "type": "module",
   "exports": "./index.js",
   "devDependencies": {
-    "@banglaclaw/plugin-sdk": "workspace:*"
+    "@entrogic-net/plugin-sdk": "workspace:*"
   },
   "peerDependencies": {
-    "@banglaclaw/plugin-sdk": "^1.2.0"
+    "@entrogic-net/plugin-sdk": "^1.2.0"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/channels",
+  "name": "@entrogic-net/channels",
   "version": "1.2.0",
   "description": "Telegram, WhatsApp and Messenger channels for BanglaClaw, with voice notes",
   "keywords": [
@@ -49,14 +49,14 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/agent": "workspace:*",
-    "@banglaclaw/session": "workspace:*",
-    "@banglaclaw/shared": "workspace:*",
+    "@entrogic-net/agent": "workspace:*",
+    "@entrogic-net/session": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
     "hono": "^4.13.9",
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@banglaclaw/providers": "workspace:*",
-    "@banglaclaw/tools": "workspace:*"
+    "@entrogic-net/providers": "workspace:*",
+    "@entrogic-net/tools": "workspace:*"
   }
 }

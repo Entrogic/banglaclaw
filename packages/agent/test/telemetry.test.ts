@@ -2,10 +2,10 @@ import { trace } from "@opentelemetry/api";
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import { afterAll, describe, expect, it } from "vitest";
-import { FakeProvider } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { FakeProvider } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@entrogic-net/session";
+import { createLogger } from "@entrogic-net/shared";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { AgentRuntime } from "../src/index.js";
 
 const exporter = new InMemorySpanExporter();

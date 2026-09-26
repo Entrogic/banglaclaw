@@ -1,4 +1,4 @@
-import { BanglaClawError, type AuditAction } from "@banglaclaw/shared";
+import { BanglaClawError, type AuditAction } from "@entrogic-net/shared";
 import type { GlobalOptions } from "../bootstrap.js";
 import { load, openPostgres } from "../bootstrap.js";
 import { emit, empty, print, printAlways, success, warn } from "../ui/output.js";

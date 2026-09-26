@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { BanglaClawApiError, type KnowledgeHit } from "@banglaclaw/client";
+import { BanglaClawApiError, type KnowledgeHit } from "@entrogic-net/client";
 import { errorMessage, useAsync, useAuth } from "../api";
 import { fmtDateTime, fmtInt } from "../format";
 

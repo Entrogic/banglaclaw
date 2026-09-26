@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import { isUrl } from "@banglaclaw/knowledge";
-import { BanglaClawError } from "@banglaclaw/shared";
+import { isUrl } from "@entrogic-net/knowledge";
+import { BanglaClawError } from "@entrogic-net/shared";
 import type { GlobalOptions } from "../bootstrap.js";
 import { emit, empty, print, success } from "../ui/output.js";
 import { withSpinner } from "../ui/spinner.js";

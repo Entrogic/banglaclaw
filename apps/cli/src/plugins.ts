@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { PLUGIN_API_VERSION, type BanglaClawPlugin } from "@banglaclaw/plugin-sdk";
-import { ConfigError, type LoadedConfig } from "@banglaclaw/shared";
+import { PLUGIN_API_VERSION, type BanglaClawPlugin } from "@entrogic-net/plugin-sdk";
+import { ConfigError, type LoadedConfig } from "@entrogic-net/shared";
 
 export interface LoadedPlugin {
   plugin: BanglaClawPlugin;

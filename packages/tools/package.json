@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/tools",
+  "name": "@entrogic-net/tools",
   "version": "1.2.0",
   "description": "Zod-validated tools, permission policy and executor for BanglaClaw",
   "keywords": [
@@ -48,7 +48,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@banglaclaw/shared": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
     "zod": "^4.6.5"
   }
 }

@@ -1,4 +1,4 @@
-import type { Language } from "@banglaclaw/shared";
+import type { Language } from "@entrogic-net/shared";
 
 export type NoticeKey = "welcome" | "newSession" | "notAllowed" | "rateLimited" | "failed" | "textOnly" | "textOrVoice" | "voiceTooLong" | "voiceFailed";
 

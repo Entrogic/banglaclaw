@@ -1,8 +1,8 @@
 import type { UpgradeWebSocket, WSContext } from "hono/ws";
 import { z } from "zod";
-import { AgentRunError } from "@banglaclaw/agent";
-import type { Principal } from "@banglaclaw/auth";
-import type { Logger } from "@banglaclaw/shared";
+import { AgentRunError } from "@entrogic-net/agent";
+import type { Principal } from "@entrogic-net/auth";
+import type { Logger } from "@entrogic-net/shared";
 import { MAX_SUBSCRIPTIONS_PER_SOCKET, type GatewayContext } from "./context.js";
 import { HttpError, toHttpError } from "./errors.js";
 import { runJson } from "./serialize.js";

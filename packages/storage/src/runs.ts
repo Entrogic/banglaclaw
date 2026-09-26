@@ -1,6 +1,6 @@
 import { asc, desc, eq, inArray, sql } from "drizzle-orm";
-import type { Language, StopReason, ToolAuditEvent } from "@banglaclaw/shared";
-import { dayRange, type RunRecord, type RunStats, type RunStatus, type RunStore, type StatsQuery } from "@banglaclaw/session";
+import type { Language, StopReason, ToolAuditEvent } from "@entrogic-net/shared";
+import { dayRange, type RunRecord, type RunStats, type RunStatus, type RunStore, type StatsQuery } from "@entrogic-net/session";
 import type { Database } from "./db.js";
 import { runs, toolCalls } from "./schema.js";
 import { isUuid } from "./sessions.js";

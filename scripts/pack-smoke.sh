@@ -25,14 +25,14 @@ cd "$work/app"
 npm init -y >/dev/null
 npm install --no-audit --no-fund --loglevel=error "$work"/tarballs/*.tgz >/dev/null
 
-version=$(node -p "require('./node_modules/@banglaclaw/cli/package.json').version")
-test "$(node node_modules/@banglaclaw/cli/dist/index.js --version)" = "$version" || { echo "@banglaclaw/cli --version mismatch"; exit 1; }
+version=$(node -p "require('./node_modules/@entrogic-net/cli/package.json').version")
+test "$(node node_modules/@entrogic-net/cli/dist/index.js --version)" = "$version" || { echo "@entrogic-net/cli --version mismatch"; exit 1; }
 test "$(node node_modules/banglaclaw/bin.js --version)" = "$version" || { echo "banglaclaw wrapper --version mismatch"; exit 1; }
 npx --no-install banglaclaw --help >/dev/null
 node --input-type=module -e '
   const libs = ["agent", "agents", "auth", "channels", "client", "gateway", "knowledge", "mcp", "observability", "plugin-sdk", "providers", "session", "shared", "skills", "storage", "tools"];
-  for (const lib of libs) await import(`@banglaclaw/${lib}`);
-  const { BanglaClawClient } = await import("@banglaclaw/client");
+  for (const lib of libs) await import(`@entrogic-net/${lib}`);
+  const { BanglaClawClient } = await import("@entrogic-net/client");
   if (typeof BanglaClawClient !== "function") throw new Error("client export missing");
 '
 test -x node_modules/.bin/banglaclaw-mcp-bangladesh

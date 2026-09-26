@@ -1,5 +1,5 @@
 {
-  "name": "@banglaclaw/mcp-server-bangladesh",
+  "name": "@entrogic-net/mcp-server-bangladesh",
   "version": "1.2.0",
   "description": "MCP server with Bangladesh reference data (divisions, districts) for BanglaClaw and any MCP client",
   "keywords": [

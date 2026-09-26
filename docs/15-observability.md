@@ -37,7 +37,7 @@ GET /v1/agents/run                  (SERVER, http.route, status)
    └─ chat gpt-4o-mini
 ```
 
-Span names and attributes follow the OpenTelemetry GenAI semantic conventions where they exist (`gen_ai.*`). `packages/agent` and `packages/gateway` depend only on `@opentelemetry/api`, which is a no-op until `@banglaclaw/observability` `initTelemetry()` registers a provider; the CLI does this for every command.
+Span names and attributes follow the OpenTelemetry GenAI semantic conventions where they exist (`gen_ai.*`). `packages/agent` and `packages/gateway` depend only on `@opentelemetry/api`, which is a no-op until `@entrogic-net/observability` `initTelemetry()` registers a provider; the CLI does this for every command.
 
 Quick local check:
 

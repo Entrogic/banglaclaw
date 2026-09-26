@@ -1,5 +1,5 @@
 import { Counter, Gauge, Histogram, Registry, collectDefaultMetrics } from "prom-client";
-import type { RunRecord, Session } from "@banglaclaw/session";
+import type { RunRecord, Session } from "@entrogic-net/session";
 
 /** Prometheus metrics for runs, tools, tokens, handoffs and HTTP (scraped from GET /metrics). */
 export class Metrics {

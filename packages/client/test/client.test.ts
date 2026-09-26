@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { AgentRuntime } from "@banglaclaw/agent";
-import { ApiKeyAuthenticator, InMemoryAuthStore } from "@banglaclaw/auth";
-import { createGatewayApp } from "@banglaclaw/gateway";
-import { FakeProvider } from "@banglaclaw/providers";
-import { InMemoryRunStore, InMemorySessionStore } from "@banglaclaw/session";
-import { createLogger } from "@banglaclaw/shared";
-import { SkillSet } from "@banglaclaw/skills";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@banglaclaw/tools";
+import { AgentRuntime } from "@entrogic-net/agent";
+import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
+import { createGatewayApp } from "@entrogic-net/gateway";
+import { FakeProvider } from "@entrogic-net/providers";
+import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
+import { createLogger } from "@entrogic-net/shared";
+import { SkillSet } from "@entrogic-net/skills";
+import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { BanglaClawApiError, BanglaClawClient, parseSSE, type StreamEvent } from "../src/index.js";
 
 async function setup() {

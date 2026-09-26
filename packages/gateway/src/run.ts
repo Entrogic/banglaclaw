@@ -1,9 +1,9 @@
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
-import { AgentRunError } from "@banglaclaw/agent";
-import type { Principal } from "@banglaclaw/auth";
-import type { RunRecord, Session } from "@banglaclaw/session";
-import type { RunEvent } from "@banglaclaw/shared";
+import { AgentRunError } from "@entrogic-net/agent";
+import type { Principal } from "@entrogic-net/auth";
+import type { RunRecord, Session } from "@entrogic-net/session";
+import type { RunEvent } from "@entrogic-net/shared";
 import type { GatewayContext } from "./context.js";
 import { toHttpError } from "./errors.js";
 import { runJson } from "./serialize.js";

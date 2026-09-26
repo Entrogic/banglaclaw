@@ -56,7 +56,7 @@ mcp:
 
 ## Bundled example server
 
-`mcp-servers/bangladesh` (`@banglaclaw/mcp-server-bangladesh`) is a read-only reference-data server:
+`mcp-servers/bangladesh` (`@entrogic-net/mcp-server-bangladesh`) is a read-only reference-data server:
 
 | Tool | Purpose |
 |---|---|

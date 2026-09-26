@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { createLogger, type Logger } from "@banglaclaw/shared";
+import { createLogger, type Logger } from "@entrogic-net/shared";
 import { chunkText } from "./chunking.js";
 import type { Embedder, FetchLike } from "./embeddings.js";
 import { sha256, stableUuid } from "./ids.js";

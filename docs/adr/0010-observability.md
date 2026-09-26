@@ -10,7 +10,7 @@ v1.0 needs production observability: request, run, model-call and tool-call visi
 
 ## Decision
 
-- **Traces.** OpenTelemetry, exported over OTLP/HTTP. Library packages (`agent`, `gateway`) depend only on `@opentelemetry/api`; `@banglaclaw/observability` registers the SDK when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. Span names and attributes follow the GenAI semantic conventions (`invoke_agent`, `chat <model>`, `execute_tool <tool>`, `gen_ai.*`).
+- **Traces.** OpenTelemetry, exported over OTLP/HTTP. Library packages (`agent`, `gateway`) depend only on `@opentelemetry/api`; `@entrogic-net/observability` registers the SDK when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. Span names and attributes follow the GenAI semantic conventions (`invoke_agent`, `chat <model>`, `execute_tool <tool>`, `gen_ai.*`).
 - **Metrics.** Prometheus via `prom-client`, exposed at `/metrics` on the gateway (optional bearer token). Labels are kept low-cardinality: route patterns, never ids.
 - **Token usage.** Summed per run from provider `usage_metadata` and persisted on runs.
 

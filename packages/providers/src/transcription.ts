@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { AudioInput, Transcriber } from "@banglaclaw/shared";
+import type { AudioInput, Transcriber } from "@entrogic-net/shared";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 

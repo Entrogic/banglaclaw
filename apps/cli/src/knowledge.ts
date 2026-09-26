@@ -1,11 +1,11 @@
-import type { ContextProvider } from "@banglaclaw/agent";
+import type { ContextProvider } from "@entrogic-net/agent";
 import {
   InMemoryVectorStore, KnowledgeBase, LongTermMemory, OpenAICompatibleEmbedder, QdrantVectorStore,
   createKnowledgeTools, createMemoryTools, memoryContextProvider, type VectorStore,
-} from "@banglaclaw/knowledge";
-import type { SessionStore } from "@banglaclaw/session";
-import type { LoadedConfig, Logger } from "@banglaclaw/shared";
-import type { AnyTool } from "@banglaclaw/tools";
+} from "@entrogic-net/knowledge";
+import type { SessionStore } from "@entrogic-net/session";
+import type { LoadedConfig, Logger } from "@entrogic-net/shared";
+import type { AnyTool } from "@entrogic-net/tools";
 
 export interface KnowledgeSetup {
   kb?: KnowledgeBase;

@@ -1,6 +1,6 @@
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
-import { ConfigError } from "@banglaclaw/shared";
+import { ConfigError } from "@entrogic-net/shared";
 
 export const SkillFrontmatterSchema = z.strictObject({
   name: z.string().regex(/^[a-z][a-z0-9-]{0,63}$/, "use kebab-case (a-z, 0-9, -)"),

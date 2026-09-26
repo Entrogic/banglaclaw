@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import type { AdminKey } from "@banglaclaw/client";
+import type { AdminKey } from "@entrogic-net/client";
 import { errorMessage, useAsync, useAuth } from "../api";
 import { fmtDateTime, fmtRelative } from "../format";
 

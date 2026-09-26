@@ -1,5 +1,5 @@
-import { BanglaClawError, type ToolAuditEvent } from "@banglaclaw/shared";
-import type { RunRecord } from "@banglaclaw/session";
+import { BanglaClawError, type ToolAuditEvent } from "@entrogic-net/shared";
+import type { RunRecord } from "@entrogic-net/session";
 import type { GlobalOptions } from "../bootstrap.js";
 import { emit, empty, print } from "../ui/output.js";
 import { table } from "../ui/table.js";

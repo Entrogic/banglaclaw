@@ -1,9 +1,9 @@
 import type { Hono } from "hono";
-import type { AgentRuntime } from "@banglaclaw/agent";
-import { ChannelRouter, MessengerApi, MessengerChannel, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel, splitMessage } from "@banglaclaw/channels";
-import { OpenAICompatibleTranscriber } from "@banglaclaw/providers";
-import type { Deliver, SessionStore } from "@banglaclaw/session";
-import { ConfigError, type LoadedConfig, type Logger, type Transcriber } from "@banglaclaw/shared";
+import type { AgentRuntime } from "@entrogic-net/agent";
+import { ChannelRouter, MessengerApi, MessengerChannel, TelegramApi, TelegramChannel, WhatsAppApi, WhatsAppChannel, splitMessage } from "@entrogic-net/channels";
+import { OpenAICompatibleTranscriber } from "@entrogic-net/providers";
+import type { Deliver, SessionStore } from "@entrogic-net/session";
+import { ConfigError, type LoadedConfig, type Logger, type Transcriber } from "@entrogic-net/shared";
 
 export interface ChannelSetup {
   routes: Hono[];

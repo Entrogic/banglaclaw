@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BanglaClawError, ConfigError } from "@banglaclaw/shared";
+import { BanglaClawError, ConfigError } from "@entrogic-net/shared";
 import { EXIT, toCliError } from "../src/ui/errors.js";
 import { table, truncate } from "../src/ui/table.js";
 import { setColor } from "../src/ui/theme.js";
