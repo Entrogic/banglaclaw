@@ -4,6 +4,11 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+## 1.2.0 — npm release
+
+First release on npm: `npx banglaclaw init`, `npm install -g @entrogic-net/cli`, and every library under [`@entrogic-net`](https://www.npmjs.com/org/entrogic-net).
+
+
 - **Admin API** (admin role, docs/18):
   - `GET /v1/admin/stats`: run analytics with daily buckets in `timezone`, per-channel, provider and agent breakdowns, top tools, and cost estimates from the new `pricing` config
   - `GET /v1/admin/sessions[/:id]`: sessions of all users, searchable

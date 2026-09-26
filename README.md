@@ -12,7 +12,7 @@ Stateful, tool-using, multi-channel agents that understand **বাংলা**, 
 ![Node.js](https://img.shields.io/badge/node-%E2%89%A522-339933.svg?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)
 
-[Quickstart](#quickstart) · [Features](#features) · [Architecture](#architecture) · [Usage](#usage) · [Documentation](#documentation) · [বাংলা ডকুমেন্টেশন](docs/bn/README.md)
+[Quickstart](#quickstart) · [Features](#features) · [npm](#npm-packages) · [Architecture](#architecture) · [Usage](#usage) · [Documentation](#documentation) · [বাংলা ডকুমেন্টেশন](docs/bn/README.md)
 
 </div>
 
@@ -61,7 +61,7 @@ npx banglaclaw chat         # full-screen chat
 npm install -g @entrogic-net/cli   # or install the `banglaclaw` command globally
 ```
 
-Libraries are published under the [`@entrogic-net`](https://www.npmjs.com/org/entrogic-net) scope, for example [`@entrogic-net/client`](https://www.npmjs.com/package/@entrogic-net/client) (typed API client) and [`@entrogic-net/plugin-sdk`](https://www.npmjs.com/package/@entrogic-net/plugin-sdk).
+See [npm packages](#npm-packages) for the libraries.
 
 ### From source
 
@@ -96,6 +96,35 @@ docker compose -f docker/compose.prod.yaml run --rm banglaclaw key create --user
 ```
 
 This serves the web chat at `http://127.0.0.1:3000/chat` and the API spec at `/v1/openapi.json`. See [Deployment](docs/21-deployment.md) and [Operations](docs/22-operations.md).
+
+## npm packages
+
+Every package is published under the [`@entrogic-net`](https://www.npmjs.com/org/entrogic-net) scope. All packages share one version.
+
+| Package | Use it to |
+|---|---|
+| [`banglaclaw`](https://www.npmjs.com/package/banglaclaw) | Run `npx banglaclaw …` without installing anything |
+| [`@entrogic-net/cli`](https://www.npmjs.com/package/@entrogic-net/cli) | Install the `banglaclaw` command globally |
+| [`@entrogic-net/client`](https://www.npmjs.com/package/@entrogic-net/client) | Call a running gateway from Node, browsers, Deno or Bun (REST and SSE streaming) |
+| [`@entrogic-net/plugin-sdk`](https://www.npmjs.com/package/@entrogic-net/plugin-sdk) | Write plugins that add tools, skills, agents and context providers |
+| [`@entrogic-net/mcp-server-bangladesh`](https://www.npmjs.com/package/@entrogic-net/mcp-server-bangladesh) | Give any MCP client Bangladesh reference data (`npx -y @entrogic-net/mcp-server-bangladesh`) |
+| `@entrogic-net/agent`, `gateway`, `channels`, `tools`, `mcp`, `knowledge`, … | Embed individual runtime pieces in your own application |
+
+Calling a gateway with the typed client:
+
+```ts
+import { BanglaClawClient } from "@entrogic-net/client";
+
+const client = new BanglaClawClient({ baseUrl: "http://127.0.0.1:3000", apiKey: process.env.BANGLACLAW_API_KEY ?? "" });
+
+const { reply, sessionId } = await client.run("২৫ * ৪ কত?");
+console.log(reply);
+
+// Stream tokens as they arrive, continuing the same conversation.
+for await (const e of client.stream("ekhon koyta baje?", { sessionId })) {
+  if (e.event === "token") process.stdout.write(e.data.text);
+}
+```
 
 ## Architecture
 
@@ -159,7 +188,10 @@ pnpm banglaclaw mcp list
 pnpm banglaclaw agent run "কুমিল্লা কোন বিভাগে?"
 
 # Use BanglaClaw from Claude Desktop, Cursor or Claude Code:
-claude mcp add banglaclaw -- pnpm --dir "$PWD" banglaclaw mcp serve
+claude mcp add banglaclaw -- npx -y banglaclaw mcp serve
+
+# The Bangladesh reference-data server on its own, for any MCP client:
+claude mcp add bangladesh -- npx -y @entrogic-net/mcp-server-bangladesh
 ```
 
 </details>
@@ -232,7 +264,7 @@ Design decisions are recorded as [Architecture Decision Records](docs/adr/). Ban
 
 ## Project status
 
-**v1.1.0.** All roadmap milestones (v0.1–v1.0) are complete. The `/v1` HTTP API is stable and changes only additively ([compatibility policy](docs/18-api.md#versioning-and-compatibility-v10)).
+**v1.2.0**, [available on npm](#npm-packages). All roadmap milestones (v0.1–v1.0) are complete. The `/v1` HTTP API is stable and changes only additively ([compatibility policy](docs/18-api.md#versioning-and-compatibility-v10)).
 
 | Release | Highlights |
 |---|---|
@@ -245,7 +277,7 @@ Design decisions are recorded as [Architecture Decision Records](docs/adr/). Ban
 | v0.7 Multi-agent | Supervisor and specialists, human handoff |
 | v1.0 Production | Audit log, scopes and roles, OpenTelemetry, Prometheus, OpenAPI and typed client, plugins, Docker |
 | v1.1 Professional CLI | Ink chat UI, setup wizard, `--json` output, shell completion |
-| Unreleased | Admin dashboard, Messenger, voice notes, DOCX and URL sources, BanglaClaw as an MCP server, live operator replies, refreshed UIs |
+| v1.2 npm release | Published to npm, admin dashboard, Messenger, voice notes, DOCX and URL sources, BanglaClaw as an MCP server, live operator replies, OpenClaw-style chat UIs |
 
 See the [CHANGELOG](CHANGELOG.md) for details and the [roadmap](docs/20-roadmap.md) for what comes next.
 
