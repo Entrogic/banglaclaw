@@ -4,6 +4,7 @@ import { ChannelRouter, MessengerApi, MessengerChannel, TelegramApi, TelegramCha
 import { OpenAICompatibleTranscriber } from "@entrogic-net/providers";
 import type { Deliver, SessionStore } from "@entrogic-net/session";
 import { ConfigError, type LoadedConfig, type Logger, type Transcriber } from "@entrogic-net/shared";
+import { documentHandlerFor } from "./documents.js";
 
 export interface ChannelSetup {
   routes: Hono[];
@@ -89,7 +90,12 @@ export function setupChannels(loaded: LoadedConfig, runtime: AgentRuntime, sessi
     if (access === "allowlist" && allowed.length === 0) {
       warnings.push(`${name}: allowlist is empty, so nobody will be answered. Message the bot, copy "senderId" from the gateway log, and add it to the allowlist.`);
     }
-    const router = new ChannelRouter({ runtime, sessions, agentName: config.agent.name, access: { access, allowed }, rateLimitPerMinute, logger, ...(voice !== undefined && { voice }) });
+    const documents = documentHandlerFor(loaded, name);
+    const router = new ChannelRouter({
+      runtime, sessions, agentName: config.agent.name, access: { access, allowed }, rateLimitPerMinute, logger,
+      ...(voice !== undefined && { voice }),
+      ...(documents !== undefined && { documents }),
+    });
     routers.push(router);
     return router;
   };

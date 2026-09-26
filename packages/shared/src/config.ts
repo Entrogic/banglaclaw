@@ -158,6 +158,10 @@ export const ConfigSchema = z.strictObject({
       maxTotalBytes: z.int().min(1).max(10 * 1024 * 1024 * 1024).default(20 * 1024 * 1024),
       /** Previous versions kept per file. */
       historyVersions: z.int().min(0).max(100).default(5),
+      /** Save files sent in chats (Telegram, WhatsApp, Messenger) to the sender's workspace under uploads/. */
+      uploads: z.boolean().default(true),
+      /** Largest file downloaded from a chat, in bytes (the extracted text must also fit maxFileBytes). */
+      maxUploadBytes: z.int().min(1).max(50 * 1024 * 1024).default(10 * 1024 * 1024),
     })
     .prefault({}),
   storage: z

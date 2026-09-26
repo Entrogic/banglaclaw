@@ -2,7 +2,7 @@ export { OpenAICompatibleEmbedder, HashEmbedder, EmbeddingError, type Embedder, 
 export { InMemoryVectorStore, cosine, type Payload, type PayloadFilter, type ScoredPoint, type VectorPoint, type VectorStore } from "./vector-store.js";
 export { QdrantVectorStore, QdrantError } from "./qdrant.js";
 export { chunkText, type ChunkOptions } from "./chunking.js";
-export { loadFile, loadUrl, isUrl, collectFiles, htmlToText, sourceName, SUPPORTED_EXTENSIONS, type LoadedDocument } from "./loaders.js";
+export { loadFile, loadUrl, isUrl, collectFiles, extractText, htmlToText, sourceName, SUPPORTED_EXTENSIONS, TEXT_EXTENSIONS, type LoadedDocument } from "./loaders.js";
 export { docxToText, readZipEntry, wordXmlToText } from "./docx.js";
 export { KnowledgeBase, type IngestResult, type KnowledgeBaseOptions, type KnowledgeDocument, type KnowledgeHit } from "./knowledge-base.js";
 export { LongTermMemory, MemoryLimitError, memoryOwner, ownerForUser, type MemoryRecord } from "./memory.js";

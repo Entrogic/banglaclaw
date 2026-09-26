@@ -79,6 +79,10 @@ channels:
     access: open
 ```
 
+## Files
+
+Telegram documents, WhatsApp documents and Messenger file attachments become `InboundMessage.document` (name, type, size, and a lazy `download()`); a document's caption is the message text. `ChannelRouter` stores them through a `DocumentHandler` after the access and rate checks and tells the agent where the file is. The CLI's handler writes to the sender's workspace (docs/24). Without a handler (the workspace or uploads are off), the user gets a notice.
+
 ## Voice notes
 
 Many people in Bangladesh send voice messages instead of typing Bangla on a phone. With `voice.enabled`, voice notes and audio messages on Telegram, WhatsApp and Messenger are transcribed and then answered like text:

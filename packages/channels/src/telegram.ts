@@ -16,6 +16,9 @@ const UpdateSchema = z.object({
       /** Voice note (recorded in Telegram) or an audio file. */
       voice: z.object({ file_id: z.string(), duration: z.number(), mime_type: z.string().optional(), file_size: z.number().optional() }).optional(),
       audio: z.object({ file_id: z.string(), duration: z.number(), mime_type: z.string().optional(), file_size: z.number().optional() }).optional(),
+      /** A file sent as a document; its caption is the accompanying text. */
+      document: z.object({ file_id: z.string(), file_name: z.string().optional(), mime_type: z.string().optional(), file_size: z.number().optional() }).optional(),
+      caption: z.string().optional(),
     })
     .optional(),
 });
@@ -139,11 +142,23 @@ export function toInbound(update: TelegramUpdate, api?: TelegramApi): InboundMes
   const m = update.message;
   if (m === undefined || m.from === undefined || m.from.is_bot === true || m.chat.type !== "private") return undefined;
   const sound = m.voice ?? m.audio;
+  const doc = m.document;
+  // A document's caption is the user's request about it (a voice note's caption stays out of the way of transcription).
+  const text = m.text ?? (doc !== undefined ? m.caption : undefined);
   return {
     conversationId: String(m.chat.id),
     senderId: String(m.from.id),
     ...(m.from.username !== undefined || m.from.first_name !== undefined ? { senderName: m.from.username ?? m.from.first_name } : {}),
-    ...(m.text !== undefined && { text: m.text }),
+    ...(text !== undefined && { text }),
+    ...(doc !== undefined &&
+      api !== undefined && {
+        document: {
+          filename: doc.file_name ?? "document",
+          ...(doc.mime_type !== undefined && { mimeType: doc.mime_type }),
+          ...(doc.file_size !== undefined && { sizeBytes: doc.file_size }),
+          download: async () => (await api.downloadFile(doc.file_id, doc.mime_type ?? "application/octet-stream")).data,
+        },
+      }),
     ...(sound !== undefined &&
       api !== undefined && {
         audio: { durationSeconds: sound.duration, download: () => api.downloadFile(sound.file_id, sound.mime_type ?? "audio/ogg") },

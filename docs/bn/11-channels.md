@@ -124,6 +124,10 @@ channels:
     access: open
 ```
 
+## ফাইল
+
+Telegram-এর document, WhatsApp-এর document আর Messenger-এর file attachment `InboundMessage.document` হয় (নাম, ধরন, আকার আর একটি lazy `download()`); document-এর caption হয় বার্তার লেখা। অ্যাক্সেস ও rate পরীক্ষার পর `ChannelRouter` এটি একটি `DocumentHandler` দিয়ে সংরক্ষণ করে এবং এজেন্টকে জানায় ফাইলটি কোথায়। CLI-এর handler প্রেরকের workspace-এ লেখে (docs/24)। handler না থাকলে (workspace বা uploads বন্ধ) ব্যবহারকারী একটি নোটিশ পান।
+
 ## ভয়েস বার্তা
 
 বাংলাদেশে অনেকেই ফোনে বাংলা টাইপ না করে ভয়েস মেসেজ পাঠান। `voice.enabled` চালু করলে Telegram, WhatsApp ও Messenger-এর ভয়েস নোট লেখায় রূপান্তর (transcribe) করে সাধারণ মেসেজের মতো উত্তর দেওয়া হয়:

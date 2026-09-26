@@ -69,6 +69,8 @@ workspace:                   # per-owner files for the workspace_* tools (docs/2
   maxFiles: 500
   maxTotalBytes: 20971520
   historyVersions: 5
+  uploads: true              # save files sent in chats under uploads/ (docs/24)
+  maxUploadBytes: 10485760   # largest file downloaded from a chat
 
 skills:
   dirs: [skills]

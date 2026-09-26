@@ -92,6 +92,16 @@ export class MessengerApi {
   }
 }
 
+/** Messenger sends files as a CDN URL; the name is the last path segment. */
+function attachmentName(url: string): string {
+  try {
+    const last = new URL(url).pathname.split("/").filter(Boolean).at(-1);
+    return last === undefined ? "document" : decodeURIComponent(last);
+  } catch {
+    return "document";
+  }
+}
+
 /**
  * Inbound user messages from a Messenger webhook. Echoes of the page's own messages, delivery/read
  * receipts and events for other pages are dropped. Postbacks (buttons) arrive as their title, and
@@ -107,10 +117,15 @@ export function toMessengerInbound(payload: MessengerWebhook, pageId?: string, a
       if (event.message !== undefined) {
         if (event.message.is_echo === true) continue;
         const clip = event.message.attachments?.find((a) => a.type === "audio")?.payload?.url;
+        const file = event.message.attachments?.find((a) => a.type === "file")?.payload?.url;
         out.push({
           conversationId: psid,
           senderId: psid,
           ...(event.message.text !== undefined && event.message.text !== "" && { text: event.message.text }),
+          ...(file !== undefined &&
+            api !== undefined && {
+              document: { filename: attachmentName(file), download: async () => (await api.downloadAttachment(file)).data },
+            }),
           ...(clip !== undefined && api !== undefined && { audio: { download: () => api.downloadAttachment(clip) } }),
         });
       } else if (event.postback !== undefined) {

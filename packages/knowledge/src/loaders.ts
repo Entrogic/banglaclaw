@@ -41,6 +41,31 @@ async function pdfToText(data: Uint8Array): Promise<string> {
   return (Array.isArray(text) ? text : [text]).join("\n\n");
 }
 
+/** File types `extractText` reads: the knowledge-base formats plus CSV and JSON. */
+export const TEXT_EXTENSIONS = [...SUPPORTED_EXTENSIONS, ".csv", ".json"] as const;
+
+/**
+ * Plain text from a document's bytes, chosen by the file's extension: PDF and DOCX are
+ * extracted, HTML is stripped, and text formats are decoded as UTF-8. Throws for other types.
+ */
+export async function extractText(data: Uint8Array, filename: string): Promise<{ title: string; text: string }> {
+  const ext = extname(filename).toLowerCase();
+  const fallbackTitle = basename(filename, ext);
+  if (ext === ".pdf") return { title: fallbackTitle, text: await pdfToText(data) };
+  if (ext === ".docx") {
+    const { title, text } = docxToText(data);
+    return { title: title ?? fallbackTitle, text };
+  }
+  if (!(TEXT_EXTENSIONS as readonly string[]).includes(ext)) throw new Error(`Unsupported file type ${ext || "(none)"} (supported: ${TEXT_EXTENSIONS.join(", ")})`);
+  const raw = new TextDecoder("utf-8").decode(data);
+  if (ext === ".html" || ext === ".htm") {
+    const { title, text } = htmlToText(raw);
+    return { title: title ?? fallbackTitle, text };
+  }
+  if (ext === ".md" || ext === ".markdown") return { title: /^#\s+(.+)$/m.exec(raw)?.[1]?.trim() ?? fallbackTitle, text: raw };
+  return { title: fallbackTitle, text: raw };
+}
+
 /** Source id for a file: relative to baseDir when inside it, otherwise the absolute path. */
 export function sourceName(path: string, baseDir: string): string {
   const rel = relative(baseDir, path);
@@ -52,25 +77,8 @@ export async function loadFile(path: string, baseDir: string): Promise<LoadedDoc
   const info = await stat(path);
   if (info.size > MAX_FILE_BYTES) throw new Error(`${path} is larger than 20 MB`);
   const ext = extname(path).toLowerCase();
-  const source = sourceName(path, baseDir);
-  const fallbackTitle = basename(path, ext);
-
-  if (ext === ".pdf") return { source, title: fallbackTitle, text: await pdfToText(new Uint8Array(await readFile(path))) };
-  if (ext === ".docx") {
-    const { title, text } = docxToText(new Uint8Array(await readFile(path)));
-    return { source, title: title ?? fallbackTitle, text };
-  }
-  const raw = await readFile(path, "utf8");
-  if (ext === ".html" || ext === ".htm") {
-    const { title, text } = htmlToText(raw);
-    return { source, title: title ?? fallbackTitle, text };
-  }
-  if (ext === ".md" || ext === ".markdown") {
-    const heading = /^#\s+(.+)$/m.exec(raw)?.[1]?.trim();
-    return { source, title: heading ?? fallbackTitle, text: raw };
-  }
-  if (ext === ".txt") return { source, title: fallbackTitle, text: raw };
-  throw new Error(`Unsupported file type ${ext} (supported: ${SUPPORTED_EXTENSIONS.join(", ")})`);
+  if (!(SUPPORTED_EXTENSIONS as readonly string[]).includes(ext)) throw new Error(`Unsupported file type ${ext} (supported: ${SUPPORTED_EXTENSIONS.join(", ")})`);
+  return { source: sourceName(path, baseDir), ...(await extractText(new Uint8Array(await readFile(path)), path)) };
 }
 
 /** Recursively lists supported files under the given files/directories (skips dotfiles and node_modules). */

@@ -22,6 +22,7 @@ const WebhookSchema = z.object({
                   type: z.string(),
                   text: z.object({ body: z.string() }).optional(),
                   audio: z.object({ id: z.string(), mime_type: z.string().optional() }).optional(),
+                  document: z.object({ id: z.string(), filename: z.string().optional(), mime_type: z.string().optional(), caption: z.string().optional() }).optional(),
                 }),
               )
               .optional(),
@@ -76,7 +77,7 @@ export class WhatsAppApi {
   }
 }
 
-/** With `api`, voice notes and audio messages carry a lazy download for transcription. */
+/** With `api`, voice notes and audio messages carry a lazy download for transcription, and documents one for storing. */
 export function toInboundMessages(payload: WhatsAppWebhook, phoneNumberId?: string, api?: WhatsAppApi): InboundMessage[] {
   const out: InboundMessage[] = [];
   for (const entry of payload.entry) {
@@ -87,11 +88,21 @@ export function toInboundMessages(payload: WhatsAppWebhook, phoneNumberId?: stri
       for (const m of value.messages ?? []) {
         const name = value.contacts?.find((c) => c.wa_id === m.from)?.profile?.name;
         const audioId = m.type === "audio" ? m.audio?.id : undefined;
+        const doc = m.type === "document" ? m.document : undefined;
+        const text = m.type === "text" ? m.text?.body : doc?.caption;
         out.push({
           conversationId: m.from,
           senderId: m.from,
           ...(name !== undefined && { senderName: name }),
-          ...(m.type === "text" && m.text !== undefined && { text: m.text.body }),
+          ...(text !== undefined && text !== "" && { text }),
+          ...(doc !== undefined &&
+            api !== undefined && {
+              document: {
+                filename: doc.filename ?? "document",
+                ...(doc.mime_type !== undefined && { mimeType: doc.mime_type }),
+                download: async () => (await api.downloadMedia(doc.id)).data,
+              },
+            }),
           ...(audioId !== undefined && api !== undefined && { audio: { download: () => api.downloadMedia(audioId) } }),
         });
       }

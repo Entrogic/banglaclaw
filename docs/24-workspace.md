@@ -50,6 +50,17 @@ All seven are `sensitive`. Failures such as a missing file, ambiguous `old_text`
 - **Quotas.** Per owner: `maxFileBytes` per file (256 KB), `maxFiles` live files (500), and `maxTotalBytes` including history and trash (20 MB).
 - **Audit.** Every call is recorded with the run (`tool_calls`), like any tool.
 
+## Files sent in chats
+
+With the workspace on, files people send on Telegram, WhatsApp or Messenger are saved to their own folder under `uploads/` (`workspace.uploads`, on by default, and only for channels in `workspace.channels`):
+
+- **Formats.** `.txt`, `.md`, `.csv` and `.json` are stored as they are. `.pdf`, `.docx` and `.html` are stored as their extracted text (`menu.pdf` becomes `uploads/menu.txt`). Other types get a notice.
+- **Names.** File names are cleaned (Bangla letters are kept, and spaces become `_`). A clash gets `-2`, `-3` and so on, so nothing is overwritten.
+- **Limits.** Downloads are capped by `maxUploadBytes` (10 MB), and the text must fit `maxFileBytes` and the owner's quota. Access and rate limits are checked before anything is downloaded.
+- **What the agent sees.** The caption, if any (the user's request), followed by a note such as `[ব্যবহারকারী "menu.pdf" ফাইলটি পাঠিয়েছেন। এটি workspace-এ uploads/menu.txt নামে সংরক্ষিত হয়েছে …; workspace_read দিয়ে পড়ুন।]` in the user's language. The agent then reads the file with `workspace_read` (so `workspace_read` must be in `tools.allow`).
+
+With the workspace off, a file gets a short notice asking for the text instead.
+
 ## CLI
 
 ```bash
@@ -75,6 +86,6 @@ All of them support `--json`. `banglaclaw tool list` shows the workspace tools w
 
 ## Not yet
 
-- Binary files and uploads from channels (images, PDFs)
+- Keeping original binaries (only extracted text is stored) and images
 - Sharing files between owners, or a gateway API to download them
 - Automatic cleanup of old history and trash (they count towards the quota)

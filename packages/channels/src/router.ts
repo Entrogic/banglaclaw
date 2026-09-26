@@ -1,7 +1,8 @@
 import { AgentRunError, detectLanguage, type AgentRuntime } from "@entrogic-net/agent";
-import type { SessionStore } from "@entrogic-net/session";
+import type { Session, SessionStore } from "@entrogic-net/session";
 import { RateLimiter, createLogger, type AudioInput, type Logger, type Transcriber } from "@entrogic-net/shared";
-import { notice } from "./messages.js";
+import { DocumentRejected, displayName, type DocumentHandler, type InboundDocument } from "./documents.js";
+import { documentNote, notice } from "./messages.js";
 import { LiveReply, type EditableReplies } from "./stream.js";
 import { splitMessage } from "./text.js";
 
@@ -16,6 +17,8 @@ export interface InboundMessage {
   text?: string;
   /** A voice note or audio file; downloaded only when voice is enabled and the sender passed the checks. */
   audio?: InboundAudio;
+  /** A file (PDF, DOCX, text…); stored through `documents` after the checks. Its caption, if any, is `text`. */
+  document?: InboundDocument;
 }
 
 export interface InboundAudio {
@@ -70,6 +73,8 @@ export interface ChannelRouterOptions {
   voice?: VoiceOptions;
   /** Stream replies by editing messages where the adapter supports it; false turns it off. */
   liveReplies?: LiveReplySettings | false;
+  /** Stores files sent in the chat (in the workspace); without it files get a notice. */
+  documents?: DocumentHandler;
 }
 
 const TYPING_INTERVAL_MS = 4_000;
@@ -141,11 +146,14 @@ export class ChannelRouter {
       return this.#reply(adapter, message.conversationId, notice("rateLimited", language));
     }
     const voice = this.#options.voice;
-    const spoken = text === "" && message.audio !== undefined && voice !== undefined;
-    if (text === "" && !spoken) return this.#reply(adapter, message.conversationId, notice(voice !== undefined ? "textOrVoice" : "textOnly", "bn"));
+    const { document } = message;
+    const documents = this.#options.documents;
+    if (document !== undefined && documents === undefined) return this.#reply(adapter, message.conversationId, notice("documentsOff", language));
+    const spoken = text === "" && document === undefined && message.audio !== undefined && voice !== undefined;
+    if (text === "" && !spoken && document === undefined) return this.#reply(adapter, message.conversationId, notice(voice !== undefined ? "textOrVoice" : "textOnly", "bn"));
 
     const { sessions, runtime, agentName } = this.#options;
-    if (!spoken) {
+    if (!spoken && document === undefined) {
       const command = text.split(/\s+/)[0]?.toLowerCase().replace(/@.*$/, "");
       if (command === "/start") return this.#reply(adapter, message.conversationId, notice("welcome", "bn"));
       if (command === "/new" || command === "/reset") {
@@ -173,6 +181,12 @@ export class ChannelRouter {
       const session =
         (await sessions.findByExternalId(adapter.name, message.conversationId)) ??
         (await sessions.create({ channel: adapter.name, externalId: message.conversationId, agentId: agentName }));
+      if (document !== undefined && documents !== undefined) {
+        const saved = await this.#saveDocument(document, documents, session, log);
+        if (saved.kind !== "ok") return await this.#reply(adapter, message.conversationId, notice(saved.kind, language));
+        // The agent learns where the file is; the caption (if any) comes first as the user's actual request.
+        text = [text, documentNote(saved.path, displayName(document.filename), saved.characters, language)].filter((part) => part !== "").join("\n\n");
+      }
       const settings = this.#options.liveReplies === false ? undefined : (this.#options.liveReplies ?? DEFAULT_LIVE_REPLIES);
       live =
         adapter.editable !== undefined && settings !== undefined
@@ -209,6 +223,29 @@ export class ChannelRouter {
   /** Settles a live reply on `text` (or on what was streamed), sending anything editing couldn't show. */
   async #finishLive(adapter: ChannelAdapter, conversationId: string, live: LiveReply, text: string | undefined): Promise<void> {
     for (const chunk of await live.finish(text)) await adapter.send(conversationId, chunk);
+  }
+
+  async #saveDocument(
+    document: InboundDocument,
+    handler: DocumentHandler,
+    session: Session,
+    log: Logger,
+  ): Promise<{ kind: "ok"; path: string; characters: number } | { kind: "documentTooLarge" | "documentUnsupported" | "documentFailed" }> {
+    if (document.sizeBytes !== undefined && document.sizeBytes > handler.maxBytes) return { kind: "documentTooLarge" };
+    try {
+      const data = await document.download();
+      if (data.byteLength > handler.maxBytes) return { kind: "documentTooLarge" };
+      const saved = await handler.save(session, { filename: document.filename, ...(document.mimeType !== undefined && { mimeType: document.mimeType }), data });
+      log.info("document saved", { path: saved.path, bytes: data.byteLength, characters: saved.characters });
+      return { kind: "ok", ...saved };
+    } catch (error) {
+      if (error instanceof DocumentRejected) {
+        log.info("document refused", { reason: error.reason, error: error.message });
+        return { kind: error.reason === "tooLarge" ? "documentTooLarge" : "documentUnsupported" };
+      }
+      log.error("document could not be saved", { error });
+      return { kind: "documentFailed" };
+    }
   }
 
   async #transcribe(audio: InboundAudio, voice: VoiceOptions, log: Logger): Promise<{ kind: "ok"; text: string } | { kind: "tooLong" | "failed" }> {

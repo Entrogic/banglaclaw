@@ -2,7 +2,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { HashEmbedder, InMemoryVectorStore, KnowledgeBase, docxToText, loadFile, loadUrl, readZipEntry, wordXmlToText } from "../src/index.js";
+import { HashEmbedder, InMemoryVectorStore, KnowledgeBase, docxToText, extractText, loadFile, loadUrl, readZipEntry, wordXmlToText } from "../src/index.js";
 import { makeDocx, makeZip } from "./docx.js";
 import { makePdf } from "./pdf.js";
 
@@ -99,5 +99,22 @@ describe("URL loader", () => {
 
     const again = await kb.ingestPaths(["https://shop.test/faq"], dir);
     expect(again.results[0]?.skipped).toBe(true);
+  });
+});
+
+describe("extractText", () => {
+  const bytes = (s: string) => new TextEncoder().encode(s);
+
+  it("reads text formats, strips HTML and extracts PDF and DOCX", async () => {
+    expect(await extractText(bytes("item,price\nচাল,৫০"), "list.csv")).toEqual({ title: "list", text: "item,price\nচাল,৫০" });
+    expect(await extractText(bytes("# মেনু\nভাত"), "menu.md")).toEqual({ title: "মেনু", text: "# মেনু\nভাত" });
+    expect(await extractText(bytes("<head><title>Shop</title></head><p>Hello</p>"), "page.HTML")).toEqual({ title: "Shop", text: "Hello" });
+    expect((await extractText(makeDocx(["প্রথম লাইন"]), "doc.docx")).text).toContain("প্রথম লাইন");
+    expect((await extractText(makePdf("Price list"), "p.pdf")).text).toContain("Price list");
+  });
+
+  it("refuses other types", async () => {
+    await expect(extractText(bytes("MZ"), "setup.exe")).rejects.toThrow(/Unsupported file type .exe/);
+    await expect(extractText(bytes("x"), "noext")).rejects.toThrow(/\(none\)/);
   });
 });
