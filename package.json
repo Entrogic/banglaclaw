@@ -19,7 +19,8 @@
     "changeset": "changeset",
     "version-packages": "changeset version && pnpm install --lockfile-only",
     "release": "pnpm build && bash scripts/pack-smoke.sh && changeset publish",
-    "verify:pack": "bash scripts/pack-smoke.sh"
+    "verify:pack": "bash scripts/pack-smoke.sh",
+    "e2e": "pnpm --filter @entrogic-net/e2e e2e"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

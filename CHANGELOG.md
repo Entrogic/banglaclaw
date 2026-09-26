@@ -4,6 +4,8 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Browser tests:** Playwright tests (`e2e/`, `pnpm e2e`) for the web chat, website widget and admin dashboard. They run against a real gateway with a deterministic fake model, on desktop and mobile viewports, in a separate CI job (docs/19).
+
 - **Chat files into the workspace:** documents sent on Telegram, WhatsApp or Messenger are saved to the sender's workspace under `uploads/`. Text formats are kept as they are, PDF, DOCX and HTML are stored as extracted text, and names are cleaned without ever overwriting. The agent is told where the file is (after the caption) and reads it with `workspace_read`. Adds `workspace.uploads` and `maxUploadBytes`, plus notices for files that are too large, unsupported, or arrive when files are off. `extractText` is exported from `@entrogic-net/knowledge` (docs/24, docs/11).
 
 - **Session titles:** each session stores its first user message (whitespace collapsed, at most 80 characters) as `title`. It appears in every session JSON (`/v1/sessions`, handoffs and admin, an additive `/v1` field) and in the typed client, and `q` / `query` also searches it. Migration `0005_session_titles` backfills existing sessions. The web chat sidebar no longer fetches messages per session, the dashboard shows a Conversation column, and the TUI session picker uses it (docs/06).

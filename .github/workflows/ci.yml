@@ -44,3 +44,26 @@ jobs:
         run: pnpm verify:pack
       - name: Dependency audit (high and critical)
         run: pnpm audit --audit-level high
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @entrogic-net/e2e exec playwright install --with-deps chromium
+      - name: Browser tests (web chat, widget, dashboard)
+        run: pnpm e2e
+      - name: Upload the Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 7

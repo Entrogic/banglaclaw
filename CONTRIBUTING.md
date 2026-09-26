@@ -24,7 +24,9 @@ TEST_DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw_te
 TEST_QDRANT_URL=http://localhost:56333 pnpm test    # include integration tests
 ```
 
-CI runs the same checks plus the npm pack smoke test (`pnpm verify:pack`) and `pnpm audit --audit-level high`.
+For UI changes (web chat, widget, dashboard), also run the browser tests: `pnpm e2e` (see [docs/19](docs/19-development.md#browser-tests)).
+
+CI runs the same checks plus the browser tests, the npm pack smoke test (`pnpm verify:pack`) and `pnpm audit --audit-level high`.
 
 ## Changesets
 

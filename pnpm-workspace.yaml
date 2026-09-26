@@ -3,6 +3,7 @@ packages:
   - "packages/*"
   - "mcp-servers/*"
   - "examples/plugins/*"
+  - "e2e"
 
 allowBuilds:
   esbuild: true

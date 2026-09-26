@@ -78,7 +78,25 @@ Workspace packages export `src/index.ts` under the `@banglaclaw/source` conditio
 
 ## CI and releases
 
-`.github/workflows/ci.yml` runs lint, typecheck, tests (with PostgreSQL and Qdrant services), build, the npm pack smoke test and `pnpm audit --audit-level high` on every push and pull request. Contribution rules are in `CONTRIBUTING.md`.
+`.github/workflows/ci.yml` runs lint, typecheck, tests (with PostgreSQL and Qdrant services), build, the npm pack smoke test and `pnpm audit --audit-level high` on every push and pull request, and the Playwright browser tests in a second job. Contribution rules are in `CONTRIBUTING.md`.
+
+## Browser tests
+
+`e2e/` (`@entrogic-net/e2e`, private) runs Playwright against a real gateway (`e2e/src/server.ts`). The gateway uses memory storage and a rule-based fake model: "25 * 4" style questions call the calculator, and anything else is echoed. Because answers depend on the message rather than on call order, tests can run in parallel. The same gateway serves the web chat, the website widget (embedded by a host page on `localhost` while the gateway is `127.0.0.1`, so the frame really is cross-origin) and the built dashboard.
+
+```bash
+pnpm build                                                      # the dashboard tests need apps/dashboard/dist
+pnpm --filter @entrogic-net/e2e exec playwright install chromium   # once
+pnpm e2e                                                        # desktop + mobile projects
+PW_CHANNEL=chrome pnpm e2e                                      # use an installed Chrome instead
+```
+
+The tests cover:
+- web chat: connect, a streamed markdown reply with a folded tool card, the session title in the header and sidebar, history after reload, `/new`, slash commands and the theme;
+- widget: bubble → iframe on a customer site, the reply without tool details, closing from the frame, the conversation kept across reloads, and the `frame-ancestors` header;
+- dashboard: sign-in, analytics, sessions searched by title, the session detail, and the theme toggle.
+
+CI runs them in a separate `e2e` job and uploads the Playwright report when they fail. Keys are written to `e2e/.state.json` (git-ignored) when the server starts.
 
 ## Releasing
 

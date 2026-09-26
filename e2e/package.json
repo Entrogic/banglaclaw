@@ -1,0 +1,26 @@
+{
+  "name": "@entrogic-net/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser tests (Playwright) for the web chat, website widget and admin dashboard",
+  "scripts": {
+    "e2e": "playwright test",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@entrogic-net/agent": "workspace:*",
+    "@entrogic-net/auth": "workspace:*",
+    "@entrogic-net/gateway": "workspace:*",
+    "@entrogic-net/providers": "workspace:*",
+    "@entrogic-net/session": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
+    "@entrogic-net/skills": "workspace:*",
+    "@entrogic-net/tools": "workspace:*",
+    "@langchain/core": "^1.2.12",
+    "@playwright/test": "1.63.0",
+    "hono": "^4.13.9",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.5"
+  }
+}
