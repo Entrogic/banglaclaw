@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import type { BanglaClawClient, Me } from "@banglaclaw/client";
 import { errorMessage, verifyAdmin } from "../api";
+import { ThemeToggle } from "../theme";
 
 export function Login({ makeClient, onSignedIn }: { makeClient: (key: string) => BanglaClawClient; onSignedIn: (key: string, client: BanglaClawClient, me: Me) => void }) {
   const [key, setKey] = useState("");
@@ -44,6 +45,7 @@ export function Login({ makeClient, onSignedIn }: { makeClient: (key: string) =>
         </button>
         <p className="muted small">The key is kept in this tab only and is cleared when you close it.</p>
       </form>
+      <ThemeToggle />
     </main>
   );
 }

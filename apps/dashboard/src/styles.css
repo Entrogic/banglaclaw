@@ -1,75 +1,46 @@
+/*
+ * Theme: every colour token is a light-dark() pair. `color-scheme` picks the side:
+ * the OS preference by default, or data-theme="light|dark" on <html> (src/theme.ts).
+ * The same palette is used by the web chat (packages/gateway/src/web-chat.ts).
+ */
 :root {
+  color-scheme: light dark;
+  --page: light-dark(#f7f6f2, #0e1512);
+  --surface: light-dark(#ffffff, #151f1a);
+  --surface-2: light-dark(#efede6, #1c2822);
+  --text: light-dark(#15201b, #e7ece9);
+  --text-2: light-dark(#3d4a44, #c2ccc7);
+  --muted: light-dark(#5f6b65, #8d9a93);
+  --grid: light-dark(#e6e4dc, #22302a);
+  --axis: light-dark(#c9c7bc, #33443c);
+  --border: light-dark(rgba(21, 32, 27, 0.1), rgba(231, 236, 233, 0.1));
+  --accent: light-dark(#0b6b4f, #34b58a);
+  --accent-strong: light-dark(#085a42, #4cc79d);
+  --on-accent: light-dark(#ffffff, #06140f);
+  --accent-text: light-dark(#0a5c44, #5fd3a8);
+  --brand-red: #d42c39;
+  --series-1: light-dark(#0b6b4f, #34b58a);
+  --series-2: light-dark(#d98a1c, #e6a64a);
+  --critical: light-dark(#c62f3a, #f0616b);
+  --critical-text: light-dark(#b42f2f, #f28b8b);
+  --good-text: light-dark(#0b6b4f, #5fd3a8);
+  --warning-text: light-dark(#8a5a00, #e0b25a);
+  --good-wash: light-dark(rgba(11, 107, 79, 0.1), rgba(52, 181, 138, 0.14));
+  --warning-wash: light-dark(rgba(217, 138, 28, 0.14), rgba(230, 166, 74, 0.14));
+  --critical-wash: light-dark(rgba(198, 47, 58, 0.1), rgba(240, 97, 107, 0.14));
+  --wash: light-dark(rgba(11, 107, 79, 0.07), rgba(52, 181, 138, 0.12));
+  --shadow-color: light-dark(rgba(21, 32, 27, 0.06), rgba(0, 0, 0, 0.3));
+  --shadow: 0 1px 2px var(--shadow-color), 0 4px 12px -6px var(--shadow-color);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font: "Inter", "Noto Sans Bengali", system-ui, -apple-system, "Segoe UI", "Hind Siliguri", sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+:root[data-theme="light"] {
   color-scheme: light;
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-2: #f0efec;
-  --text: #0b0b0b;
-  --text-2: #52514e;
-  --muted: #6f6d68;
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --accent: #2a78d6;
-  --accent-text: #1c5cab;
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --critical: #d03b3b;
-  --critical-text: #b42f2f;
-  --good-text: #006300;
-  --warning-text: #8a5a00;
-  --wash: rgba(42, 120, 214, 0.08);
-  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04);
-  --radius: 10px;
-  --font: system-ui, -apple-system, "Segoe UI", "Noto Sans Bengali", "Hind Siliguri", sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-2: #232322;
-    --text: #ffffff;
-    --text-2: #c3c2b7;
-    --muted: #9b9990;
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --border: rgba(255, 255, 255, 0.1);
-    --accent: #3987e5;
-    --accent-text: #86b6ef;
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --critical: #d03b3b;
-    --critical-text: #ee8a8a;
-    --good-text: #0ca30c;
-    --warning-text: #fab219;
-    --wash: rgba(57, 135, 229, 0.14);
-    --shadow: none;
-  }
-}
-
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-2: #232322;
-  --text: #ffffff;
-  --text-2: #c3c2b7;
-  --muted: #9b9990;
-  --grid: #2c2c2a;
-  --axis: #383835;
-  --border: rgba(255, 255, 255, 0.1);
-  --accent: #3987e5;
-  --accent-text: #86b6ef;
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --critical: #d03b3b;
-  --critical-text: #ee8a8a;
-  --good-text: #0ca30c;
-  --warning-text: #fab219;
-  --wash: rgba(57, 135, 229, 0.14);
-  --shadow: none;
 }
 
 * {
@@ -80,8 +51,9 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--text);
-  font: 14px/1.5 var(--font);
+  font: 14px/1.55 var(--font);
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
 }
 
 h1,
@@ -90,12 +62,13 @@ h3 {
   margin: 0;
   font-weight: 600;
   line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 h1 {
-  font-size: 20px;
+  font-size: 22px;
 }
 h2 {
-  font-size: 18px;
+  font-size: 20px;
 }
 h3 {
   font-size: 14px;
@@ -158,59 +131,91 @@ a:hover {
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   padding: 0 24px;
-  height: 56px;
-  background: var(--surface);
+  height: 60px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
   border-bottom: 1px solid var(--border);
 }
 .brand {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
+  gap: 10px;
+  font-weight: 650;
+  font-size: 15px;
   white-space: nowrap;
 }
+.brand .muted {
+  font-weight: 500;
+  font-size: 12px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+/* A tiny flag: green field, red disc set towards the hoist. */
 .brand-mark {
+  position: relative;
   display: inline-block;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  background: var(--accent);
-  vertical-align: -2px;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #0b6b4f;
+  vertical-align: -5px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.brand-mark::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 45%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand-red);
+  transform: translate(-50%, -50%);
 }
 .topbar nav {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 2px;
   height: 100%;
 }
 .topbar nav a {
   display: flex;
   align-items: center;
+  height: 34px;
   padding: 0 12px;
+  border-radius: 999px;
   color: var(--text-2);
-  border-bottom: 2px solid transparent;
+  font-weight: 500;
   text-decoration: none;
+  transition:
+    background 0.12s,
+    color 0.12s;
 }
 .topbar nav a:hover {
   color: var(--text);
+  background: var(--surface-2);
 }
 .topbar nav a.active {
-  color: var(--text);
-  border-bottom-color: var(--accent);
-  font-weight: 500;
+  color: var(--accent-text);
+  background: var(--wash);
+  font-weight: 600;
 }
 .who {
   white-space: nowrap;
+  font-size: 13px;
 }
 
 .content {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 28px 24px 48px;
 }
 .page-title {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .crumbs {
   margin: 0 0 12px;
@@ -229,12 +234,12 @@ a:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 16px;
+  padding: 20px;
   margin-bottom: 16px;
   min-width: 0;
 }
 .card > h3 {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 .card.flush {
   padding: 0;
@@ -282,15 +287,20 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
-  padding: 0 12px;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font: inherit;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
 }
 .button:hover:not(:disabled) {
   background: var(--surface-2);
@@ -302,11 +312,11 @@ a:hover {
 .button.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 .button.primary:hover:not(:disabled) {
-  background: var(--accent);
-  filter: brightness(1.08);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
 }
 .button.ghost {
   border-color: transparent;
@@ -318,16 +328,29 @@ a:hover {
 .button.danger:not(.ghost) {
   border-color: var(--critical);
 }
+.button.danger:hover:not(:disabled) {
+  background: var(--critical-wash);
+}
 
 input,
 select {
-  height: 32px;
-  padding: 0 10px;
+  height: 34px;
+  padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font: inherit;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--wash);
+  outline: none;
 }
 input[type="checkbox"] {
   height: auto;
@@ -341,37 +364,45 @@ input[type="checkbox"] {
 
 .segmented {
   display: inline-flex;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--surface);
+  border-radius: 10px;
+  background: var(--surface-2);
 }
 .segmented button {
-  height: 30px;
+  height: 28px;
   padding: 0 12px;
   border: 0;
+  border-radius: 7px;
   background: transparent;
   color: var(--text-2);
   font: inherit;
+  font-weight: 500;
   cursor: pointer;
 }
-.segmented button + button {
-  border-left: 1px solid var(--border);
-}
 .segmented button:hover {
-  background: var(--wash);
+  color: var(--text);
 }
 .segmented button[aria-pressed="true"] {
-  background: var(--surface-2);
+  background: var(--surface);
   color: var(--text);
   font-weight: 600;
+  box-shadow: 0 1px 2px var(--shadow-color);
+}
+.theme-toggle button {
+  width: 30px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
   font-size: 12px;
+  font-weight: 500;
   color: var(--text-2);
   border: 0;
   padding: 0;
@@ -381,7 +412,7 @@ fieldset.field {
   flex-direction: row;
   align-items: center;
   gap: 12px;
-  height: 32px;
+  height: 34px;
   align-self: flex-end;
 }
 fieldset.field legend {
@@ -391,6 +422,7 @@ fieldset.field legend {
 .field input,
 .field select {
   font-size: 14px;
+  font-weight: 400;
 }
 .check {
   display: inline-flex;
@@ -415,25 +447,38 @@ fieldset.field legend {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 16px;
   margin-bottom: 16px;
 }
 .stat {
+  position: relative;
+  overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 14px 16px;
+  padding: 16px 18px;
+}
+.stat::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent);
+  opacity: 0.7;
 }
 .stat-label {
   color: var(--text-2);
   font-size: 12px;
+  font-weight: 500;
 }
 .stat-value {
-  font-size: 26px;
-  font-weight: 600;
-  margin-top: 2px;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
 .stat-sub {
   color: var(--muted);
@@ -451,7 +496,7 @@ fieldset.field legend {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .legend {
   display: flex;
@@ -470,7 +515,7 @@ fieldset.field legend {
 .swatch {
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 .chart-plot {
   position: relative;
@@ -507,8 +552,8 @@ fieldset.field legend {
   padding: 8px 10px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.25);
   font-size: 12px;
   pointer-events: none;
 }
@@ -560,7 +605,7 @@ fieldset.field legend {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 .barlist li {
   display: grid;
@@ -588,8 +633,8 @@ fieldset.field legend {
   gap: 8px;
 }
 .barlist-fill {
-  height: 12px;
-  border-radius: 0 4px 4px 0;
+  height: 10px;
+  border-radius: 0 5px 5px 0;
   background: var(--series-1);
 }
 .barlist-value {
@@ -607,15 +652,26 @@ fieldset.field legend {
 }
 .table th {
   text-align: left;
-  font-weight: 500;
-  font-size: 12px;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--muted);
   padding: 10px 16px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
+.card.flush .table th {
+  background: var(--surface-2);
+}
+.card.flush .table thead tr:first-child th:first-child {
+  border-top-left-radius: calc(var(--radius) - 1px);
+}
+.card.flush .table thead tr:first-child th:last-child {
+  border-top-right-radius: calc(var(--radius) - 1px);
+}
 .table td {
-  padding: 10px 16px;
+  padding: 11px 16px;
   border-bottom: 1px solid var(--grid);
   vertical-align: middle;
 }
@@ -639,8 +695,11 @@ fieldset.field legend {
 }
 .table.compact td,
 .table.compact th {
-  padding: 4px 8px 4px 0;
+  padding: 5px 8px 5px 0;
   font-size: 12px;
+}
+.table.compact th {
+  background: none;
 }
 .table tr.revoked td {
   color: var(--muted);
@@ -665,21 +724,25 @@ fieldset.field legend {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 1px 8px;
+  padding: 2px 9px;
   border-radius: 999px;
   font-size: 12px;
+  font-weight: 500;
   background: var(--surface-2);
   color: var(--text-2);
   white-space: nowrap;
 }
 .badge.good {
   color: var(--good-text);
+  background: var(--good-wash);
 }
 .badge.warning {
   color: var(--warning-text);
+  background: var(--warning-wash);
 }
 .badge.critical {
   color: var(--critical-text);
+  background: var(--critical-wash);
 }
 
 /* Session detail */
@@ -692,7 +755,7 @@ fieldset.field legend {
 dl {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 4px 16px;
+  gap: 6px 16px;
   margin: 0;
 }
 dt {
@@ -711,26 +774,39 @@ dd {
   gap: 10px;
 }
 .msg {
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
   background: var(--surface-2);
+  max-width: 92%;
+  justify-self: start;
 }
 .msg.user {
+  justify-self: end;
   background: var(--wash);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-bottom-right-radius: 4px;
+}
+.msg.assistant {
+  border-bottom-left-radius: 4px;
 }
 .msg.tool {
+  max-width: 100%;
+  justify-self: stretch;
   font-size: 12.5px;
   color: var(--text-2);
+  background: transparent;
+  border: 1px dashed var(--border);
 }
 .msg.operator {
-  border-left: 3px solid var(--series-2);
+  border-left: 3px solid var(--brand-red);
+  border-bottom-left-radius: 4px;
 }
 .msg-role {
   font-size: 11px;
   font-weight: 600;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   margin-bottom: 2px;
 }
 .msg-body {
@@ -783,7 +859,8 @@ dd {
 /* Key issuance */
 
 .notice {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: linear-gradient(var(--wash), var(--wash)), var(--surface);
 }
 .token-row {
   display: flex;
@@ -795,9 +872,10 @@ dd {
 .token {
   flex: 1;
   min-width: 0;
-  padding: 6px 10px;
+  padding: 7px 10px;
   border-radius: 6px;
-  background: var(--surface-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
   font-family: var(--mono);
   font-size: 12.5px;
   overflow-wrap: anywhere;
@@ -808,20 +886,27 @@ dd {
 
 .login {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 85dvh;
   padding: 12vh 16px 32px;
+  background:
+    radial-gradient(60rem 30rem at 50% -10%, var(--wash), transparent 70%),
+    var(--page);
 }
 .login-card {
   width: 100%;
   max-width: 420px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+  padding: 28px;
 }
 .login-card h1 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 .login-card p {
   margin: 0;
@@ -830,8 +915,9 @@ dd {
   margin: 0;
   padding: 10px 16px;
   text-align: center;
-  background: var(--surface-2);
-  color: var(--text-2);
+  background: var(--warning-wash);
+  color: var(--warning-text);
+  font-weight: 500;
 }
 
 @media (max-width: 960px) {
@@ -847,21 +933,24 @@ dd {
 @media (max-width: 640px) {
   .topbar {
     gap: 8px;
-    padding: 0 16px;
+    padding: 8px 16px 0;
     height: auto;
     flex-wrap: wrap;
-    padding-top: 8px;
   }
   .topbar nav {
     order: 3;
     width: 100%;
-    height: 40px;
+    height: 44px;
   }
-  .who {
+  .who,
+  .brand .muted {
     display: none;
   }
+  .topbar .button.ghost {
+    padding: 0 8px;
+  }
   .content {
-    padding: 16px;
+    padding: 20px 16px 40px;
   }
 }
 
@@ -880,10 +969,10 @@ dd {
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: var(--accent);
+  background: var(--brand-red);
   color: #fff;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 18px;
   text-align: center;
 }
@@ -907,11 +996,14 @@ dd {
 .queue-list li {
   border-top: 1px solid var(--grid);
 }
+.queue-list li:first-child {
+  border-top: 0;
+}
 .queue-list a {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 16px;
+  padding: 12px 16px;
   color: var(--text);
   text-decoration: none;
 }
@@ -920,7 +1012,7 @@ dd {
 }
 .queue-list li.active a {
   background: var(--wash);
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: inset 3px 0 0 var(--brand-red);
 }
 .queue-top {
   display: flex;
@@ -956,12 +1048,12 @@ dd {
 }
 textarea {
   width: 100%;
-  padding: 8px 10px;
+  padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
-  font: 14px/1.5 var(--font);
+  font: 14px/1.55 var(--font);
   resize: vertical;
 }
 .reply-actions {
@@ -989,9 +1081,10 @@ textarea {
   gap: 12px;
 }
 .skill {
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--page);
 }
 .skill p {
   margin: 6px 0;
@@ -1014,9 +1107,9 @@ textarea {
 .chips li {
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: var(--wash);
   font-size: 12px;
-  color: var(--text-2);
+  color: var(--accent-text);
 }
 
 /* Knowledge and audit */
@@ -1029,9 +1122,10 @@ textarea {
   gap: 10px;
 }
 .hits li {
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--page);
 }
 .hit-head {
   display: flex;

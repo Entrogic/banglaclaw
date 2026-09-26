@@ -94,7 +94,7 @@ voice:
 
 ## Web
 
-`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. It's intended for developers and internal users. A public, anonymous website widget needs a separate visitor-auth model and is planned.
+`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. It follows the OS light/dark preference, and a header button overrides it (saved in localStorage). It's intended for developers and internal users. A public, anonymous website widget needs a separate visitor-auth model and is planned.
 
 ## Configuration
 

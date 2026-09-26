@@ -172,4 +172,16 @@ describe("dashboard", () => {
     expect(row?.textContent).toContain("Denied");
     expect(row?.textContent).toContain("reason=not allowed");
   });
+
+  it("switches and remembers the colour theme", () => {
+    localStorage.clear();
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Dark theme" }));
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(screen.getByRole("button", { name: "Dark theme" }).getAttribute("aria-pressed")).toBe("true");
+    expect(localStorage.getItem("banglaclaw.admin.theme")).toBe("dark");
+    fireEvent.click(screen.getByRole("button", { name: "System theme" }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(localStorage.getItem("banglaclaw.admin.theme")).toBeNull();
+  });
 });

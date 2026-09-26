@@ -13,6 +13,7 @@ import { Overview } from "./pages/Overview";
 import { SessionDetail } from "./pages/SessionDetail";
 import { Sessions } from "./pages/Sessions";
 import { Link, usePath } from "./router";
+import { ThemeToggle } from "./theme";
 
 type State = { phase: "checking" } | { phase: "signed-out"; notice?: string } | { phase: "signed-in"; client: BanglaClawClient; me: Me };
 
@@ -144,6 +145,7 @@ function Header({ current }: { current: string }) {
       <span className="muted small who" title={`Key ${me.key.name} (${me.key.id})`}>
         {me.user.name}
       </span>
+      <ThemeToggle />
       <button className="button ghost" type="button" onClick={signOut}>
         Sign out
       </button>

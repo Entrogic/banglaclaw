@@ -34,6 +34,25 @@ export const c = {
   gray: paint("gray"),
 };
 
+/**
+ * Ink colours for the chat UI (src/tui), matching the dashboard and web chat palette. `ink()` returns
+ * undefined while colour is off, so `--no-color` and NO_COLOR reach Ink as plain text.
+ */
+export const palette = {
+  brand: "#1f9d74",
+  accent: "#e5484d",
+  agent: "magenta",
+  pending: "cyan",
+  ok: "gray",
+  warn: "yellow",
+  error: "red",
+  muted: "gray",
+} as const;
+
+export function ink(name: keyof typeof palette): string | undefined {
+  return enabled ? palette[name] : undefined;
+}
+
 export const sym = {
   ok: "✔",
   warn: "!",

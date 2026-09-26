@@ -2,6 +2,7 @@ import { Box, Static, Text, useApp, useInput, useStdout } from "ink";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@banglaclaw/session";
 import type { RuntimeBundle } from "../bootstrap.js";
+import { ink, sym } from "../ui/theme.js";
 import { VERSION } from "../version.js";
 import { appendHistory, loadHistory } from "./history.js";
 import { renderMarkdown } from "./markdown.js";
@@ -45,17 +46,26 @@ function Banner({ bundle, session }: { bundle: RuntimeBundle; session: Session }
   ].filter(Boolean);
   return (
     // Horizontal rules only: terminals render Bengali conjuncts at varying widths, so vertical box edges would drift.
-    <Box flexDirection="column" borderStyle="single" borderColor="cyan" borderLeft={false} borderRight={false} marginBottom={1}>
+    <Box flexDirection="column" borderStyle="round" borderColor={ink("brand")} borderLeft={false} borderRight={false} marginBottom={1}>
       <Text>
-        <Text bold>🐾 BanglaClaw</Text>
-        <Text dimColor> {VERSION}</Text>
+        <Text bold color={ink("brand")}>
+          {sym.paw} BanglaClaw
+        </Text>
+        <Text dimColor> v{VERSION}</Text>
       </Text>
-      <Text dimColor>
-        {bundle.providerId} · {bundle.services.persistent ? "postgres" : "memory"} storage · session {session.id.slice(0, 8)}
+      <Text>
+        <Text dimColor>provider </Text>
+        {bundle.providerId}
+        <Text dimColor> · storage </Text>
+        {bundle.services.persistent ? "postgres" : "memory"}
+        <Text dimColor> · session </Text>
+        {session.id.slice(0, 8)}
       </Text>
       {extras.length > 0 && <Text dimColor>{extras.join(" · ")}</Text>}
       <Text> </Text>
-      <Text>বাংলা, Banglish বা English-এ লিখুন · type <Text color="cyan">/</Text> for commands</Text>
+      <Text>
+        বাংলা, Banglish বা English-এ লিখুন <Text dimColor>· type</Text> <Text color={ink("brand")} bold>/</Text> <Text dimColor>for commands</Text>
+      </Text>
     </Box>
   );
 }
@@ -67,7 +77,7 @@ function ItemView({ item, width, bundle, session }: { item: Item; width: number;
     case "user":
       return (
         <Box marginTop={1}>
-          <Text color="green" bold>
+          <Text color={ink("brand")} bold>
             ›{" "}
           </Text>
           <Text>{item.text}</Text>
@@ -75,17 +85,22 @@ function ItemView({ item, width, bundle, session }: { item: Item; width: number;
       );
     case "assistant":
       return (
-        <Box flexDirection="column" marginTop={1} paddingLeft={2}>
-          {item.agent !== "supervisor" && <Text color="magenta">{item.agent}</Text>}
+        // Left rule only: a right edge would drift on Bengali conjuncts (see Banner).
+        <Box flexDirection="column" marginTop={1} marginLeft={1} paddingLeft={1} borderStyle="bold" borderColor={ink("brand")} borderTop={false} borderRight={false} borderBottom={false}>
+          {item.agent !== "supervisor" && (
+            <Text color={ink("agent")} bold>
+              {item.agent}
+            </Text>
+          )}
           <Text>{renderMarkdown(item.text, Math.max(20, width - 4))}</Text>
         </Box>
       );
     case "tool": {
-      const color = item.status === undefined ? "cyan" : item.status === "ok" ? "gray" : "yellow";
+      const color = ink(item.status === undefined ? "pending" : item.status === "ok" ? "ok" : "warn");
       return (
         <Box paddingLeft={2}>
           <Text color={color}>
-            ⚙ {item.tool}
+            {sym.tool} {item.tool}
             <Text dimColor>({toolArgs(item.input)})</Text>
             {item.status === undefined ? <Text dimColor> …</Text> : item.status === "ok" ? <Text dimColor> → {toolResult(item.output)} · {item.ms}ms</Text> : <Text> → {item.status}: {short(item.error ?? "", 80)}</Text>}
           </Text>
@@ -95,13 +110,15 @@ function ItemView({ item, width, bundle, session }: { item: Item; width: number;
     case "transfer":
       return (
         <Box paddingLeft={2}>
-          <Text color="magenta">↪ {item.to}</Text>
+          <Text color={ink("agent")}>
+            {sym.transfer} {item.to}
+          </Text>
         </Box>
       );
     case "handoff":
       return (
-        <Box marginTop={1} marginLeft={2} borderStyle="single" borderColor="yellow" borderLeft={false} borderRight={false}>
-          <Text color="yellow">{item.pending ? "⏳ A human operator owns this conversation — the bot will not reply." : `👤 Handed to a human: ${item.reason}`}</Text>
+        <Box marginTop={1} marginLeft={2} borderStyle="round" borderColor={ink("accent")} borderLeft={false} borderRight={false}>
+          <Text color={ink("accent")}>{item.pending ? "⏳ A human operator owns this conversation — the bot will not reply." : `👤 Handed to a human: ${item.reason}`}</Text>
         </Box>
       );
     case "info":
@@ -118,7 +135,9 @@ function ItemView({ item, width, bundle, session }: { item: Item; width: number;
     case "error":
       return (
         <Box paddingLeft={2}>
-          <Text color="red">✖ {item.text}</Text>
+          <Text color={ink("error")}>
+            {sym.fail} {item.text}
+          </Text>
         </Box>
       );
   }
@@ -132,14 +151,16 @@ function StatusBar({ running, activity, startedAt, last, agent, session, notice 
     return () => clearInterval(t);
   }, [running]);
   const left = running ? (
-    <Text color="cyan">
+    <Text color={ink("brand")}>
       {SPINNER[frame % SPINNER.length]} {activity} <Text dimColor>{((Date.now() - startedAt) / 1000).toFixed(1)}s · Esc to cancel</Text>
     </Text>
   ) : last !== undefined ? (
     <Text dimColor>
-      <Text color={last.status === "completed" ? "green" : last.status === "error" ? "red" : "yellow"}>{last.status === "completed" ? "✔" : "•"} {last.status}</Text>
+      <Text color={ink(last.status === "completed" ? "brand" : last.status === "error" ? "error" : "warn")}>
+        {last.status === "completed" ? sym.ok : sym.bullet} {last.status}
+      </Text>
       {" · "}
-      {last.agentPath.join(" ↪ ")} · {last.seconds.toFixed(1)}s{last.tools > 0 ? ` · ${last.tools} tool${last.tools === 1 ? "" : "s"}` : ""}
+      {last.agentPath.join(` ${sym.transfer} `)} · {last.seconds.toFixed(1)}s{last.tools > 0 ? ` · ${last.tools} tool${last.tools === 1 ? "" : "s"}` : ""}
       {last.tokens !== undefined ? ` · ${last.tokens.input}→${last.tokens.output} tokens` : ""}
     </Text>
   ) : (
@@ -147,10 +168,16 @@ function StatusBar({ running, activity, startedAt, last, agent, session, notice 
   );
   return (
     <Box justifyContent="space-between">
-      {notice !== undefined ? <Text color="yellow">{notice}</Text> : left}
-      <Text dimColor>
-        {session.status === "handoff" ? <Text color="yellow">handoff · </Text> : null}
-        agent {agent} · {session.id.slice(0, 8)}
+      {notice !== undefined ? <Text color={ink("warn")}>{notice}</Text> : left}
+      <Text>
+        {session.status === "handoff" ? (
+          <Text color={ink("accent")} bold inverse>
+            {" handoff "}
+          </Text>
+        ) : null}
+        <Text dimColor>
+          {session.status === "handoff" ? " · " : ""}agent <Text bold>{agent}</Text> · {session.id.slice(0, 8)}
+        </Text>
       </Text>
     </Box>
   );
@@ -163,8 +190,8 @@ function InputBox({ value, cursor, disabled }: { value: string; cursor: number; 
   const after = chars.slice(cursor + 1).join("");
   const placeholder = value === "" && !disabled;
   return (
-    <Box borderStyle="single" borderColor={disabled ? "gray" : "green"} borderLeft={false} borderRight={false}>
-      <Text color="green" bold>
+    <Box borderStyle="round" borderColor={ink(disabled ? "muted" : "brand")} borderLeft={false} borderRight={false}>
+      <Text color={ink("brand")} bold>
         ›{" "}
       </Text>
       {placeholder ? (
@@ -188,7 +215,7 @@ function SlashMenu({ matches, selected }: { matches: typeof SLASH_COMMANDS; sele
   return (
     <Box flexDirection="column" paddingX={2}>
       {matches.map((c, i) => (
-        <Text key={c.name} {...(i === selected ? { color: "cyan" } : { dimColor: true })}>
+        <Text key={c.name} {...(i === selected ? { color: ink("brand"), bold: true } : { dimColor: true })}>
           {i === selected ? "▸ " : "  "}
           {c.name.padEnd(10)} {c.description}
         </Text>
@@ -333,7 +360,9 @@ export function App({ bundle, initial, onExit }: AppProps) {
         {menuOpen && <SlashMenu matches={matches} selected={selected} />}
         <Box paddingX={1} flexDirection="column">
           <StatusBar running={chat.running} activity={chat.activity} startedAt={chat.startedAt} last={chat.last} agent={chat.agent} session={chat.session} notice={notice} />
-          <Text dimColor>Enter send · Alt+Enter newline · ↑↓ history · / commands · Ctrl+C twice quit</Text>
+          <Text dimColor>
+            <Text bold>Enter</Text> send · <Text bold>Alt+Enter</Text> newline · <Text bold>↑↓</Text> history · <Text bold>/</Text> commands · <Text bold>Ctrl+C</Text> twice quit
+          </Text>
         </Box>
       </Box>
     </Box>
