@@ -1,0 +1,33 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Dhaka
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      langchain:
+        patterns: ["@langchain/*", "langchain"]
+      opentelemetry:
+        patterns: ["@opentelemetry/*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      dev-tooling:
+        dependency-type: development
+        patterns: ["eslint*", "typescript-eslint", "vitest", "vite", "@vitejs/*", "tsx", "turbo", "@types/*"]
+    ignore:
+      # Pinned to 6.x until typescript-eslint supports TypeScript 7 (see CLAUDE.md).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Asia/Dhaka
+    commit-message:
+      prefix: "chore(ci)"
