@@ -1,5 +1,14 @@
 # @entrogic-net/channels
 
+## 1.6.0
+
+### Patch Changes
+
+- Updated dependencies [a56d648]
+  - @entrogic-net/session@1.6.0
+  - @entrogic-net/shared@1.6.0
+  - @entrogic-net/agent@1.6.0
+
 ## 1.5.0
 
 ### Minor Changes

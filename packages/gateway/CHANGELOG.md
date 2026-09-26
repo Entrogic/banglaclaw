@@ -1,5 +1,22 @@
 # @entrogic-net/gateway
 
+## 1.6.0
+
+### Minor Changes
+
+- a56d648: Web chat: a Files tab over your workspace (preview, download, history, restore, delete with undo), 📎 file uploads, conversation search/rename/delete, Copy/Retry/Edit message actions, and a 🎤 microphone. New additive API: `/v1/features`, `/v1/workspace/*`, `/v1/transcriptions`, and `PATCH`/`DELETE /v1/sessions/:id`, all in the typed client.
+
+### Patch Changes
+
+- Updated dependencies [a56d648]
+  - @entrogic-net/session@1.6.0
+  - @entrogic-net/shared@1.6.0
+  - @entrogic-net/agent@1.6.0
+  - @entrogic-net/knowledge@1.6.0
+  - @entrogic-net/auth@1.6.0
+  - @entrogic-net/skills@1.6.0
+  - @entrogic-net/tools@1.6.0
+
 ## 1.5.0
 
 ### Minor Changes

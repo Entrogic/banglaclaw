@@ -1,6 +1,6 @@
 {
   "name": "@entrogic-net/agent",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "LangGraph agent runtime for BanglaClaw: runs, limits, streaming events and multi-agent teams",
   "keywords": [
     "banglaclaw",
