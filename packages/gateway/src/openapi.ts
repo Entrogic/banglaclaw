@@ -124,7 +124,7 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
         Session: {
           type: "object",
           required: ["id", "channel", "agentId", "status", "createdAt", "updatedAt"],
-          properties: { id: str, channel: str, agentId: str, status: { enum: ["active", "handoff"] }, activeAgent: str, handoffReason: str, handoffAt: time, externalId: str, createdAt: time, updatedAt: time },
+          properties: { id: str, channel: str, agentId: str, title: { type: "string", description: "From the first user message (at most 80 characters)" }, status: { enum: ["active", "handoff"] }, activeAgent: str, handoffReason: str, handoffAt: time, externalId: str, createdAt: time, updatedAt: time },
         },
         SessionEvent: {
           oneOf: [

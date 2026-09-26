@@ -38,7 +38,7 @@ export function Sessions() {
   return (
     <>
       <div className="toolbar">
-        <input className="search" type="search" placeholder="Search by session id or external id" value={input} onChange={(e) => setInput(e.target.value)} aria-label="Search sessions" />
+        <input className="search" type="search" placeholder="Search by title, session id or external id" value={input} onChange={(e) => setInput(e.target.value)} aria-label="Search sessions" />
         <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label="Status">
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -64,6 +64,7 @@ export function Sessions() {
             <thead>
               <tr>
                 <th>Session</th>
+                <th>Conversation</th>
                 <th>Channel</th>
                 <th>External id</th>
                 <th>User</th>
@@ -79,6 +80,9 @@ export function Sessions() {
                     <Link to={`/sessions/${s.id}`} title={s.id}>
                       {shortId(s.id)}
                     </Link>
+                  </td>
+                  <td className="truncate" title={s.title}>
+                    {s.title ?? <span className="muted">—</span>}
                   </td>
                   <td>{s.channel}</td>
                   <td className="mono truncate" title={s.externalId}>

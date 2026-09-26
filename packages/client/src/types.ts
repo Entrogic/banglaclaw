@@ -7,6 +7,8 @@ export interface Session {
   id: string;
   channel: string;
   agentId: string;
+  /** From the first user message (at most 80 characters). */
+  title?: string;
   status: "active" | "handoff";
   activeAgent?: string;
   handoffReason?: string;

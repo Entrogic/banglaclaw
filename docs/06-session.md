@@ -11,6 +11,7 @@ interface Session {
   externalId?: string;   // channel-native conversation id (Telegram chat id, …)
   userId?: string;
   agentId: string;
+  title?: string;                  // first user message, at most 80 characters (1.4)
   status: "active" | "handoff";   // handoff: a human operator owns the conversation (v0.7)
   activeAgent?: string;            // specialist answering the next message (v0.7)
   handoffReason?: string;
@@ -20,7 +21,7 @@ interface Session {
 }
 ```
 
-`SessionStore.update(id, { status, activeAgent, handoffReason })` changes routing and handoff state. `HandoffDesk` (`packages/session/src/handoff.ts`) implements the operator queue: `queue`, `get`, `reply` and `release`.
+`SessionStore.update(id, { status, activeAgent, handoffReason })` changes routing and handoff state. `title` is set by the store in `appendMessages` from the first user message (`titleFromMessages`: whitespace collapsed, capped at 80 characters) and never overwritten. `list({ query })` also matches it. Sessions stored before 1.4 got titles from migration `0005_session_titles`. `HandoffDesk` (`packages/session/src/handoff.ts`) implements the operator queue: `queue`, `get`, `reply` and `release`.
 
 ## Stores
 

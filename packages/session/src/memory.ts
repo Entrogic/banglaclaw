@@ -3,6 +3,7 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { RunRecord, RunStats, RunStore, StatsQuery } from "./run.js";
 import { computeStats } from "./stats.js";
 import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "./session.js";
+import { titleFromMessages } from "./title.js";
 
 /** Process-local session store (storage.provider: memory). */
 export class InMemorySessionStore implements SessionStore {
@@ -35,7 +36,7 @@ export class InMemorySessionStore implements SessionStore {
   async list(options: { limit?: number; channel?: string; userId?: string; status?: SessionStatus; query?: string } = {}): Promise<Session[]> {
     const q = options.query?.trim().toLowerCase();
     return [...this.#sessions.values()]
-      .filter((s) => q === undefined || q === "" || s.id.startsWith(q) || (s.externalId?.toLowerCase().includes(q) ?? false))
+      .filter((s) => q === undefined || q === "" || s.id.startsWith(q) || (s.externalId?.toLowerCase().includes(q) ?? false) || (s.title?.toLowerCase().includes(q) ?? false))
       .filter((s) => options.channel === undefined || s.channel === options.channel)
       .filter((s) => options.status === undefined || s.status === options.status)
       .filter((s) => options.userId === undefined || s.userId === options.userId)
@@ -57,6 +58,10 @@ export class InMemorySessionStore implements SessionStore {
     if (session === undefined || history === undefined) throw new Error(`Unknown session ${sessionId}`);
     history.push(...messages);
     session.updatedAt = new Date();
+    if (session.title === undefined) {
+      const title = titleFromMessages(messages);
+      if (title !== undefined) session.title = title;
+    }
   }
 
   async recentMessages(sessionId: string, limit: number): Promise<BaseMessage[]> {

@@ -37,6 +37,8 @@ export const sessions = pgTable(
     externalId: text("external_id"),
     userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     agentId: text("agent_id").notNull(),
+    /** From the first user message (docs/06). */
+    title: text("title"),
     status: text("status").notNull().default("active"),
     activeAgent: text("active_agent"),
     handoffReason: text("handoff_reason"),

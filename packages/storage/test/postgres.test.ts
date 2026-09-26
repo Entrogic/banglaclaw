@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AgentRuntime } from "@entrogic-net/agent";
@@ -38,6 +39,25 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     const status = await storage.migrationStatus();
     expect(status.applied).toBe(status.available);
     expect(status.available).toBeGreaterThan(0);
+  });
+
+  it("stores the first user message as the title, searchable, and backfills older sessions in the migration", async () => {
+    const session = await storage.sessions.create({ channel: "api", agentId: "banglaclaw" });
+    const run = baseRun(session.id);
+    await storage.runs.save(run);
+    const runId = run.id;
+    await storage.sessions.appendMessages(session.id, runId, [new HumanMessage("  ঢাকার বাইরে   ডেলিভারি চার্জ কত? "), new AIMessage("৳120")]);
+    await storage.sessions.appendMessages(session.id, runId, [new HumanMessage("ar Chattogram?")]);
+    expect((await storage.sessions.get(session.id))?.title).toBe("ঢাকার বাইরে ডেলিভারি চার্জ কত?");
+    expect((await storage.sessions.list({ query: "ডেলিভারি" })).map((s) => s.id)).toEqual([session.id]);
+
+    // Sessions stored before titles existed get one from the migration's backfill statement.
+    await storage.pool.query("UPDATE sessions SET title = NULL");
+    const migration = readFileSync(new URL("../drizzle/0005_session_titles.sql", import.meta.url), "utf8");
+    const backfill = migration.split("--> statement-breakpoint").find((s) => s.includes("UPDATE"));
+    if (backfill === undefined) throw new Error("backfill statement missing");
+    await storage.pool.query(backfill);
+    expect((await storage.sessions.get(session.id))?.title).toBe("ঢাকার বাইরে ডেলিভারি চার্জ কত?");
   });
 
   it("creates, finds and lists sessions", async () => {

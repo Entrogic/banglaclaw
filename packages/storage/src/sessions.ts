@@ -1,6 +1,6 @@
 import { and, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages, type BaseMessage } from "@langchain/core/messages";
-import type { NewSession, Session, SessionPatch, SessionStatus, SessionStore } from "@entrogic-net/session";
+import { titleFromMessages, type NewSession, type Session, type SessionPatch, type SessionStatus, type SessionStore } from "@entrogic-net/session";
 import type { Database } from "./db.js";
 import { messages, sessions } from "./schema.js";
 
@@ -11,6 +11,7 @@ function toSession(row: SessionRow): Session {
     id: row.id,
     channel: row.channel,
     agentId: row.agentId,
+    ...(row.title !== null && { title: row.title }),
     status: row.status as SessionStatus,
     ...(row.activeAgent !== null && { activeAgent: row.activeAgent }),
     ...(row.handoffReason !== null && { handoffReason: row.handoffReason }),
@@ -83,7 +84,7 @@ export class PostgresSessionStore implements SessionStore {
           options.channel !== undefined ? eq(sessions.channel, options.channel) : undefined,
           options.userId !== undefined ? eq(sessions.userId, options.userId) : undefined,
           options.status !== undefined ? eq(sessions.status, options.status) : undefined,
-          q !== undefined && q !== "" ? or(ilike(sql`${sessions.id}::text`, `${q}%`), ilike(sessions.externalId, `%${q}%`)) : undefined,
+          q !== undefined && q !== "" ? or(ilike(sql`${sessions.id}::text`, `${q}%`), ilike(sessions.externalId, `%${q}%`), ilike(sessions.title, `%${q}%`)) : undefined,
         ),
       )
       .orderBy(desc(sessions.updatedAt))
@@ -97,7 +98,13 @@ export class PostgresSessionStore implements SessionStore {
         const stored = mapChatMessagesToStoredMessages(batch);
         await tx.insert(messages).values(stored.map((data) => ({ sessionId, runId, role: data.type, data })));
       }
-      const updated = await tx.update(sessions).set({ updatedAt: new Date() }).where(eq(sessions.id, sessionId)).returning({ id: sessions.id });
+      const title = titleFromMessages(batch);
+      const updated = await tx
+        .update(sessions)
+        // The first title wins; later batches never overwrite it.
+        .set({ updatedAt: new Date(), ...(title !== undefined && { title: sql`coalesce(${sessions.title}, ${title})` }) })
+        .where(eq(sessions.id, sessionId))
+        .returning({ id: sessions.id });
       if (updated.length === 0) throw new Error(`Unknown session ${sessionId}`);
     });
   }

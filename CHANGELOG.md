@@ -4,8 +4,11 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
-- **Live Telegram replies** (`channels.telegram.liveReplies`, on by default): the reply is posted once about 30 characters have arrived and edited as it's written (at most every 1.5 s, with a `▍` cursor). It spills into new messages past 4096 characters, replaces pre-tool-call text with the answer, and falls back to normal messages if editing fails. Any adapter exposing `editable` gets this through `ChannelRouter` (`LiveReply`, docs/11).
+- **Session titles:** each session stores its first user message (whitespace collapsed, at most 80 characters) as `title`. It appears in every session JSON (`/v1/sessions`, handoffs and admin, an additive `/v1` field) and in the typed client, and `q` / `query` also searches it. Migration `0005_session_titles` backfills existing sessions. The web chat sidebar no longer fetches messages per session, the dashboard shows a Conversation column, and the TUI session picker uses it (docs/06).
 
+## 1.4.0 — Workspace and live Telegram replies
+
+- **Live Telegram replies** (`channels.telegram.liveReplies`, on by default): the reply is posted once about 30 characters have arrived and edited as it's written (at most every 1.5 s, with a `▍` cursor). It spills into new messages past 4096 characters, replaces pre-tool-call text with the answer, and falls back to normal messages if editing fails. Any adapter exposing `editable` gets this through `ChannelRouter` (`LiveReply`, docs/11).
 - **Workspace** (`@entrogic-net/workspace`, docs/24, ADR-0014): sandboxed per-owner text files through `workspace_list`, `workspace_read`, `workspace_create`, `workspace_write`, `workspace_edit`, `workspace_delete` and `workspace_restore`. Overwrites, edits and deletes are undoable (history and trash), paths can't escape the owner's folder (including through symlinks), quotas include history, and channels are limited (the widget is excluded by default). It's off by default (`workspace.enabled`, plus `workspace_*` in `tools.allow`). Adds `banglaclaw workspace list | show | history | restore` and doctor checks.
 - Fix: `/v1/admin/stats?days=N` returned N+1 days between local midnight and UTC midnight (for example 00:00–06:00 in Dhaka), because the window started at UTC midnight. It now starts at local midnight in the configured timezone (`windowStart`).
 - `sessionOwner` / `ownerForUser` moved to `@entrogic-net/session` (`memoryOwner` remains as an alias in `@entrogic-net/knowledge`).

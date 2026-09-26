@@ -76,11 +76,13 @@ describe("dashboard", () => {
     if (row === null) throw new Error("no row");
     expect(row.textContent).toContain("shop-bot");
     expect(row.textContent).toContain("chat-77");
+    expect(row.textContent).toContain("৬ গুণ ৭ কত?"); // the session title
     fireEvent.click(row);
 
     await screen.findByRole("heading", { name: sessionId });
     expect(window.location.pathname).toBe(`/admin/sessions/${sessionId}`);
-    expect(screen.getByText("৬ গুণ ৭ কত?")).toBeTruthy();
+    // Once as the title in the details, once in the transcript.
+    expect(screen.getAllByText("৬ গুণ ৭ কত?").map((el) => el.tagName)).toEqual(["DD", "DIV"]);
     expect(screen.getByText("৪২")).toBeTruthy();
     expect(screen.getByText("Runs").closest(".card")?.textContent).toContain("Completed");
   });

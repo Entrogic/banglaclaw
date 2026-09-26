@@ -237,6 +237,7 @@ export function useChat(bundle: RuntimeBundle, initial: Session) {
     if (!recent.some((s) => s.id === sessionRef.current.id)) recent.unshift(sessionRef.current);
     return Promise.all(
       recent.map(async (session) => {
+        if (session.title !== undefined) return { session, title: session.title };
         const messages = await store.recentMessages(session.id, 50);
         const first = messages.find((m) => m.getType() === "human" && m.text.trim() !== "");
         return { session, title: first === undefined ? "(empty)" : first.text.replace(/\s+/g, " ").trim() };

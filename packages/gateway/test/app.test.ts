@@ -53,7 +53,7 @@ describe("gateway REST", () => {
     const runs = (await (await app.request(`/v1/sessions/${first.sessionId}/runs`, get(alice))).json()) as { runs: { id: string }[] };
     expect(runs.runs).toHaveLength(2);
     expect((await app.request(`/v1/runs/${runs.runs[0]?.id}`, get(alice))).status).toBe(200);
-    expect(await (await app.request("/v1/sessions", get(alice))).json()).toMatchObject({ sessions: [{ id: first.sessionId, channel: "api" }] });
+    expect(await (await app.request("/v1/sessions", get(alice))).json()).toMatchObject({ sessions: [{ id: first.sessionId, channel: "api", title: "hi" }] });
   });
 
   it("reuses sessions by externalId, scoped per user", async () => {

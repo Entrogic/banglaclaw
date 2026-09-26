@@ -21,6 +21,12 @@ export function SessionDetail({ id }: { id: string }) {
           <section className="card meta">
             <h2 className="mono">{data.session.id}</h2>
             <dl>
+              {data.session.title !== undefined && (
+                <>
+                  <dt>Conversation</dt>
+                  <dd>{data.session.title}</dd>
+                </>
+              )}
               <dt>Status</dt>
               <dd>
                 <StatusBadge status={data.session.status} />

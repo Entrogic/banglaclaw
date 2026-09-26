@@ -1,6 +1,6 @@
 /**
  * Self-contained browser chat (channels.web). Talks to /v1/ws with the user's API key, which is
- * kept in localStorage, and to /v1/sessions for the sidebar and history. It subscribes to the open
+ * kept in localStorage, and to /v1/sessions for the sidebar (titled by the server) and history. It subscribes to the open
  * session so operator replies during a handoff appear live. No external assets, so a strict CSP
  * applies. Colours match the admin dashboard palette.
  *
@@ -283,7 +283,7 @@ const SCRIPT_MAIN = String.raw`
       const row = h("button", "srow" + (s.id === sessionId ? " active" : ""));
       row.type = "button";
       row.title = new Date(s.updatedAt).toLocaleString();
-      row.append(h("span", "title", titles[s.id] || s.externalId || "Conversation " + shortId(s.id)));
+      row.append(h("span", "title", s.title || titles[s.id] || s.externalId || "Conversation " + shortId(s.id)));
       if (s.status === "handoff") { const d = h("span", "dot"); d.title = "Waiting for a human"; row.append(d); }
       row.onclick = () => openSession(s.id);
       nav.append(row);
@@ -292,17 +292,9 @@ const SCRIPT_MAIN = String.raw`
   async function loadSessions() {
     if (!me) return;
     try { sessions = (await api("/v1/sessions?limit=50")).sessions; } catch { return; }
-    renderSessions();
-    // Label sessions this browser has not seen with their first user message.
-    const unknown = sessions.filter((s) => !titles[s.id]).slice(0, 20);
-    for (const s of unknown) {
-      try {
-        const { messages } = await api("/v1/sessions/" + s.id + "/messages?limit=20");
-        const first = messages.find((m) => m.role === "user" && m.content);
-        if (first) saveTitle(s.id, first.content);
-      } catch {}
-    }
-    if (unknown.length) { renderSessions(); renderInfo(); }
+    // Titles come with the list (the first user message, stored by the gateway).
+    for (const s of sessions) if (s.title) titles[s.id] = s.title;
+    renderSessions(); renderInfo();
   }
 
   // ---- Transcript ----

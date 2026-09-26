@@ -12,6 +12,7 @@ export function sessionJson(s: Session) {
     id: s.id,
     channel: s.channel,
     agentId: s.agentId,
+    ...(s.title !== undefined && { title: s.title }),
     status: s.status,
     ...(s.activeAgent !== undefined && { activeAgent: s.activeAgent }),
     ...(s.handoffReason !== undefined && { handoffReason: s.handoffReason }),

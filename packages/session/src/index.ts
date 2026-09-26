@@ -6,3 +6,4 @@ export { SessionManager, type ResolveSessionInput } from "./manager.js";
 export { hasCompleteToolCalls, trimHistory } from "./window.js";
 export { HandoffDesk, HandoffError, isOperatorMessage, type Deliver } from "./handoff.js";
 export { ownerForUser, sessionOwner } from "./owner.js";
+export { MAX_TITLE_LENGTH, titleFromMessages } from "./title.js";

@@ -1,6 +1,6 @@
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import { describe, expect, it } from "vitest";
-import { InMemoryRunStore, InMemorySessionStore, SessionManager, hasCompleteToolCalls, trimHistory, type RunRecord } from "../src/index.js";
+import { InMemoryRunStore, InMemorySessionStore, SessionManager, hasCompleteToolCalls, titleFromMessages, trimHistory, type RunRecord } from "../src/index.js";
 
 const toolTurn = [
   new HumanMessage("2+2?"),
@@ -23,6 +23,27 @@ describe("trimHistory", () => {
   it("never yields dangling tool calls", () => {
     const history = [new HumanMessage("a"), new AIMessage("b"), ...toolTurn, new HumanMessage("c"), new AIMessage("d")];
     for (let n = 0; n <= history.length; n++) expect(hasCompleteToolCalls(trimHistory(history, n))).toBe(true);
+  });
+});
+
+describe("session titles", () => {
+  it("come from the first user message, collapsed and capped at 80 characters", () => {
+    expect(titleFromMessages([new AIMessage("hi"), new HumanMessage("  আজকে\n ঢাকায়   আবহাওয়া কেমন? ")])).toBe("আজকে ঢাকায় আবহাওয়া কেমন?");
+    expect(titleFromMessages([new HumanMessage("   "), new HumanMessage("second")])).toBe("second");
+    expect(titleFromMessages([new AIMessage("only the bot")])).toBeUndefined();
+    const long = titleFromMessages([new HumanMessage("x".repeat(200))]);
+    expect(long).toHaveLength(80);
+    expect(long?.endsWith("…")).toBe(true);
+  });
+
+  it("are set once by the store and are searchable", async () => {
+    const store = new InMemorySessionStore();
+    const session = await store.create({ channel: "api", agentId: "banglaclaw" });
+    expect((await store.get(session.id))?.title).toBeUndefined();
+    await store.appendMessages(session.id, "r1", [new HumanMessage("bKash e payment kivabe korbo?"), new AIMessage("...")]);
+    await store.appendMessages(session.id, "r2", [new HumanMessage("ar Nagad?")]);
+    expect((await store.get(session.id))?.title).toBe("bKash e payment kivabe korbo?");
+    expect((await store.list({ query: "payment" })).map((s) => s.id)).toEqual([session.id]);
   });
 });
 
