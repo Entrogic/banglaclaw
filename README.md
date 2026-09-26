@@ -307,7 +307,7 @@ Design decisions are recorded as [Architecture Decision Records](docs/adr/). Ban
 
 ## Project status
 
-**v1.2.0**, [available on npm](#npm-packages). All roadmap milestones (v0.1–v1.0) are complete. The `/v1` HTTP API is stable and changes only additively ([compatibility policy](docs/18-api.md#versioning-and-compatibility-v10)).
+**v1.3.0**, [available on npm](#npm-packages). All roadmap milestones (v0.1–v1.0) are complete. The `/v1` HTTP API is stable and changes only additively ([compatibility policy](docs/18-api.md#versioning-and-compatibility-v10)).
 
 | Release | Highlights |
 |---|---|
@@ -321,6 +321,8 @@ Design decisions are recorded as [Architecture Decision Records](docs/adr/). Ban
 | v1.0 Production | Audit log, scopes and roles, OpenTelemetry, Prometheus, OpenAPI and typed client, plugins, Docker |
 | v1.1 Professional CLI | Ink chat UI, setup wizard, `--json` output, shell completion |
 | v1.2 npm release | Published to npm, admin dashboard, Messenger, voice notes, DOCX and URL sources, BanglaClaw as an MCP server, live operator replies, OpenClaw-style chat UIs |
+| v1.3 Website widget | Embeddable chat widget for anonymous visitors, built-in skills in the npm CLI, `@prometheus-io/client` |
+| Unreleased | Sandboxed per-user workspace with file tools and undo ([docs/24](docs/24-workspace.md)), admin stats timezone fix |
 
 See the [CHANGELOG](CHANGELOG.md) for details and the [roadmap](docs/20-roadmap.md) for what comes next.
 
