@@ -105,7 +105,14 @@ voice:
 
 ## Web
 
-`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. The layout follows OpenClaw's Control UI: a sidebar of the key's own sessions (`GET /v1/sessions`, labelled by their first message, grouped by day) that reloads a transcript from `GET /v1/sessions/:id/messages`, a flat reply stream rendered as markdown while it streams (lists, tables, code blocks with Copy; only http(s) links, everything else escaped), tool calls as expandable cards that fold into a "Worked for 1.2s · 2 tools" line when the run ends, and a composer with a Stop button, `/new`, `/sessions`, `/theme` and `/logout` commands and a footer with the agent, session and token count. It follows the OS light/dark preference, and a sidebar button overrides it (saved in localStorage). It's intended for developers and internal users. For your website's visitors, use the widget below.
+`GET /chat` on the gateway serves a self-contained chat page with a strict CSP and no external assets. It connects to `/v1/ws` with an API key, which is kept in the browser's localStorage, resumes the last session and follows it, so a human operator's replies during a handoff appear live. The layout follows OpenClaw's Control UI: a sidebar of the key's own sessions (`GET /v1/sessions`, labelled by their first message, grouped by day) that reloads a transcript from `GET /v1/sessions/:id/messages`, a flat reply stream rendered as markdown while it streams (lists, tables, code blocks with Copy; only http(s) links, everything else escaped), tool calls as expandable cards that fold into a "Worked for 1.2s · 2 tools" line when the run ends, and a composer with a Stop button, `/new`, `/sessions`, `/theme` and `/logout` commands and a footer with the agent, session and token count. It follows the OS light/dark preference, and a sidebar button overrides it (saved in localStorage).
+
+Features the gateway offers (`GET /v1/features`) switch on these extras:
+- **Files tab:** the caller's workspace, with preview, download, history and restore, and delete with undo (docs/24).
+- **📎 attach and drag-and-drop:** the file is uploaded to `uploads/` and the message tells the agent its path.
+- **🎤 microphone:** records in the browser, `POST /v1/transcriptions` fills the composer for review, and it needs `voice.enabled`.
+
+Conversations can be searched, renamed and deleted from the sidebar. Replies have **Copy** and **Retry**, and your messages have **Edit** (back into the composer) and **Copy**. Retry and Edit send a new message; history isn't rewritten. The page is intended for developers and internal users. For your website's visitors, use the widget below.
 
 ## Website widget
 

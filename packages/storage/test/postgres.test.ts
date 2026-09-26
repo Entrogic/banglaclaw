@@ -60,6 +60,23 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect((await storage.sessions.get(session.id))?.title).toBe("ঢাকার বাইরে ডেলিভারি চার্জ কত?");
   });
 
+  it("renames and deletes sessions together with their messages and runs", async () => {
+    const session = await storage.sessions.create({ channel: "api", agentId: "banglaclaw" });
+    const run = baseRun(session.id);
+    await storage.runs.save(run);
+    await storage.sessions.appendMessages(session.id, run.id, [new HumanMessage("প্রথম প্রশ্ন"), new AIMessage("উত্তর")]);
+    expect((await storage.sessions.update(session.id, { title: "নতুন নাম" }))?.title).toBe("নতুন নাম");
+    expect((await storage.sessions.update(session.id, { title: null }))?.title).toBeUndefined();
+
+    expect(await storage.sessions.delete(session.id)).toBe(true);
+    expect(await storage.sessions.delete(session.id)).toBe(false);
+    expect(await storage.sessions.get(session.id)).toBeUndefined();
+    expect(await storage.runs.get(run.id)).toBeUndefined();
+    expect((await storage.pool.query("SELECT count(*)::int AS n FROM messages WHERE session_id = $1", [session.id])).rows[0]).toEqual({ n: 0 });
+    await storage.runs.deleteBySession(session.id);
+    expect(await storage.sessions.delete("not-a-uuid")).toBe(false);
+  });
+
   it("creates, finds and lists sessions", async () => {
     const manager = new SessionManager(storage.sessions);
     const { session, created } = await manager.resolve({ channel: "telegram", externalId: "42", agentId: "banglaclaw" });

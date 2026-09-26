@@ -17,6 +17,7 @@
     "@entrogic-net/shared": "workspace:*",
     "@entrogic-net/skills": "workspace:*",
     "@entrogic-net/tools": "workspace:*",
+    "@entrogic-net/workspace": "workspace:*",
     "@langchain/core": "^1.2.12",
     "@playwright/test": "1.63.0",
     "hono": "^4.13.9",

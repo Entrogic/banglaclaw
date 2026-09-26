@@ -59,6 +59,7 @@ export class PostgresSessionStore implements SessionStore {
     const set: Partial<typeof sessions.$inferInsert> = { updatedAt: new Date() };
     if (patch.activeAgent !== undefined) set.activeAgent = patch.activeAgent;
     if (patch.handoffReason !== undefined) set.handoffReason = patch.handoffReason;
+    if (patch.title !== undefined) set.title = patch.title;
     if (patch.status !== undefined) {
       const current = await this.get(id);
       if (current !== undefined && current.status !== patch.status) {
@@ -122,6 +123,13 @@ export class PostgresSessionStore implements SessionStore {
 
   async detachExternalId(sessionId: string): Promise<void> {
     await this.db.update(sessions).set({ externalId: null, updatedAt: new Date() }).where(eq(sessions.id, sessionId));
+  }
+
+  /** Messages, runs and tool calls go with it (ON DELETE CASCADE). */
+  async delete(sessionId: string): Promise<boolean> {
+    if (!isUuid(sessionId)) return false;
+    const deleted = await this.db.delete(sessions).where(eq(sessions.id, sessionId)).returning({ id: sessions.id });
+    return deleted.length > 0;
   }
 
   async countMessages(sessionId: string): Promise<number> {

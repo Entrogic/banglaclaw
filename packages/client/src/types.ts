@@ -18,6 +18,19 @@ export interface Session {
   updatedAt: string;
 }
 
+export interface WorkspaceEntry {
+  path: string;
+  type: "file" | "dir";
+  size: number;
+  modified: string;
+}
+
+export interface Features {
+  workspace: boolean;
+  uploads: { maxBytes: number } | null;
+  transcription: boolean;
+}
+
 export interface Message {
   role: "user" | "assistant" | "operator" | "tool" | "system";
   content: string;

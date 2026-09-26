@@ -10,7 +10,8 @@ export type AuditAction =
   | "handoff.requested"
   | "handoff.replied"
   | "handoff.released"
-  | "memory.forgotten";
+  | "memory.forgotten"
+  | "session.deleted";
 
 export type AuditOutcome = "success" | "failure" | "denied";
 

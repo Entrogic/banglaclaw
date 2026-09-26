@@ -61,6 +61,12 @@ With the workspace on, files people send on Telegram, WhatsApp or Messenger are 
 
 With the workspace off, a file gets a short notice asking for the text instead.
 
+## Web chat and API
+
+`banglaclaw serve` exposes the caller's workspace to API keys (the owner is `user:<id>`) when `api` is in `workspace.channels`: `GET /v1/workspace/files`, `GET` and `DELETE /v1/workspace/file`, `GET /v1/workspace/history`, `POST /v1/workspace/restore` and `POST /v1/workspace/uploads` (docs/18; `client.workspace.*` in `@entrogic-net/client`).
+
+The web chat (`/chat`) has a **Files** tab over them. It lists the files, opens a viewer (markdown rendered, other files shown as text) with Download, History (restore any version) and Delete (with Undo), and refreshes after each reply. Its 📎 button and drag-and-drop upload files, and the message then tells the agent where they are, just like chat uploads.
+
 ## CLI
 
 ```bash

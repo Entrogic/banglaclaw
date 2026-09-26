@@ -148,6 +148,12 @@ export class PostgresRunStore implements RunStore {
     });
   }
 
+  /** Tool calls go with the runs (ON DELETE CASCADE); deleting the session already does this. */
+  async deleteBySession(sessionId: string): Promise<void> {
+    if (!isUuid(sessionId)) return;
+    await this.db.delete(runs).where(eq(runs.sessionId, sessionId));
+  }
+
   async get(id: string): Promise<RunRecord | undefined> {
     if (!isUuid(id)) return undefined;
     const [row] = await this.db.select().from(runs).where(eq(runs.id, id));

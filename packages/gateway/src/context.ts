@@ -3,7 +3,7 @@ import type { AgentRuntime } from "@entrogic-net/agent";
 import type { KnowledgeBase, LongTermMemory } from "@entrogic-net/knowledge";
 import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
 import type { Deliver, RunStore, Session, SessionStore } from "@entrogic-net/session";
-import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type Logger } from "@entrogic-net/shared";
+import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type Logger, type Transcriber } from "@entrogic-net/shared";
 import type { SkillSet } from "@entrogic-net/skills";
 import type { PermissionPolicy, ToolRegistry } from "@entrogic-net/tools";
 import { HttpError } from "./errors.js";
@@ -14,6 +14,21 @@ export type GatewayConfig = BanglaClawConfig["gateway"];
 
 /** Hono variables set by the gateway's request middleware. */
 export type GatewayEnv = { Variables: { requestId: string; principal: Principal; log: Logger; ip: string | undefined } };
+
+/** Per-user files behind /v1/workspace (structurally the Workspace of @entrogic-net/workspace, docs/24). */
+export interface GatewayWorkspace {
+  list(owner: string, dir?: string): Promise<{ entries: { path: string; type: "file" | "dir"; size: number; modified: string }[]; truncated: boolean }>;
+  read(owner: string, path: string, window?: { offset?: number; limit?: number }): Promise<{ path: string; content: string; totalLines: number; truncated: boolean }>;
+  delete(owner: string, path: string): Promise<{ path: string; trashed: string }>;
+  history(owner: string, path: string): Promise<{ path: string; versions: { version: number; savedAt: string; size: number }[]; inTrash: boolean }>;
+  restore(owner: string, path: string, version?: number): Promise<{ path: string; restoredFrom: "history" | "trash"; bytes: number }>;
+}
+
+/** Stores files uploaded through POST /v1/workspace/uploads (the CLI extracts text like chat uploads). */
+export interface GatewayUploads {
+  maxBytes: number;
+  save(owner: string, file: { filename: string; data: Uint8Array }): Promise<{ path: string; characters: number }>;
+}
 
 /** The embeddable widget (channels.widget without `enabled`), plus the secret that signs visitor tokens. */
 export type WidgetOptions = Omit<BanglaClawConfig["channels"]["widget"], "enabled"> & { secret: string };
@@ -35,6 +50,14 @@ export interface GatewayDeps {
   webChat?: boolean;
   /** Serve the embeddable website widget (/widget.js, /widget/frame, /widget/api/*) for anonymous visitors. */
   widget?: WidgetOptions;
+  /** The caller's workspace files at /v1/workspace (docs/24); absent = those routes answer 404. */
+  workspace?: GatewayWorkspace;
+  /** Uploads into the workspace (POST /v1/workspace/uploads). */
+  uploads?: GatewayUploads;
+  /** Speech-to-text for POST /v1/transcriptions (the web chat's microphone). */
+  transcriber?: Transcriber;
+  /** Language hint for transcriptions, e.g. "bn"; undefined lets the recogniser detect it. */
+  transcriptionLanguage?: string;
   knowledge?: { kb: KnowledgeBase; searchLimit: number; minScore: number };
   memory?: LongTermMemory;
   /** Delivers operator replies to channel users (Telegram, WhatsApp). API clients get them as session events. */

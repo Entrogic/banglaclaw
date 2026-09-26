@@ -19,6 +19,8 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${port}`,
     locale: "bn-BD",
     trace: "retain-on-failure",
+    permissions: ["microphone", "clipboard-read", "clipboard-write"],
+    launchOptions: { args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"] },
     ...(process.env.PW_CHANNEL !== undefined && { channel: process.env.PW_CHANNEL }),
   },
   projects: [

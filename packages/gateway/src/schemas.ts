@@ -15,6 +15,7 @@ export function messageBody(maxInputChars: number) {
 }
 
 export const createSessionBody = z.strictObject({ externalId: z.string().min(1).max(200).optional() });
+export const renameSessionBody = z.strictObject({ title: z.string().trim().min(1).max(80).nullable() });
 
 export const limitQuery = (max: number, fallback: number) =>
   z.coerce.number().int().min(1).max(max).catch(fallback);

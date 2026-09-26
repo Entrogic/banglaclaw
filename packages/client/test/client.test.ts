@@ -77,6 +77,18 @@ describe("BanglaClawClient", () => {
     await expect(client.admin.stats()).rejects.toMatchObject({ status: 403 });
   });
 
+  it("renames, searches and deletes sessions, and reports features", async () => {
+    const { client } = await setup();
+    const { sessionId } = await client.run("৬ গুণ ৭");
+    expect((await client.sessions.rename(sessionId, "গুণের প্রশ্ন")).session.title).toBe("গুণের প্রশ্ন");
+    expect((await client.sessions.list({ q: "গুণের" })).sessions.map((s) => s.id)).toEqual([sessionId]);
+    await client.sessions.delete(sessionId);
+    expect((await client.sessions.list()).sessions).toEqual([]);
+    expect(await client.features()).toEqual({ workspace: false, uploads: null, transcription: false });
+    await expect(client.workspace.list()).rejects.toMatchObject({ status: 404, code: "workspace_disabled" });
+    await expect(client.transcribe(new Uint8Array(3), "audio/webm")).rejects.toMatchObject({ status: 404, code: "transcription_disabled" });
+  });
+
   it("raises typed API errors", async () => {
     const { client } = await setup();
     const error = await client.sessions.get("00000000-0000-4000-8000-000000000000").catch((e: unknown) => e);

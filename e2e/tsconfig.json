@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "noEmit": true },
+  "compilerOptions": { "noEmit": true, "lib": ["ES2023", "DOM"] },
   "include": ["src", "tests", "playwright.config.ts"]
 }

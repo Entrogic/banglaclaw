@@ -10,6 +10,7 @@ import { print, printAlways, warn } from "../ui/output.js";
 import { c, sym } from "../ui/theme.js";
 import { VERSION } from "../version.js";
 import { resolveWidget } from "../widget.js";
+import { gatewayFileDeps } from "../workspace.js";
 import { prepareKnowledge, reportMcpFailures } from "./shared.js";
 
 export async function serve(options: GlobalOptions & { port?: string; host?: string }): Promise<void> {
@@ -28,12 +29,14 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   let channels: ReturnType<typeof setupChannels>;
   let devToken: string | undefined;
   let widget: ReturnType<typeof resolveWidget> = { warnings: [] };
+  let apiFiles: ReturnType<typeof gatewayFileDeps> = {};
   const dashboardDir = config.gateway.dashboardDir === undefined ? undefined : resolve(services.loaded.baseDir, config.gateway.dashboardDir);
   try {
     if (!Number.isInteger(gatewayConfig.port) || gatewayConfig.port < 0 || gatewayConfig.port > 65_535) throw new BanglaClawError("INVALID_PORT", `Invalid port: ${options.port ?? ""}`);
     await prepareKnowledge(bundle.knowledge, true);
     channels = setupChannels(services.loaded, bundle.runtime, services.sessions, logger);
     widget = resolveWidget(services.loaded);
+    apiFiles = gatewayFileDeps(services.loaded, logger);
     if (dashboardDir !== undefined && !existsSync(join(dashboardDir, "index.html"))) {
       throw new ConfigError(`gateway.dashboardDir has no index.html: ${dashboardDir}`);
     }
@@ -56,6 +59,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       routes: channels.routes,
       webChat: config.channels.web.enabled,
       ...(widget.options !== undefined && { widget: widget.options }),
+      ...apiFiles,
       ...(bundle.knowledge.kb !== undefined && { knowledge: { kb: bundle.knowledge.kb, searchLimit: config.knowledge.searchLimit, minScore: config.knowledge.minScore } }),
       ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
       deliver: createDeliver(services.loaded, logger),

@@ -80,6 +80,11 @@ export class InMemorySessionStore implements SessionStore {
       session.updatedAt = new Date();
     }
   }
+
+  async delete(sessionId: string): Promise<boolean> {
+    this.#messages.delete(sessionId);
+    return this.#sessions.delete(sessionId);
+  }
 }
 
 function applyPatch(s: Session, patch: SessionPatch): void {
@@ -99,6 +104,10 @@ function applyPatch(s: Session, patch: SessionPatch): void {
     if (patch.handoffReason === null) delete s.handoffReason;
     else s.handoffReason = patch.handoffReason;
   }
+  if (patch.title !== undefined) {
+    if (patch.title === null) delete s.title;
+    else s.title = patch.title;
+  }
   s.updatedAt = new Date();
 }
 
@@ -116,6 +125,10 @@ export class InMemoryRunStore implements RunStore {
 
   async save(record: RunRecord): Promise<void> {
     this.#runs.set(record.id, structuredClone(record));
+  }
+
+  async deleteBySession(sessionId: string): Promise<void> {
+    for (const [id, run] of this.#runs) if (run.sessionId === sessionId) this.#runs.delete(id);
   }
 
   async get(id: string): Promise<RunRecord | undefined> {

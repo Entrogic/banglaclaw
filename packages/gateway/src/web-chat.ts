@@ -180,6 +180,66 @@ const STYLE = String.raw`
   #status[data-state="error"] { color:var(--critical); }
   #status[data-state="error"]::before { background:var(--critical); }
   @keyframes pulse { 50% { opacity:.3; } }
+  /* Sidebar tabs, search, row actions, files */
+  .tabs { display:flex; gap:4px; margin:0 12px 8px; padding:3px; border-radius:10px; background:var(--surface-2); }
+  .tab { flex:1; height:30px; border:0; border-radius:7px; background:transparent; color:var(--text-2); font-weight:600; font-size:13.5px; }
+  .tab.active { background:var(--surface); color:var(--text); box-shadow:0 1px 2px var(--shadow); }
+  .pane { display:flex; flex-direction:column; flex:1; min-height:0; }
+  .pane[hidden] { display:none; }
+  .search { margin:0 12px 6px; height:34px; padding:0 11px; border:1px solid var(--border); border-radius:9px; background:var(--surface); color:var(--text); }
+  .search:focus { outline:none; border-color:var(--accent); }
+  #sessions { flex:1; overflow-y:auto; padding:4px 8px 12px; }
+  .srow { position:relative; }
+  .srow .open { all:unset; display:flex; align-items:center; gap:8px; flex:1; min-width:0; height:100%; cursor:pointer; }
+  .srow .open:focus-visible { outline:2px solid var(--accent); border-radius:6px; }
+  .srow .acts { display:none; gap:2px; }
+  .srow:hover .acts, .srow:focus-within .acts, .srow.active .acts { display:flex; }
+  .srow .acts button { width:26px; height:26px; min-width:0; padding:0; font-size:13px; }
+  .srow input.rename { flex:1; min-width:0; height:26px; padding:0 6px; border:1px solid var(--accent); border-radius:6px; background:var(--surface); color:var(--text); font:inherit; }
+  .files-head { display:flex; align-items:center; justify-content:space-between; margin:0 12px 4px 20px; color:var(--muted); font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+  #files { flex:1; overflow-y:auto; padding:0 8px 12px; }
+  .frow { display:flex; align-items:center; gap:8px; width:100%; min-height:32px; padding:4px 10px; border:0; border-radius:8px; background:transparent; color:var(--text-2); text-align:left; font-size:14px; cursor:pointer; }
+  .frow:hover { background:var(--wash); color:var(--text); }
+  .frow .fname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .frow .fsize { color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .fdir { padding:8px 10px 2px; color:var(--muted); font-size:12.5px; font-weight:600; }
+  /* Composer extras */
+  .icon-btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; width:38px; height:38px; flex:none; padding:0; border:0; border-radius:50%; background:transparent; color:var(--muted); }
+  .icon-btn:hover:not(:disabled) { background:var(--wash); color:var(--text); }
+  .icon-btn[hidden] { display:none; }
+  #mic[aria-pressed="true"] { width:auto; padding:0 12px; border-radius:19px; background:var(--critical-wash); color:var(--critical); }
+  #mic-time { font-size:12.5px; font-variant-numeric:tabular-nums; }
+  #attachments { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  #attachments:empty { display:none; }
+  .chip { display:inline-flex; align-items:center; gap:6px; max-width:100%; padding:4px 6px 4px 10px; border:1px solid var(--border); border-radius:999px; background:var(--surface); font-size:13px; }
+  .chip .cname { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip .cstate { color:var(--muted); font-size:12px; }
+  .chip.error { border-color:var(--critical); color:var(--critical); }
+  .chip button { width:22px; height:22px; border:0; border-radius:50%; background:transparent; color:var(--muted); }
+  .chip button:hover { background:var(--wash); color:var(--text); }
+  main.drop { outline:3px dashed var(--accent); outline-offset:-10px; }
+  /* Message actions */
+  .msg-acts { display:flex; gap:4px; }
+  .turn.user .msg-acts { justify-content:flex-end; opacity:0; transition:opacity .12s; }
+  .turn.user:hover .msg-acts, .turn.user:focus-within .msg-acts { opacity:1; }
+  .msg-acts button { height:26px; padding:0 9px; border:1px solid transparent; border-radius:7px; background:transparent; color:var(--muted); font-size:12.5px; }
+  .msg-acts button:hover { border-color:var(--border); background:var(--surface); color:var(--text); }
+  /* File viewer */
+  .viewer { position:fixed; inset:0; z-index:10; display:grid; place-items:center; padding:16px; background:rgba(0,0,0,.4); }
+  .viewer[hidden] { display:none; }
+  .viewer-card { display:flex; flex-direction:column; width:min(760px,100%); max-height:min(80vh,900px); border-radius:14px; background:var(--surface); box-shadow:0 24px 60px -20px rgba(0,0,0,.5); overflow:hidden; }
+  .viewer-head { display:flex; align-items:center; gap:4px; padding:10px 10px 10px 16px; border-bottom:1px solid var(--border); }
+  .viewer-head b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--mono); font-size:14px; }
+  .viewer-head .grow { flex:1; }
+  .viewer-head .danger { color:var(--critical); }
+  .viewer-body { flex:1; overflow:auto; padding:16px; }
+  .viewer-body pre.raw { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; font:13px/1.6 var(--mono); }
+  .versions { display:flex; flex-direction:column; gap:6px; }
+  .version { display:flex; align-items:center; gap:10px; padding:8px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+  .version .grow { flex:1; color:var(--muted); font-size:13px; }
+  #toast { position:fixed; left:50%; bottom:24px; z-index:11; transform:translateX(-50%); display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:12px; background:var(--text); color:var(--page); font-size:14px; box-shadow:0 10px 30px -10px rgba(0,0,0,.5); }
+  #toast[hidden] { display:none; }
+  #toast button { border:0; background:none; color:inherit; font-weight:700; text-decoration:underline; cursor:pointer; }
   #backdrop { display:none; }
   @media (max-width:820px) {
     .app, .app.collapsed { grid-template-columns:minmax(0,1fr); }
@@ -197,6 +257,10 @@ const ICON = {
   plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   send: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
   stop: '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2.5" fill="currentColor"/></svg>',
+  clip: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.4 11.6-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>',
+  mic: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/></svg>',
+  refresh: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+  close: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   logout: '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H4"/></svg>',
   theme:
     '<svg class="t-system" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>' +
@@ -209,7 +273,9 @@ const BODY = String.raw`
   <aside id="side" aria-label="Conversations">
     <div class="side-head"><div class="brand"><span class="mark" aria-hidden="true"></span>BanglaClaw</div><button id="collapse" class="ghost" type="button" title="Hide sidebar" aria-label="Hide sidebar">@panel</button></div>
     <button id="new" class="ghost" type="button" title="Start a new conversation">@plus New chat</button>
-    <nav id="sessions"></nav>
+    <div class="tabs" role="tablist" aria-label="Sidebar"><button id="tab-chats" class="tab active" type="button" role="tab" aria-selected="true">Chats</button><button id="tab-files" class="tab" type="button" role="tab" aria-selected="false" hidden>Files</button></div>
+    <div id="pane-chats" class="pane"><input id="search" class="search" type="search" placeholder="Search conversations" aria-label="Search conversations" autocomplete="off"><nav id="sessions"></nav></div>
+    <div id="pane-files" class="pane" hidden><div class="files-head"><span>Your workspace</span><button id="files-refresh" class="ghost" type="button" title="Refresh" aria-label="Refresh files">@refresh</button></div><nav id="files" aria-label="Files"></nav></div>
     <div class="side-foot"><span id="who">not connected</span><button id="theme" class="ghost" type="button" title="Theme: system" aria-label="Theme: system">@theme</button><button id="logout" class="ghost" type="button" title="Forget API key" aria-label="Forget API key">@logout</button></div>
   </aside>
   <div id="backdrop"></div>
@@ -218,10 +284,18 @@ const BODY = String.raw`
     <div id="scroll"><div id="log" aria-live="polite"></div></div>
     <div class="dock" id="dock">
       <ul id="menu" role="listbox" hidden></ul>
-      <form id="form"><textarea id="input" rows="1" placeholder="বাংলা, Banglish বা English-এ লিখুন…" aria-label="Message" disabled></textarea><button id="send" class="btn" aria-label="Send" title="Send (Enter)" disabled>@send</button><button id="stop" class="btn" type="button" aria-label="Stop" title="Stop (Esc)">@stop</button></form>
+      <div id="attachments"></div>
+      <form id="form"><button id="attach" class="icon-btn" type="button" title="Attach a file (PDF, DOCX, TXT, CSV…)" aria-label="Attach a file" hidden>@clip</button><input id="file" type="file" accept=".txt,.md,.markdown,.csv,.json,.html,.htm,.pdf,.docx" hidden><textarea id="input" rows="1" placeholder="বাংলা, Banglish বা English-এ লিখুন…" aria-label="Message" disabled></textarea><button id="mic" class="icon-btn" type="button" title="Speak (voice to text)" aria-label="Record voice" aria-pressed="false" hidden>@mic<span id="mic-time"></span></button><button id="send" class="btn" aria-label="Send" title="Send (Enter)" disabled>@send</button><button id="stop" class="btn" type="button" aria-label="Stop" title="Stop (Esc)">@stop</button></form>
       <div id="footer"><span id="status" data-state="off">disconnected</span><span id="info"></span><span class="hint"><kbd>Enter</kbd> send · <kbd>Shift</kbd>+<kbd>Enter</kbd> newline · <kbd>/</kbd> commands · <kbd>Esc</kbd> stop</span></div>
     </div>
   </main>
+  <div id="viewer" class="viewer" hidden role="dialog" aria-modal="true" aria-labelledby="viewer-title">
+    <div class="viewer-card">
+      <div class="viewer-head"><b id="viewer-title"></b><span class="grow"></span><button id="viewer-history" class="ghost" type="button">History</button><button id="viewer-download" class="ghost" type="button">Download</button><button id="viewer-delete" class="ghost danger" type="button">Delete</button><button id="viewer-close" class="ghost" type="button" aria-label="Close">@close</button></div>
+      <div id="viewer-body" class="viewer-body"></div>
+    </div>
+  </div>
+  <div id="toast" role="status" hidden></div>
 </div>
 `.replace(/@(\w+)/g, (match, name: string) => (name in ICON ? ICON[name as keyof typeof ICON] : match));
 
@@ -261,10 +335,15 @@ const SCRIPT_MAIN = String.raw`
   }
 
   // ---- Sidebar ----
-  async function api(path) {
-    const res = await fetch(path, { headers: { authorization: "Bearer " + key } });
+  // init: { method, json, body, type } — json is sent as JSON, body as-is with Content-Type type.
+  async function api(path, init) {
+    const o = init || {};
+    const headers = { authorization: "Bearer " + key };
+    if (o.json !== undefined) headers["content-type"] = "application/json";
+    else if (o.type) headers["content-type"] = o.type;
+    const res = await fetch(path, { method: o.method || "GET", headers, body: o.json !== undefined ? JSON.stringify(o.json) : o.body });
     if (!res.ok) { const body = await res.json().catch(() => null); const err = new Error((body && body.error && body.error.message) || "HTTP " + res.status); err.status = res.status; throw err; }
-    return res.json();
+    return res.status === 204 ? null : o.raw ? res : res.json();
   }
   function groupOf(date) {
     const day = 864e5, start = new Date(); start.setHours(0, 0, 0, 0);
@@ -275,23 +354,33 @@ const SCRIPT_MAIN = String.raw`
     const nav = $("sessions");
     nav.replaceChildren();
     if (!me) return;
-    if (sessions.length === 0) { nav.append(h("p", "side-empty", "No conversations yet.")); return; }
+    if (sessions.length === 0) { nav.append(h("p", "side-empty", $("search").value.trim() ? "No conversations match." : "No conversations yet.")); return; }
     let group = "";
     for (const s of sessions) {
       const g = groupOf(s.updatedAt);
       if (g !== group) { group = g; nav.append(h("div", "group", g)); }
-      const row = h("button", "srow" + (s.id === sessionId ? " active" : ""));
-      row.type = "button";
-      row.title = new Date(s.updatedAt).toLocaleString();
-      row.append(h("span", "title", s.title || titles[s.id] || s.externalId || "Conversation " + shortId(s.id)));
-      if (s.status === "handoff") { const d = h("span", "dot"); d.title = "Waiting for a human"; row.append(d); }
-      row.onclick = () => openSession(s.id);
+      const row = h("div", "srow" + (s.id === sessionId ? " active" : ""));
+      const open = h("button", "open");
+      open.type = "button";
+      open.title = new Date(s.updatedAt).toLocaleString();
+      const label = s.title || titles[s.id] || s.externalId || "Conversation " + shortId(s.id);
+      open.append(h("span", "title", label));
+      if (s.status === "handoff") { const d = h("span", "dot"); d.title = "Waiting for a human"; open.append(d); }
+      open.onclick = () => openSession(s.id);
+      const acts = h("span", "acts");
+      const rename = h("button", "ghost", "✎"); rename.type = "button"; rename.title = "Rename"; rename.setAttribute("aria-label", "Rename " + label);
+      rename.onclick = () => startRename(row, s, label);
+      const del = h("button", "ghost", "🗑"); del.type = "button"; del.title = "Delete"; del.setAttribute("aria-label", "Delete " + label);
+      del.onclick = () => deleteSession(s, label);
+      acts.append(rename, del);
+      row.append(open, acts);
       nav.append(row);
     }
   }
   async function loadSessions() {
     if (!me) return;
-    try { sessions = (await api("/v1/sessions?limit=50")).sessions; } catch { return; }
+    const q = $("search").value.trim();
+    try { sessions = (await api("/v1/sessions?limit=50" + (q ? "&q=" + encodeURIComponent(q) : ""))).sessions; } catch { return; }
     // Titles come with the list (the first user message, stored by the gateway).
     for (const s of sessions) if (s.title) titles[s.id] = s.title;
     renderSessions(); renderInfo();
@@ -333,8 +422,24 @@ const SCRIPT_MAIN = String.raw`
       more.onclick = () => { more.textContent = t.classList.toggle("open") ? "Show less" : "Show more"; };
       t.append(more);
     }
+    const acts = h("div", "msg-acts");
+    acts.append(actionButton("Edit", () => { $("input").value = text; autosize(); $("input").focus(); }), actionButton("Copy", () => copyText(text)));
+    t.append(acts);
     log.append(t);
     return t;
+  }
+  function actionButton(label, onClick) { const b = h("button", null, label); b.type = "button"; b.onclick = onClick; return b; }
+  function copyText(text, button) {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => toast("Copied"));
+  }
+  /** Copy (the reply text) and Retry (ask the same question again) under a finished reply. */
+  function replyActions(turn, question) {
+    turn.querySelector(":scope > .msg-acts")?.remove();
+    const acts = h("div", "msg-acts");
+    acts.append(actionButton("Copy", () => copyText([...turn.querySelectorAll(":scope > .md")].map((m) => m.innerText).join("\n\n"))));
+    if (question) acts.append(actionButton("Retry", () => { if (!run) send(question); }));
+    turn.append(acts);
   }
   function assistantTurn(cls, label) {
     clearHero();
@@ -388,9 +493,10 @@ const SCRIPT_MAIN = String.raw`
     log.replaceChildren();
     let turn = null;
     const cards = {};
-    const close = () => { if (turn) { const n = turn.querySelectorAll(".tool").length; fold(turn, "Used " + n + " tool" + (n === 1 ? "" : "s")); } turn = null; };
+    let question = "";
+    const close = () => { if (turn) { const n = turn.querySelectorAll(".tool").length; fold(turn, "Used " + n + " tool" + (n === 1 ? "" : "s")); replyActions(turn, question); } turn = null; };
     for (const m of messages) {
-      if (m.role === "user") { close(); userTurn(m.content); }
+      if (m.role === "user") { close(); question = m.content; userTurn(m.content); }
       else if (m.role === "operator") { close(); mdBlock(assistantTurn("operator", "Operator"), m.content); }
       else if (m.role === "assistant") {
         if (!turn) turn = assistantTurn("", "BanglaClaw");
@@ -460,7 +566,7 @@ const SCRIPT_MAIN = String.raw`
     if (m.type === "ready") {
       me = m.user; $("who").textContent = me.name; setStatus("connected", "on"); setComposer(true);
       if (sessionId) await openSession(sessionId); else empty();
-      loadSessions();
+      loadSessions(); loadFeatures();
       return;
     }
     if (m.type === "session_event") {
@@ -528,9 +634,11 @@ const SCRIPT_MAIN = String.raw`
     if (lastUsage) meta.push(lastUsage);
     if (r.agentPath && r.agentPath.length > 1) meta.push(r.agentPath.join(" ↪ "));
     run.turn.append(h("div", "meta", meta.join(" · ")));
+    replyActions(run.turn, run.text);
     const fresh = sessionId !== m.sessionId;
     sessionId = m.sessionId; store.set("bc.session", sessionId); saveTitle(sessionId, run.text);
     endRun(); renderInfo(); follow(); scrollEnd();
+    if (!$("pane-files").hidden) loadFiles();
     if (fresh) loadSessions();
     else {
       const s = sessions.find((x) => x.id === sessionId);
@@ -610,13 +718,223 @@ const SCRIPT_MAIN = String.raw`
     if (e.key === "Escape" && list.length) { e.stopPropagation(); hideMenu(); return; }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); if (list.length) command(list[menuSel].name); else $("form").requestSubmit(); }
   };
-  $("form").onsubmit = (e) => { e.preventDefault(); send($("input").value.trim()); };
+  $("form").onsubmit = (e) => {
+    e.preventDefault();
+    const text = $("input").value.trim();
+    if (text.startsWith("/")) return send(text);
+    const ready = attachments.filter((a) => a.path);
+    if (attachments.some((a) => !a.path && !a.error)) return toast("Wait for the upload to finish");
+    if (!text && !ready.length) return;
+    // The agent learns where attached files are; the user's words come first.
+    send([text, ...ready.map((a) => attachmentNote(a, text))].filter(Boolean).join("\n\n"));
+    attachments = []; renderAttachments();
+  };
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && run) stop(); });
   log.addEventListener("click", (e) => {
     const b = e.target.closest("[data-copy]");
     if (!b || !navigator.clipboard) return;
     navigator.clipboard.writeText(b.closest(".code").querySelector("code").textContent).then(() => { b.textContent = "Copied"; setTimeout(() => { b.textContent = "Copy"; }, 1200); });
   });
+
+  // ---- Features, files panel, uploads, microphone ----
+  let features = { workspace: false, uploads: null, transcription: false }, attachments = [];
+  async function loadFeatures() {
+    try { features = await api("/v1/features"); } catch { return; }
+    $("tab-files").hidden = !features.workspace;
+    $("attach").hidden = !features.uploads;
+    $("mic").hidden = !(features.transcription && navigator.mediaDevices && window.MediaRecorder);
+  }
+  function showPane(which) {
+    const files = which === "files";
+    $("pane-chats").hidden = files; $("pane-files").hidden = !files;
+    $("tab-chats").classList.toggle("active", !files); $("tab-files").classList.toggle("active", files);
+    $("tab-chats").setAttribute("aria-selected", String(!files)); $("tab-files").setAttribute("aria-selected", String(files));
+    if (files) loadFiles();
+  }
+  const size = (n) => (n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : (n / 1048576).toFixed(1) + " MB");
+  async function loadFiles() {
+    const nav = $("files");
+    let list;
+    try { list = await api("/v1/workspace/files"); } catch (e) { nav.replaceChildren(h("p", "side-empty", String(e.message || e))); return; }
+    nav.replaceChildren();
+    if (!list.entries.length) { nav.append(h("p", "side-empty", "No files yet. Ask the agent to write something, or attach a file.")); return; }
+    for (const e of list.entries) {
+      const depth = e.path.split("/").length - 1;
+      if (e.type === "dir") { const d = h("div", "fdir", "📁 " + e.path.split("/").pop()); d.style.paddingLeft = 10 + depth * 14 + "px"; nav.append(d); continue; }
+      const row = h("button", "frow");
+      row.type = "button"; row.style.paddingLeft = 10 + depth * 14 + "px"; row.title = e.path + " · " + new Date(e.modified).toLocaleString();
+      row.append(h("span", null, "📄"), h("span", "fname", e.path.split("/").pop()), h("span", "fsize", size(e.size)));
+      row.onclick = () => openViewer(e.path);
+      nav.append(row);
+    }
+  }
+  let viewing = null;
+  async function openViewer(path) {
+    viewing = path;
+    $("viewer-title").textContent = path; $("viewer").hidden = false; $("viewer-close").focus();
+    const body = $("viewer-body");
+    body.replaceChildren(h("p", "meta", "Loading…"));
+    try {
+      const file = await api("/v1/workspace/file?path=" + encodeURIComponent(path));
+      body.replaceChildren();
+      if (/\.(md|markdown)$/i.test(path)) { const d = h("div", "md"); d.innerHTML = md(file.content); body.append(d); }
+      else body.append(h("pre", "raw", file.content));
+      if (file.truncated) body.append(h("p", "meta", "Showing the first part of the file."));
+    } catch (e) { body.replaceChildren(h("div", "errline", String(e.message || e))); }
+  }
+  function closeViewer() { $("viewer").hidden = true; viewing = null; }
+  async function showHistory() {
+    if (!viewing) return;
+    const path = viewing, body = $("viewer-body");
+    let history;
+    try { history = await api("/v1/workspace/history?path=" + encodeURIComponent(path)); } catch (e) { return toast(String(e.message || e)); }
+    body.replaceChildren();
+    const list = h("div", "versions");
+    if (!history.versions.length) list.append(h("p", "meta", "No earlier versions yet."));
+    for (const v of history.versions) {
+      const row = h("div", "version");
+      row.append(h("b", null, "Version " + v.version), h("span", "grow", new Date(v.savedAt).toLocaleString() + " · " + size(v.size)), actionButton("Restore", () => restoreFile(path, v.version)));
+      list.append(row);
+    }
+    body.append(list);
+  }
+  async function restoreFile(path, version) {
+    try { await api("/v1/workspace/restore", { method: "POST", json: version ? { path, version } : { path } }); } catch (e) { return toast(String(e.message || e)); }
+    toast("Restored " + path); loadFiles(); openViewer(path);
+  }
+  async function downloadFile() {
+    if (!viewing) return;
+    try {
+      const res = await api("/v1/workspace/file?download=1&path=" + encodeURIComponent(viewing), { raw: true });
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url; a.download = viewing.split("/").pop(); document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e) { toast(String(e.message || e)); }
+  }
+  async function deleteFile() {
+    if (!viewing) return;
+    const path = viewing;
+    if (!confirm("Move " + path + " to the trash?")) return;
+    try { await api("/v1/workspace/file?path=" + encodeURIComponent(path), { method: "DELETE" }); } catch (e) { return toast(String(e.message || e)); }
+    closeViewer(); loadFiles();
+    toast("Deleted " + path, "Undo", () => restoreFile(path));
+  }
+  let toastTimer = 0;
+  function toast(text, action, onAction) {
+    const t = $("toast");
+    t.replaceChildren(h("span", null, text));
+    if (action) { const b = h("button", null, action); b.type = "button"; b.onclick = () => { t.hidden = true; onAction(); }; t.append(b); }
+    t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, action ? 7000 : 2500);
+  }
+
+  // Session rename and delete.
+  function startRename(row, s, label) {
+    const input = h("input", "rename"); input.value = s.title || label; input.setAttribute("aria-label", "New name");
+    row.replaceChildren(input); input.focus(); input.select();
+    let done = false;
+    const finish = async (save) => {
+      if (done) return; done = true;
+      const title = input.value.trim();
+      if (save && title && title !== label) {
+        try { const r = await api("/v1/sessions/" + s.id, { method: "PATCH", json: { title } }); titles[s.id] = r.session.title; store.set("bc.titles", JSON.stringify(titles)); }
+        catch (e) { toast(String(e.message || e)); }
+      }
+      await loadSessions();
+    };
+    input.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); finish(true); } else if (e.key === "Escape") { e.stopPropagation(); finish(false); } };
+    input.onblur = () => finish(true);
+  }
+  async function deleteSession(s, label) {
+    if (run || !confirm("Delete “" + label + "”? Its messages are removed for good.")) return;
+    try { await api("/v1/sessions/" + s.id, { method: "DELETE" }); } catch (e) { return toast(String(e.message || e)); }
+    delete titles[s.id]; store.set("bc.titles", JSON.stringify(titles));
+    if (s.id === sessionId) newChat();
+    toast("Deleted " + label); loadSessions();
+  }
+
+  // Attachments: uploaded to the workspace right away; the message then says where they are.
+  const bengali = (text) => /[\u0980-\u09FF]/.test(text);
+  function attachmentNote(a, text) {
+    return !text || bengali(text)
+      ? "[সংযুক্ত ফাইল \"" + a.name + "\" workspace-এ " + a.path + " নামে রাখা আছে (" + a.characters + " অক্ষর); workspace_read দিয়ে পড়ুন।]"
+      : "[Attached file \"" + a.name + "\" is saved in the workspace as " + a.path + " (" + a.characters + " characters); read it with workspace_read.]";
+  }
+  function renderAttachments() {
+    const box = $("attachments");
+    box.replaceChildren(...attachments.map((a) => {
+      const c = h("span", "chip" + (a.error ? " error" : ""));
+      c.append(h("span", null, "📄"), h("span", "cname", a.name), h("span", "cstate", a.error ? a.error : a.path ? "→ " + a.path : "uploading…"));
+      const x = h("button", null, "×"); x.type = "button"; x.setAttribute("aria-label", "Remove " + a.name);
+      x.onclick = () => { attachments = attachments.filter((b) => b !== a); renderAttachments(); };
+      c.append(x);
+      return c;
+    }));
+  }
+  async function upload(file) {
+    if (!features.uploads) return toast("Uploads are not enabled on this gateway");
+    const a = { name: file.name, path: "", characters: 0, error: "" };
+    attachments.push(a); renderAttachments();
+    if (file.size > features.uploads.maxBytes) { a.error = "too large"; return renderAttachments(); }
+    try {
+      const saved = await api("/v1/workspace/uploads?filename=" + encodeURIComponent(file.name), { method: "POST", body: file, type: "application/octet-stream" });
+      a.path = saved.path; a.characters = saved.characters;
+      if (!$("pane-files").hidden) loadFiles();
+    } catch (e) { a.error = String(e.message || e); }
+    renderAttachments();
+    $("input").focus();
+  }
+
+  // Microphone: record, then put the transcript in the composer to review before sending.
+  let recorder = null, recordTimer = 0;
+  async function toggleMic() {
+    if (recorder) return recorder.stop();
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { return toast("Microphone access was refused"); }
+    const type = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"].find((t) => MediaRecorder.isTypeSupported(t)) || "";
+    const chunks = [];
+    recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    const started = Date.now();
+    $("mic").setAttribute("aria-pressed", "true"); $("mic").setAttribute("aria-label", "Stop recording");
+    recordTimer = setInterval(() => {
+      const secs = Math.floor((Date.now() - started) / 1000);
+      $("mic-time").textContent = Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+      if (secs >= 120) recorder && recorder.stop();
+    }, 250);
+    recorder.onstop = async () => {
+      clearInterval(recordTimer); stream.getTracks().forEach((t) => t.stop());
+      const mime = (recorder && recorder.mimeType) || "audio/webm";
+      recorder = null;
+      $("mic").setAttribute("aria-pressed", "false"); $("mic").setAttribute("aria-label", "Record voice"); $("mic-time").textContent = "";
+      const blob = new Blob(chunks, { type: mime.split(";")[0] });
+      if (!blob.size) return;
+      $("mic").disabled = true; toast("Transcribing…");
+      try {
+        const { text } = await api("/v1/transcriptions", { method: "POST", body: blob, type: blob.type || "audio/webm" });
+        const input = $("input");
+        input.value = (input.value ? input.value.replace(/\s*$/, " ") : "") + text; autosize(); input.focus();
+        $("toast").hidden = true;
+      } catch (e) { toast(String(e.message || e)); }
+      $("mic").disabled = false;
+    };
+    recorder.start();
+  }
+
+  $("tab-chats").onclick = () => showPane("chats"); $("tab-files").onclick = () => showPane("files");
+  $("files-refresh").onclick = loadFiles;
+  let searchTimer = 0;
+  $("search").oninput = () => { clearTimeout(searchTimer); searchTimer = setTimeout(loadSessions, 250); };
+  $("viewer-close").onclick = closeViewer; $("viewer-history").onclick = showHistory; $("viewer-download").onclick = downloadFile; $("viewer-delete").onclick = deleteFile;
+  $("viewer").onclick = (e) => { if (e.target === $("viewer")) closeViewer(); };
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("viewer").hidden) closeViewer(); });
+  $("attach").onclick = () => $("file").click();
+  $("file").onchange = () => { for (const f of $("file").files) upload(f); $("file").value = ""; };
+  $("mic").onclick = toggleMic;
+  const mainEl = document.querySelector("main");
+  mainEl.addEventListener("dragover", (e) => { if (features.uploads && e.dataTransfer && [...e.dataTransfer.types].includes("Files")) { e.preventDefault(); mainEl.classList.add("drop"); } });
+  mainEl.addEventListener("dragleave", (e) => { if (e.target === mainEl || !mainEl.contains(e.relatedTarget)) mainEl.classList.remove("drop"); });
+  mainEl.addEventListener("drop", (e) => { mainEl.classList.remove("drop"); if (!features.uploads || !e.dataTransfer || !e.dataTransfer.files.length) return; e.preventDefault(); for (const f of e.dataTransfer.files) upload(f); });
 
   renderInfo(); empty();
   if (key) connect();

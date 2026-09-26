@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createSessionBody, messageBody, runBody } from "./schemas.js";
+import { createSessionBody, messageBody, renameSessionBody, runBody } from "./schemas.js";
 
 type Schema = Record<string, unknown>;
 const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` });
@@ -13,6 +13,7 @@ const ERROR_TEXT: Record<number, string> = {
   404: "Not found",
   409: "Conflict",
   413: "Payload too large",
+  415: "Unsupported media type",
   429: "Rate limited",
   502: "Model provider error",
   504: "Run timed out",
@@ -47,7 +48,7 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
     },
     servers: [{ url: "/" }],
     security: [{ bearerAuth: [] }],
-    tags: [{ name: "agent" }, { name: "sessions" }, { name: "knowledge" }, { name: "operators" }, { name: "admin" }, { name: "system" }],
+    tags: [{ name: "agent" }, { name: "sessions" }, { name: "workspace" }, { name: "knowledge" }, { name: "operators" }, { name: "admin" }, { name: "system" }],
     paths: {
       "/health": { get: { tags: ["system"], security: [], summary: "Liveness check", responses: { "200": json({ type: "object", properties: { status: str, version: str } }) } } },
       "/metrics": { get: { tags: ["system"], security: [], summary: "Prometheus metrics (bearer METRICS_TOKEN when configured)", responses: { "200": { description: "Prometheus text format", content: { "text/plain": { schema: str } } } } } },
@@ -57,11 +58,24 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
       "/v1/tools": { get: { tags: ["agent"], summary: "Registered tools", responses: { "200": json({ type: "object", properties: { tools: { type: "array", items: ref("ToolInfo") } } }), ...errors(401) } } },
       "/v1/skills": { get: { tags: ["agent"], summary: "Discovered skills", responses: { "200": json({ type: "object", properties: { skills: { type: "array", items: ref("SkillInfo") } } }), ...errors(401) } } },
       "/v1/agents/run": { post: { tags: ["agent"], summary: "Run the agent (resumes or creates a session)", parameters: [streamParam], requestBody: body(runBody(options.maxInputChars)), responses: runResponses } },
+      "/v1/features": { get: { tags: ["system"], summary: "Optional features enabled on this gateway", responses: { "200": json({ type: "object", properties: { workspace: { type: "boolean" }, uploads: { type: ["object", "null"], properties: { maxBytes: { type: "integer" } } }, transcription: { type: "boolean" } } }), ...errors(401) } } },
+      "/v1/workspace/files": { get: { tags: ["workspace"], summary: "Your workspace files (docs/24)", parameters: [{ name: "path", in: "query", description: "Folder to list", schema: { type: "string" } }], responses: { "200": json({ type: "object", properties: { entries: { type: "array", items: ref("WorkspaceEntry") }, truncated: { type: "boolean" } } }), ...errors(400, 401, 403, 404) } } },
+      "/v1/workspace/file": {
+        get: { tags: ["workspace"], summary: "A file's text (JSON), or with download=1 as an attachment", parameters: [{ name: "path", in: "query", required: true, description: "Path relative to your workspace, e.g. notes/todo.md", schema: { type: "string", maxLength: 200 } }, { name: "download", in: "query", schema: { enum: ["1"] } }], responses: { "200": { description: "File", content: { "application/json": { schema: { type: "object", properties: { path: str, content: str, totalLines: { type: "integer" }, truncated: { type: "boolean" } } } }, "text/plain": { schema: str } } }, ...errors(400, 401, 403, 404) } },
+        delete: { tags: ["workspace"], summary: "Move a file to the trash", parameters: [{ name: "path", in: "query", required: true, description: "Path relative to your workspace, e.g. notes/todo.md", schema: { type: "string", maxLength: 200 } }], responses: { "200": json({ type: "object", properties: { path: str, trashed: str } }), ...errors(400, 401, 403, 404) } },
+      },
+      "/v1/workspace/history": { get: { tags: ["workspace"], summary: "Earlier versions of a file, and whether a deleted copy is in the trash", parameters: [{ name: "path", in: "query", required: true, description: "Path relative to your workspace, e.g. notes/todo.md", schema: { type: "string", maxLength: 200 } }], responses: { "200": json({ type: "object", properties: { path: str, versions: { type: "array", items: { type: "object", properties: { version: { type: "integer" }, savedAt: time, size: { type: "integer" } } } }, inTrash: { type: "boolean" } } }), ...errors(400, 401, 403, 404) } } },
+      "/v1/workspace/restore": { post: { tags: ["workspace"], summary: "Undo a delete or an edit", requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["path"], properties: { path: str, version: { type: "integer", minimum: 1 } } } } } }, responses: { "200": json({ type: "object", properties: { path: str, restoredFrom: { enum: ["history", "trash"] }, bytes: { type: "integer" } } }), ...errors(400, 401, 403, 404) } } },
+      "/v1/workspace/uploads": { post: { tags: ["workspace"], summary: "Upload a file into uploads/ (PDF, DOCX and HTML are stored as text)", parameters: [{ name: "filename", in: "query", required: true, schema: { type: "string", maxLength: 200 } }], requestBody: { required: true, content: { "application/octet-stream": { schema: { type: "string", format: "binary" } } } }, responses: { "201": json({ type: "object", properties: { path: str, characters: { type: "integer" } } }, "Stored"), ...errors(400, 401, 403, 404, 413) } } },
+      "/v1/transcriptions": { post: { tags: ["agent"], summary: "Speech to text (voice.enabled)", parameters: [{ name: "language", in: "query", description: "Language hint, e.g. bn", schema: { type: "string" } }], requestBody: { required: true, content: { "audio/*": { schema: { type: "string", format: "binary" } } } }, responses: { "200": json({ type: "object", properties: { text: str } }), ...errors(400, 401, 403, 404, 413, 415) } } },
       "/v1/sessions": {
-        get: { tags: ["sessions"], summary: "Your sessions, most recent first", parameters: [limitParam(100, 20)], responses: { "200": json({ type: "object", properties: { sessions: { type: "array", items: ref("Session") } } }), ...errors(401) } },
+        get: { tags: ["sessions"], summary: "Your sessions, most recent first", parameters: [limitParam(100, 20), { name: "q", in: "query", description: "Matches the title, a session id prefix or the external id", schema: { type: "string", maxLength: 100 } }], responses: { "200": json({ type: "object", properties: { sessions: { type: "array", items: ref("Session") } } }), ...errors(401) } },
         post: { tags: ["sessions"], summary: "Create or resolve a session", requestBody: body(createSessionBody), responses: { "200": json(ref("SessionCreated"), "Existing session"), "201": json(ref("SessionCreated"), "Created"), ...errors(400, 401) } },
       },
-      "/v1/sessions/{id}": { get: { tags: ["sessions"], summary: "Session and message count", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { session: ref("Session"), messageCount: { type: "integer" } } }), ...errors(401, 404) } } },
+      "/v1/sessions/{id}": { get: { tags: ["sessions"], summary: "Session and message count", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { session: ref("Session"), messageCount: { type: "integer" } } }), ...errors(401, 404) } } ,
+        patch: { tags: ["sessions"], summary: "Rename a session (title null clears it)", parameters: [idParam("id")], requestBody: body(renameSessionBody), responses: { "200": json({ type: "object", properties: { session: ref("Session") } }), ...errors(400, 401, 403, 404) } },
+        delete: { tags: ["sessions"], summary: "Delete a session with its messages and runs", parameters: [idParam("id")], responses: { "204": { description: "Deleted" }, ...errors(401, 403, 404) } },
+      },
       "/v1/sessions/{id}/messages": {
         get: { tags: ["sessions"], summary: "Recent messages", parameters: [idParam("id"), limitParam(500, 50)], responses: { "200": json({ type: "object", properties: { sessionId: str, messages: { type: "array", items: ref("Message") } } }), ...errors(401, 404) } },
         post: { tags: ["sessions"], summary: "Send a message (runs the agent)", parameters: [idParam("id"), streamParam], requestBody: body(messageBody(options.maxInputChars)), responses: runResponses },
@@ -121,6 +135,7 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
       schemas: {
         Error: { type: "object", required: ["error"], properties: { error: { type: "object", required: ["code", "message", "requestId"], properties: { code: str, message: str, requestId: str } } } },
         Me: { type: "object", properties: { user: { type: "object", properties: { id: str, name: str, role: { enum: ["user", "operator", "admin"] } } }, key: { type: "object", properties: { id: str, name: str, scopes: { type: "array", items: { enum: ["read", "run"] } }, createdAt: time } } } },
+        WorkspaceEntry: { type: "object", properties: { path: str, type: { enum: ["file", "dir"] }, size: { type: "integer" }, modified: time } },
         Session: {
           type: "object",
           required: ["id", "channel", "agentId", "status", "createdAt", "updatedAt"],

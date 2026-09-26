@@ -16,12 +16,13 @@ import { GatewayContext, type GatewayDeps, type GatewayEnv } from "./context.js"
 import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
 import { respondWithSessionEvents } from "./events.js";
 import { respondWithRun } from "./run.js";
-import { createSessionBody, limitQuery, messageBody, runBody } from "./schemas.js";
+import { createSessionBody, limitQuery, messageBody, renameSessionBody, runBody } from "./schemas.js";
 import { adminRoutes, dashboardRoutes } from "./admin.js";
 import { openApiSpec } from "./openapi.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
 import { WEB_CHAT_CSP, WEB_CHAT_HTML } from "./web-chat.js";
 import { widgetRoutes } from "./widget/routes.js";
+import { LARGE_BODY_PATHS, registerFileRoutes } from "./files.js";
 import { websocketHandler } from "./ws.js";
 
 type Env = GatewayEnv;
@@ -159,7 +160,9 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   }
 
   const v1 = new Hono<Env>();
-  v1.use("*", bodyLimit({ maxSize: 256 * 1024, onError: () => { throw new HttpError(413, "payload_too_large", "Request body too large"); } }));
+  const defaultBodyLimit = bodyLimit({ maxSize: 256 * 1024, onError: () => { throw new HttpError(413, "payload_too_large", "Request body too large"); } });
+  // Uploads and audio have their own, larger limits (files.ts).
+  v1.use("*", (c, next) => (LARGE_BODY_PATHS.has(c.req.path) ? next() : defaultBodyLimit(c, next)));
   v1.use("*", async (c, next) => {
     const header = c.req.header("authorization");
     const token = header?.match(/^Bearer\s+(.+)$/i)?.[1];
@@ -187,6 +190,8 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
     }
     await next();
   });
+
+  registerFileRoutes(v1, deps);
 
   v1.get("/me", (c) => {
     const { user, key } = c.get("principal");
@@ -232,8 +237,28 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
 
   v1.get("/sessions", async (c) => {
     const limit = limitQuery(100, 20).parse(c.req.query("limit"));
-    const sessions = await deps.sessions.list({ userId: c.get("principal").user.id, limit });
+    const q = c.req.query("q")?.trim().slice(0, 100);
+    const sessions = await deps.sessions.list({ userId: c.get("principal").user.id, limit, ...(q !== undefined && q !== "" && { query: q }) });
     return c.json({ sessions: sessions.map(sessionJson) });
+  });
+
+  /** Renames a conversation (title null clears it). */
+  v1.patch("/sessions/:id", async (c) => {
+    const session = await gw.ownedSession(c.get("principal"), c.req.param("id"));
+    const body = await parseJson(c, renameSessionBody);
+    const updated = await deps.sessions.update(session.id, { title: body.title === null ? null : body.title.replace(/\s+/g, " ") });
+    if (updated === undefined) throw new HttpError(404, "session_not_found", "Session not found");
+    return c.json({ session: sessionJson(updated) });
+  });
+
+  /** Deletes a conversation with its messages and runs. */
+  v1.delete("/sessions/:id", async (c) => {
+    const principal = c.get("principal");
+    const session = await gw.ownedSession(principal, c.req.param("id"));
+    await deps.runs.deleteBySession(session.id);
+    await deps.sessions.delete(session.id);
+    audit(c, { action: "session.deleted", outcome: "success", actorId: principal.user.id, target: session.id, metadata: { channel: session.channel } });
+    return c.body(null, 204);
   });
 
   v1.get("/sessions/:id", async (c) => {

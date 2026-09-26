@@ -78,4 +78,6 @@ export interface RunStore {
   /** Most recent first. */
   listBySession(sessionId: string, options?: { limit?: number }): Promise<RunRecord[]>;
   stats(query: StatsQuery): Promise<RunStats>;
+  /** Deletes a session's runs and their tool calls (when the session is deleted). */
+  deleteBySession(sessionId: string): Promise<void>;
 }

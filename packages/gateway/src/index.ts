@@ -2,7 +2,7 @@ export { createGatewayApp } from "./app.js";
 export { openApiSpec } from "./openapi.js";
 export { adminRoutes, dashboardRoutes, withCosts, DASHBOARD_CSP } from "./admin.js";
 export { startGateway, type RunningGateway } from "./server.js";
-export { GatewayContext, API_CHANNEL, type GatewayConfig, type GatewayDeps, type GatewayMetrics, type WidgetOptions } from "./context.js";
+export { GatewayContext, API_CHANNEL, type GatewayConfig, type GatewayDeps, type GatewayMetrics, type GatewayUploads, type GatewayWorkspace, type WidgetOptions } from "./context.js";
 export { WIDGET_CHANNEL } from "./widget/routes.js";
 export { VisitorTokens, type VisitorToken } from "./widget/token.js";
 export { HttpError, toHttpError, type ErrorBody } from "./errors.js";

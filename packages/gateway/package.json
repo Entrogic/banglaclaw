@@ -66,6 +66,7 @@
   "devDependencies": {
     "@entrogic-net/observability": "workspace:*",
     "@entrogic-net/providers": "workspace:*",
+    "@entrogic-net/workspace": "workspace:*",
     "@types/ws": "^8.18.1",
     "ws": "^8.21.3"
   }

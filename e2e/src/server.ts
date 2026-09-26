@@ -3,7 +3,9 @@
  * tests can run in parallel), the web chat, the website widget and — when built — the admin
  * dashboard. API keys are written to E2E_STATE for the tests to read.
  */
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AIMessage, AIMessageChunk, BaseMessage } from "@langchain/core/messages";
 import { Hono } from "hono";
@@ -15,6 +17,7 @@ import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
 import { createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
+import { Workspace, createWorkspaceTools } from "@entrogic-net/workspace";
 
 const port = Number(process.env.E2E_PORT ?? 4319);
 const statePath = process.env.E2E_STATE ?? fileURLToPath(new URL("../.state.json", import.meta.url));
@@ -29,11 +32,15 @@ class RuleProvider implements ModelProvider {
 
   #turn(messages: BaseMessage[]): ScriptedTurn {
     const last = messages.at(-1);
+    if (last?.getType() === "tool" && last.text.includes('"path"')) return { content: "ফাইলটি workspace-এ রাখা হয়েছে।" };
     if (last?.getType() === "tool") {
       const result = /"result":\s*(-?[\d.]+)/.exec(last.text)?.[1] ?? "?";
       return { content: `**উত্তর:** ${result}\n\n| হিসাব | ফল |\n|---|---|\n| গুণ | ${result} |`, usage: { input: 120, output: 18 } };
     }
     const text = last?.text ?? "";
+    // "note: <name>: <content>" writes a workspace file.
+    const note = /^note:\s*([\w.-]+):\s*([\s\S]+)$/.exec(text);
+    if (note !== null) return { toolCalls: [{ name: "workspace_write", args: { path: `notes/${note[1]}`, content: note[2] ?? "" } }] };
     const expression = /(\d+)\s*[*x×]\s*(\d+)/.exec(text);
     if (expression !== null) return { toolCalls: [{ name: "calculator", args: { expression: `${expression[1]}*${expression[2]}` } }], usage: { input: 100, output: 10 } };
     return { content: `আপনি লিখেছেন: ${text}`, usage: { input: 50, output: 8 } };
@@ -53,7 +60,9 @@ const sessions = new InMemorySessionStore();
 const runs = new InMemoryRunStore(sessions);
 const registry = new ToolRegistry();
 for (const tool of builtinTools) registry.register(tool);
-const policy = new AllowlistPolicy(["calculator"]);
+const workspace = new Workspace(mkdtempSync(join(tmpdir(), "banglaclaw-e2e-ws-")), { maxFileBytes: 100_000, maxFiles: 200, maxTotalBytes: 5_000_000, historyVersions: 5 });
+for (const tool of createWorkspaceTools(workspace, sessions, { channels: ["api"] })) registry.register(tool);
+const policy = new AllowlistPolicy(["calculator", "workspace_*"]);
 const provider = new RuleProvider();
 const runtime = new AgentRuntime({ provider, registry, policy, sessions, runs, limits: { maxIterations: 4, maxToolCalls: 4 }, timeoutMs: 10_000, timezone: "Asia/Dhaka", logger });
 const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
@@ -72,6 +81,17 @@ const gateway = await startGateway({
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 4_000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 10_000, maxConcurrentRuns: 10 } },
   version: "e2e", logger, timezone: "Asia/Dhaka",
   webChat: true,
+  workspace,
+  uploads: {
+    maxBytes: 1_000_000,
+    save: async (owner, file) => {
+      const text = new TextDecoder().decode(file.data);
+      const path = `uploads/${file.filename.replace(/[^\p{L}\p{M}\p{N}._-]/gu, "_")}`;
+      await workspace.write(owner, path, text);
+      return { path, characters: text.length };
+    },
+  },
+  transcriber: { id: "e2e:transcriber", transcribe: async (audio) => `ভয়েস থেকে লেখা (${audio.mimeType})` },
   widget: {
     allowedOrigins: [`http://localhost:${port}`], title: "Dokan সহায়তা", greeting: "আসসালামু আলাইকুম! কীভাবে সাহায্য করতে পারি?", color: "#0b6b4f", position: "right",
     messagesPerMinute: 100, sessionsPerMinute: 100, maxInputChars: 1_000, maxConcurrentRuns: 10, visitorTtlDays: 1, secret: "e2e-widget-secret-e2e-widget-secret-00",

@@ -13,8 +13,10 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | GET | `/v1/skills` | Discovered skills |
 | POST | `/v1/agents/run` | Run the agent: `{ text, sessionId?, externalId? }`. Resumes or creates a session |
 | POST | `/v1/sessions` | Create or resolve a session: `{ externalId? }` (201 when created) |
-| GET | `/v1/sessions?limit=` | The caller's sessions, most recent first |
+| GET | `/v1/sessions?limit=&q=` | The caller's sessions, most recent first, each with `title`; `q` matches the title, an id prefix or the external id |
 | GET | `/v1/sessions/:id` | Session plus message count |
+| PATCH | `/v1/sessions/:id` | Rename: `{ title }` (1–80 characters, or `null` to clear) |
+| DELETE | `/v1/sessions/:id` | Delete the session with its messages and runs (204, audited as `session.deleted`) |
 | GET | `/v1/sessions/:id/messages?limit=` | Recent messages (`role`, `content`, `toolCalls`, `toolCallId`) |
 | POST | `/v1/sessions/:id/messages` | Send a message, i.e. run the agent in that session: `{ text }` |
 | GET | `/v1/sessions/:id/runs?limit=` | Runs of a session, with tool calls |
@@ -22,6 +24,14 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | GET | `/v1/runs/:id` | One run |
 | GET | `/v1/knowledge/search?q=&limit=` | Search the knowledge base (when enabled) |
 | GET | `/v1/knowledge/documents` | Ingested documents |
+| GET | `/v1/features` | Optional features on this gateway: `{ workspace, uploads: { maxBytes } \| null, transcription }` |
+| GET | `/v1/workspace/files?path=` | The caller's workspace files (docs/24); 404 `workspace_disabled` when off |
+| GET | `/v1/workspace/file?path=&download=1` | A file's text as JSON, or as a `text/plain` attachment |
+| DELETE | `/v1/workspace/file?path=` | Move a file to the trash |
+| GET | `/v1/workspace/history?path=` | Earlier versions and whether a deleted copy is in the trash |
+| POST | `/v1/workspace/restore` | Undo: `{ path, version? }` restores from the trash or history |
+| POST | `/v1/workspace/uploads?filename=` | Raw file body (up to `workspace.maxUploadBytes`) → `uploads/…` (PDF/DOCX/HTML stored as text) → `{ path, characters }` (201) |
+| POST | `/v1/transcriptions?language=` | Raw audio body (`audio/webm`, `audio/ogg`, `audio/mp4`…, up to 25 MB) → `{ text }`; needs `voice.enabled` |
 | GET | `/v1/memories` | The caller's long-term memories |
 | DELETE | `/v1/memories/:id` | Delete one of the caller's memories (204) |
 | GET | `/v1/handoffs` | Operators: sessions waiting for a human (all users) |

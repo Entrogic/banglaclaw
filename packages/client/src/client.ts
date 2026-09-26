@@ -1,4 +1,4 @@
-import type { AdminKey, AdminSession, AdminStats, AuditEvent, KnowledgeHit, Me, Memory, Message, Run, RunResponse, Session, SessionEvent, StreamEvent } from "./types.js";
+import type { AdminKey, AdminSession, AdminStats, AuditEvent, Features, KnowledgeHit, Me, Memory, Message, Run, RunResponse, Session, SessionEvent, StreamEvent, WorkspaceEntry } from "./types.js";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -94,6 +94,16 @@ export class BanglaClawClient {
     return res;
   }
 
+  /** POSTs raw bytes (uploads, audio) and parses the JSON answer. */
+  async #binary<T>(path: string, data: Uint8Array | Blob, contentType: string): Promise<T> {
+    const res = await this.#fetch(`${this.#base}${path}`, { method: "POST", headers: { ...this.#headers, "Content-Type": contentType }, body: data });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: { code?: string; message?: string; requestId?: string } };
+      throw new BanglaClawApiError(res.status, err.error?.code ?? "http_error", err.error?.message ?? res.statusText, err.error?.requestId ?? res.headers.get("x-request-id") ?? undefined);
+    }
+    return (await res.json()) as T;
+  }
+
   async #json<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     const res = await this.#request(method, path, body, signal !== undefined ? { signal } : {});
     return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
@@ -152,7 +162,12 @@ export class BanglaClawClient {
 
   readonly sessions = {
     create: (options: { externalId?: string } = {}): Promise<{ session: Session; created: boolean }> => this.#json("POST", "/v1/sessions", options),
-    list: (options: { limit?: number } = {}): Promise<{ sessions: Session[] }> => this.#json("GET", `/v1/sessions${query(options)}`),
+    /** `q` matches the title, a session id prefix or the external id. */
+    list: (options: { limit?: number; q?: string } = {}): Promise<{ sessions: Session[] }> => this.#json("GET", `/v1/sessions${query(options)}`),
+    /** Renames a session; null clears the title. */
+    rename: (id: string, title: string | null): Promise<{ session: Session }> => this.#json("PATCH", `/v1/sessions/${enc(id)}`, { title }),
+    /** Deletes a session with its messages and runs. */
+    delete: (id: string): Promise<void> => this.#json("DELETE", `/v1/sessions/${enc(id)}`),
     get: (id: string): Promise<{ session: Session; messageCount: number }> => this.#json("GET", `/v1/sessions/${enc(id)}`),
     messages: (id: string, options: { limit?: number } = {}): Promise<{ sessionId: string; messages: Message[] }> =>
       this.#json("GET", `/v1/sessions/${enc(id)}/messages${query(options)}`),
@@ -161,6 +176,30 @@ export class BanglaClawClient {
     runs: (id: string, options: { limit?: number } = {}): Promise<{ runs: Run[] }> => this.#json("GET", `/v1/sessions/${enc(id)}/runs${query(options)}`),
     /** Follows a session: operator replies and handoff releases as they happen, until `signal` aborts. */
     events: (id: string, options: { signal?: AbortSignal } = {}): AsyncGenerator<SessionEvent> => this.#sessionEvents(id, options.signal),
+  };
+
+  /** Optional features of this gateway (workspace, uploads, transcription). */
+  features(): Promise<Features> {
+    return this.#json("GET", "/v1/features");
+  }
+
+  /** Speech to text (the gateway needs voice.enabled). */
+  transcribe(audio: Uint8Array | Blob, mimeType: string, options: { language?: string } = {}): Promise<{ text: string }> {
+    return this.#binary(`/v1/transcriptions${query(options)}`, audio, mimeType);
+  }
+
+  /** The caller's workspace files (docs/24). */
+  readonly workspace = {
+    list: (path?: string): Promise<{ entries: WorkspaceEntry[]; truncated: boolean }> => this.#json("GET", `/v1/workspace/files${query(path === undefined ? {} : { path })}`),
+    read: (path: string): Promise<{ path: string; content: string; totalLines: number; truncated: boolean }> => this.#json("GET", `/v1/workspace/file${query({ path })}`),
+    delete: (path: string): Promise<{ path: string; trashed: string }> => this.#json("DELETE", `/v1/workspace/file${query({ path })}`),
+    history: (path: string): Promise<{ path: string; versions: { version: number; savedAt: string; size: number }[]; inTrash: boolean }> =>
+      this.#json("GET", `/v1/workspace/history${query({ path })}`),
+    restore: (path: string, version?: number): Promise<{ path: string; restoredFrom: "history" | "trash"; bytes: number }> =>
+      this.#json("POST", "/v1/workspace/restore", { path, ...(version !== undefined && { version }) }),
+    /** Stores a file under uploads/ (PDF, DOCX and HTML as text). */
+    upload: (filename: string, data: Uint8Array | Blob): Promise<{ path: string; characters: number }> =>
+      this.#binary(`/v1/workspace/uploads${query({ filename })}`, data, "application/octet-stream"),
   };
 
   readonly runs = {

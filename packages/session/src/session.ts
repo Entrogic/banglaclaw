@@ -27,6 +27,8 @@ export interface SessionPatch {
   /** null clears it. */
   activeAgent?: string | null;
   handoffReason?: string | null;
+  /** Renames the conversation; null clears the title. */
+  title?: string | null;
 }
 
 export interface NewSession {
@@ -52,4 +54,6 @@ export interface SessionStore {
   countMessages(sessionId: string): Promise<number>;
   /** Unlinks the channel-native id so the next message from that conversation starts a new session (e.g. /new). */
   detachExternalId(sessionId: string): Promise<void>;
+  /** Deletes the session and its messages; false if it did not exist. */
+  delete(sessionId: string): Promise<boolean>;
 }

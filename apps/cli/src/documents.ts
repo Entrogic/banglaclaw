@@ -1,5 +1,6 @@
 import { extname } from "node:path";
 import { DocumentRejected, type DocumentHandler } from "@entrogic-net/channels";
+import type { GatewayUploads } from "@entrogic-net/gateway";
 import { TEXT_EXTENSIONS, extractText } from "@entrogic-net/knowledge";
 import { sessionOwner } from "@entrogic-net/session";
 import type { LoadedConfig } from "@entrogic-net/shared";
@@ -26,9 +27,15 @@ export function uploadName(filename: string): string {
  * get "-2", "-3"… so nothing is overwritten.
  */
 export function createDocumentSaver(workspace: Workspace, maxBytes: number): DocumentHandler {
+  const upload = createUploadSaver(workspace, maxBytes);
+  return { maxBytes, save: (session, document) => upload.save(sessionOwner(session), document) };
+}
+
+/** The same storage keyed by owner: POST /v1/workspace/uploads (the gateway knows the user, not a session). */
+export function createUploadSaver(workspace: Workspace, maxBytes: number): GatewayUploads {
   return {
     maxBytes,
-    async save(session, document) {
+    async save(owner, document) {
       const safe = uploadName(document.filename);
       const ext = extname(safe).toLowerCase();
       if (!(TEXT_EXTENSIONS as readonly string[]).includes(ext)) throw new DocumentRejected("unsupported", `Unsupported file type ${ext || "(none)"}`);
@@ -42,7 +49,6 @@ export function createDocumentSaver(workspace: Workspace, maxBytes: number): Doc
       const base = KEEP_AS_IS.has(ext) ? safe : `${safe.slice(0, safe.length - ext.length)}.txt`;
       const baseExt = extname(base);
       const stem = base.slice(0, base.length - baseExt.length);
-      const owner = sessionOwner(session);
       for (let n = 1; n <= 50; n++) {
         const path = `uploads/${n === 1 ? base : `${stem}-${n}${baseExt}`}`;
         try {

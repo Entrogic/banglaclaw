@@ -4,6 +4,20 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Web chat tools:**
+  - Files tab over the caller's workspace: preview, download, history and restore, delete with undo.
+  - 📎 attach and drag-and-drop uploads into `uploads/`, with the message telling the agent where the file is.
+  - Conversation search, rename and delete in the sidebar.
+  - Copy and Retry on replies, Edit and Copy on your own messages.
+  - 🎤 microphone that transcribes into the composer.
+- **New additive API** (docs/18, OpenAPI and typed client):
+  - `GET /v1/features`
+  - `/v1/workspace/files`, `/v1/workspace/file` (GET/DELETE, `download=1`), `/v1/workspace/history`, `/v1/workspace/restore`, `/v1/workspace/uploads`
+  - `POST /v1/transcriptions`
+  - `PATCH` and `DELETE /v1/sessions/:id`, and `q` on `GET /v1/sessions`
+- `SessionStore.delete`, `SessionPatch.title`, `RunStore.deleteBySession`, and the audit action `session.deleted`.
+- `banglaclaw serve` passes the workspace, uploads and transcriber (when `voice.enabled`) to the gateway.
+
 - **Browser tests:** Playwright tests (`e2e/`, `pnpm e2e`) for the web chat, website widget and admin dashboard. They run against a real gateway with a deterministic fake model, on desktop and mobile viewports, in a separate CI job (docs/19).
 
 - **Chat files into the workspace:** documents sent on Telegram, WhatsApp or Messenger are saved to the sender's workspace under `uploads/`. Text formats are kept as they are, PDF, DOCX and HTML are stored as extracted text, and names are cleaned without ever overwriting. The agent is told where the file is (after the caption) and reads it with `workspace_read`. Adds `workspace.uploads` and `maxUploadBytes`, plus notices for files that are too large, unsupported, or arrive when files are off. `extractText` is exported from `@entrogic-net/knowledge` (docs/24, docs/11).
