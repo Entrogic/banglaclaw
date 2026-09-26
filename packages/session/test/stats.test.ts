@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { InMemoryRunStore, InMemorySessionStore, dayRange, type RunRecord } from "../src/index.js";
+import { InMemoryRunStore, InMemorySessionStore, dayRange, windowStart, type RunRecord } from "../src/index.js";
 
 export function makeRun(over: Partial<RunRecord>): RunRecord {
   const at = over.startedAt ?? new Date("2026-09-20T10:00:00Z");
@@ -14,6 +14,17 @@ describe("run stats", () => {
   it("zero-fills days in a timezone", () => {
     // 2026-09-19T20:00Z is already the 20th in Dhaka (+06:00).
     expect(dayRange(new Date("2026-09-19T20:00:00Z"), new Date("2026-09-22T05:00:00Z"), "Asia/Dhaka")).toEqual(["2026-09-20", "2026-09-21", "2026-09-22"]);
+  });
+
+  it("starts a window of N days at local midnight, whatever the UTC date", () => {
+    // 00:15 in Dhaka on the 27th is still the 26th in UTC.
+    const until = new Date("2026-09-26T18:15:00Z");
+    const since = windowStart(until, 3, "Asia/Dhaka");
+    expect(since.toISOString()).toBe("2026-09-24T18:00:00.000Z");
+    expect(dayRange(since, until, "Asia/Dhaka")).toEqual(["2026-09-25", "2026-09-26", "2026-09-27"]);
+    expect(windowStart(new Date("2026-09-26T12:00:00Z"), 1, "UTC").toISOString()).toBe("2026-09-26T00:00:00.000Z");
+    // Across a DST change (New York falls back on 2026-11-01).
+    expect(windowStart(new Date("2026-11-02T15:00:00Z"), 2, "America/New_York").toISOString()).toBe("2026-11-01T04:00:00.000Z");
   });
 
   it("aggregates runs, tokens, channels, agents and tools", async () => {

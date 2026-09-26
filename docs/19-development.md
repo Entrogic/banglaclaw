@@ -86,7 +86,7 @@ BanglaClaw is published to npm as the `@entrogic-net/*` packages plus the unscop
 
 | Published | Not published |
 |---|---|
-| `packages/*` (16 libraries), `apps/cli` (`@entrogic-net/cli`, the `banglaclaw` bin), `apps/banglaclaw` (wrapper), `mcp-servers/bangladesh` | `apps/dashboard` (shipped in the Docker image), `examples/*` |
+| `packages/*` (17 libraries), `apps/cli` (`@entrogic-net/cli`, the `banglaclaw` bin), `apps/banglaclaw` (wrapper), `mcp-servers/bangladesh` | `apps/dashboard` (shipped in the Docker image), `examples/*` |
 
 - **Versioning.** All published packages share one version (`fixed` in `.changeset/config.json`). A `patch` changeset for a fix bumps every package's patch version. `major` is reserved for breaking changes to the `/v1` API or public exports. `apps/cli/src/version.ts` reads the CLI's `package.json`, so `--version`, `/health` and metrics follow automatically.
 - **Changesets.** A pull request that changes published behavior adds one with `pnpm changeset` (one line for users). The curated project summary stays in the root `CHANGELOG.md`, and Changesets writes a `CHANGELOG.md` per package.

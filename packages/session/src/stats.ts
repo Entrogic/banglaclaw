@@ -7,6 +7,25 @@ export function dayKey(date: Date, timezone = "UTC"): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
+/** Milliseconds `timezone` is ahead of UTC at `instant`. */
+function zoneOffset(instant: number, timezone: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+      .formatToParts(new Date(instant))
+      .map((p) => [p.type, Number(p.value)]),
+  );
+  return Date.UTC(parts.year ?? 0, (parts.month ?? 1) - 1, parts.day ?? 1, parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0) - Math.floor(instant / 1000) * 1000;
+}
+
+/** Start (local midnight in `timezone`) of the window of `days` calendar days ending on `until`'s local day. */
+export function windowStart(until: Date, days: number, timezone = "UTC"): Date {
+  const [y, m, d] = dayKey(until, timezone).split("-").map(Number) as [number, number, number];
+  const midnightUtc = Date.UTC(y, m - 1, d - (days - 1));
+  let start = midnightUtc - zoneOffset(midnightUtc, timezone);
+  start = midnightUtc - zoneOffset(start, timezone); // settle across a DST change
+  return new Date(start);
+}
+
 /** Every day from `since` to `until` (inclusive) in `timezone`. */
 export function dayRange(since: Date, until: Date, timezone = "UTC"): string[] {
   const days: string[] = [];

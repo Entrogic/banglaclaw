@@ -1,7 +1,9 @@
 import { AllowlistPolicy } from "@entrogic-net/tools";
 import type { GlobalOptions } from "../bootstrap.js";
 import { buildRegistry, connectMcp, load, loadAgents, loadSkills } from "../bootstrap.js";
+import { InMemorySessionStore } from "@entrogic-net/session";
 import { loadPlugins } from "../plugins.js";
+import { workspaceTools } from "../workspace.js";
 import { emit, empty, print } from "../ui/output.js";
 import { withSpinner } from "../ui/spinner.js";
 import { table } from "../ui/table.js";
@@ -16,9 +18,10 @@ export async function toolList(options: GlobalOptions): Promise<void> {
   try {
     reportMcpFailures(mcp);
     const pluginTools = new Map(plugins.flatMap((p) => (p.plugin.tools ?? []).map((t) => [t.name, p.plugin.name] as const)));
-    const rows = buildRegistry(mcp, plugins.flatMap((p) => p.plugin.tools ?? [])).list().map((tool) => {
+    // Listed only (never executed here), so a throwaway session store is enough.
+    const rows = buildRegistry(mcp, [...workspaceTools(loaded, new InMemorySessionStore()), ...plugins.flatMap((p) => p.plugin.tools ?? [])]).list().map((tool) => {
       const decision = policy.check(tool);
-      const source = tool.name.includes("__") ? `mcp:${tool.name.split("__")[0]}` : pluginTools.has(tool.name) ? `plugin:${pluginTools.get(tool.name)}` : "builtin";
+      const source = tool.name.includes("__") ? `mcp:${tool.name.split("__")[0]}` : pluginTools.has(tool.name) ? `plugin:${pluginTools.get(tool.name)}` : tool.name.startsWith("workspace_") ? "workspace" : "builtin";
       return { name: tool.name, risk: tool.risk, source, allowed: decision.allowed, ...(!decision.allowed && { reason: decision.reason }), description: tool.description };
     });
     emit(rows, (list) =>
@@ -32,7 +35,7 @@ export async function toolList(options: GlobalOptions): Promise<void> {
         ]),
       ),
     );
-    print(c.dim("\nKnowledge and memory tools appear when those features are enabled. Allow tools in banglaclaw.yaml → tools.allow."));
+    print(c.dim("\nKnowledge, memory and workspace tools appear when those features are enabled. Allow tools in banglaclaw.yaml → tools.allow."));
   } finally {
     await mcp.close();
   }

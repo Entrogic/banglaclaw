@@ -4,6 +4,10 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Workspace** (`@entrogic-net/workspace`, docs/24, ADR-0014): sandboxed per-owner text files through `workspace_list`, `workspace_read`, `workspace_create`, `workspace_write`, `workspace_edit`, `workspace_delete` and `workspace_restore`. Overwrites, edits and deletes are undoable (history and trash), paths can't escape the owner's folder (including through symlinks), quotas include history, and channels are limited (the widget is excluded by default). It's off by default (`workspace.enabled`, plus `workspace_*` in `tools.allow`). Adds `banglaclaw workspace list | show | history | restore` and doctor checks.
+- Fix: `/v1/admin/stats?days=N` returned N+1 days between local midnight and UTC midnight (for example 00:00–06:00 in Dhaka), because the window started at UTC midnight. It now starts at local midnight in the configured timezone (`windowStart`).
+- `sessionOwner` / `ownerForUser` moved to `@entrogic-net/session` (`memoryOwner` remains as an alias in `@entrogic-net/knowledge`).
+
 - **Website widget** (`channels.widget`, ADR-0013): `<script src="https://<gateway>/widget.js" async></script>` adds a chat bubble to any allowed site. Anonymous visitors get HMAC-signed tokens instead of API keys, the frame is limited to `allowedOrigins` with CSP `frame-ancestors`, replies stream as markdown, operator replies arrive live during a handoff, and tool details never reach the browser. It has per-visitor and per-IP limits, a global reply cap, `BANGLACLAW_WIDGET_SECRET`, doctor checks, a demo page in `examples/widget/`, and docs/11.
 - The web chat and widget share one escaping markdown renderer (`packages/gateway/src/browser-markdown.ts`), now covered by an XSS test.
 

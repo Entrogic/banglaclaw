@@ -68,6 +68,7 @@
     "@entrogic-net/skills": "workspace:*",
     "@entrogic-net/storage": "workspace:*",
     "@entrogic-net/tools": "workspace:*",
+    "@entrogic-net/workspace": "workspace:*",
     "@langchain/core": "^1.2.12",
     "@langchain/langgraph": "^1.4.17",
     "@modelcontextprotocol/sdk": "^1.30.1",

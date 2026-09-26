@@ -3,7 +3,7 @@ import { extname, join, normalize, resolve, sep } from "node:path";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
 import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
-import type { RunStats } from "@entrogic-net/session";
+import { windowStart, type RunStats } from "@entrogic-net/session";
 import type { NewAuditEvent } from "@entrogic-net/shared";
 import type { GatewayDeps } from "./context.js";
 import { HttpError } from "./errors.js";
@@ -52,8 +52,8 @@ export function adminRoutes(
   app.get("/stats", async (c) => {
     const days = limitQuery(90, 7).parse(c.req.query("days"));
     const until = new Date();
-    const since = new Date(until.getTime() - (days - 1) * 86_400_000);
-    since.setUTCHours(0, 0, 0, 0);
+    // Days are calendar days in the configured timezone, so the window starts at local midnight.
+    const since = windowStart(until, days, deps.timezone ?? "UTC");
     const stats = await deps.runs.stats({ since, until, timezone: deps.timezone ?? "UTC" });
     return c.json({ days, timezone: deps.timezone ?? "UTC", ...withCosts(stats, deps.pricing ?? {}) });
   });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Session } from "@entrogic-net/session";
+import { ownerForUser, sessionOwner, type Session } from "@entrogic-net/session";
 import type { Embedder } from "./embeddings.js";
 import type { VectorStore } from "./vector-store.js";
 
@@ -19,23 +19,9 @@ export class MemoryLimitError extends Error {
   }
 }
 
-/**
- * Who a memory belongs to:
- * - gateway sessions → the API user
- * - channel sessions → the channel conversation (Telegram chat, WhatsApp number), stable across /new
- * - CLI → one local owner
- */
-export function memoryOwner(session: Session): string {
-  if (session.userId !== undefined) return ownerForUser(session.userId);
-  if (session.channel === "cli") return "cli:local";
-  if (session.externalId !== undefined) return `${session.channel}:${session.externalId}`;
-  return `session:${session.id}`;
-}
-
-/** Memory owner id for a gateway API user. */
-export function ownerForUser(userId: string): string {
-  return `user:${userId}`;
-}
+/** Who a memory belongs to (see `sessionOwner` in @entrogic-net/session). */
+export const memoryOwner: (session: Session) => string = sessionOwner;
+export { ownerForUser };
 
 const DUPLICATE_SCORE = 0.97;
 

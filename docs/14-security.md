@@ -54,6 +54,12 @@ Security is a core architecture requirement, not a later feature.
 - API keys have scopes (`read`, `run`); users have roles (`user`, `operator`, `admin`).
 - Gateway response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Cache-Control: no-store` on `/v1`. Client IPs come from `X-Forwarded-For` only with `gateway.trustProxy`.
 - Supply chain: `pnpm audit --audit-level high` runs in CI (`.github/workflows/ci.yml`); the lockfile is frozen in CI and Docker builds; the container runs as a non-root user.
+- Workspace files (docs/24, ADR-0014):
+  - off by default, and the tools must be allowed explicitly
+  - one folder per owner derived from the session, with channels limited by `workspace.channels` (the widget is excluded by default)
+  - relative paths only, with real-path checks against symlink escapes; text only; no server paths in errors
+  - overwrites, edits and deletes are undoable (history, trash)
+  - per-owner quotas that include history and trash
 - Plugins are trusted in-process code (docs/23); MCP servers are untrusted (docs/10).
 - Multi-agent:
   - specialist tool subsets are enforced by a scoped permission policy and can only narrow `tools.allow`

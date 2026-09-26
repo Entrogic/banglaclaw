@@ -61,6 +61,15 @@ knowledge:
   searchLimit: 5
   minScore: 0.2
 
+workspace:                   # per-owner files for the workspace_* tools (docs/24); also add "workspace_*" to tools.allow
+  enabled: false
+  dir: workspace
+  channels: [cli, api, telegram, whatsapp, messenger, mcp]
+  maxFileBytes: 262144
+  maxFiles: 500
+  maxTotalBytes: 20971520
+  historyVersions: 5
+
 skills:
   dirs: [skills]
   builtin: true              # also load the CLI's bundled skills (a same-named configured skill wins)

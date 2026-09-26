@@ -8,6 +8,7 @@ import { completionScript } from "./commands/completion.js";
 import { doctor } from "./commands/doctor.js";
 import { init } from "./commands/init.js";
 import { kbDelete, kbIngest, kbList, kbSearch, memoryForget, memoryList } from "./commands/knowledge.js";
+import { workspaceHistory, workspaceList, workspaceRestore, workspaceShow } from "./commands/workspace.js";
 import { serve } from "./commands/serve.js";
 import { runList, runShow, sessionList, sessionShow } from "./commands/session.js";
 import { version } from "./commands/version.js";
@@ -107,6 +108,19 @@ export function buildProgram(): Command {
   const owner = "owner: cli:local, user:<id>, telegram:<chat>, whatsapp:<number>";
   memory.command("list").description("memories of an owner").option("-o, --owner <owner>", owner, "cli:local").action((o: { owner: string }) => memoryList({ ...g(), ...o }));
   memory.command("forget").description("delete a memory").argument("<id>").option("-o, --owner <owner>", owner, "cli:local").action((id: string, o: { owner: string }) => memoryForget(id, { ...g(), ...o }));
+
+  const workspace = program.command("workspace").description("files the agent keeps in the workspace (workspace.enabled)");
+  const wsOwner = "owner: cli:local, user:<id>, telegram:<chat>, whatsapp:<number>";
+  workspace.command("list").description("files of an owner").argument("[path]", "folder to list").option("-o, --owner <owner>", wsOwner, "cli:local").action((p: string | undefined, o: { owner: string }) => workspaceList(p, { ...g(), ...o }));
+  workspace.command("show").description("print a file").argument("<path>").option("-o, --owner <owner>", wsOwner, "cli:local").action((p: string, o: { owner: string }) => workspaceShow(p, { ...g(), ...o }));
+  workspace.command("history").description("earlier versions of a file").argument("<path>").option("-o, --owner <owner>", wsOwner, "cli:local").action((p: string, o: { owner: string }) => workspaceHistory(p, { ...g(), ...o }));
+  workspace
+    .command("restore")
+    .description("undo a delete or edit (from trash or history)")
+    .argument("<path>")
+    .option("-o, --owner <owner>", wsOwner, "cli:local")
+    .option("--version <n>", "history version (1 = most recent previous)")
+    .action((p: string, o: { owner: string; version?: string }) => workspaceRestore(p, { ...g(), ...o }));
 
   // ── Server ──────────────────────────────────────────────────────────────
   program.commandsGroup("Server:");

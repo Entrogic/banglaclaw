@@ -141,6 +141,23 @@ export const ConfigSchema = z.strictObject({
     .strictObject({ allow: z.array(z.string().min(1)).default(["calculator", "current_datetime", "search_knowledge", "remember", "recall", "forget"]) })
     .prefault({}),
   timezone: z.string().min(1).default("Asia/Dhaka"),
+  /** Sandboxed per-owner files for the workspace_* tools (docs/24). Off by default; the tools must also be in tools.allow. */
+  workspace: z
+    .strictObject({
+      enabled: z.boolean().default(false),
+      /** Root folder (relative to the config file); each owner gets a subfolder. */
+      dir: z.string().min(1).default("workspace"),
+      /** Session channels that may use it. The website widget is left out unless listed. */
+      channels: z.array(z.string().min(1)).default(["cli", "api", "telegram", "whatsapp", "messenger", "mcp"]),
+      maxFileBytes: z.int().min(1).max(10 * 1024 * 1024).default(256 * 1024),
+      /** Files per owner (history and trash excluded). */
+      maxFiles: z.int().min(1).max(100_000).default(500),
+      /** Bytes per owner, history and trash included. */
+      maxTotalBytes: z.int().min(1).max(10 * 1024 * 1024 * 1024).default(20 * 1024 * 1024),
+      /** Previous versions kept per file. */
+      historyVersions: z.int().min(0).max(100).default(5),
+    })
+    .prefault({}),
   storage: z
     .strictObject({
       /** memory: zero-setup, lost on exit. postgres: requires DATABASE_URL. */

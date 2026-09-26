@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { MessengerApi, TelegramApi } from "@entrogic-net/channels";
 import { requiredApiKeyEnv } from "@entrogic-net/providers";
@@ -13,6 +13,7 @@ import { emit, print } from "../ui/output.js";
 import { withSpinner } from "../ui/spinner.js";
 import { c, statusSymbol, type CheckStatus } from "../ui/theme.js";
 import { firstLine } from "./shared.js";
+import { workspaceTools } from "../workspace.js";
 
 export interface Check {
   section: "Environment" | "Model" | "Tools" | "Integrations" | "Storage";
@@ -81,6 +82,20 @@ export async function collectChecks(options: GlobalOptions): Promise<Check[]> {
     if (notAllowed.length > 0) add("Tools", "warn", `Agent tools not in tools.allow: ${notAllowed.join(", ")}`);
   } catch (error) {
     add("Tools", "fail", describe(error));
+  }
+  const ws = config.workspace;
+  if (ws.enabled) {
+    const dir = resolve(loaded.baseDir, ws.dir);
+    try {
+      mkdirSync(dir, { recursive: true });
+      accessSync(dir, constants.W_OK);
+      add("Tools", "ok", `Workspace ${dir} (channels: ${ws.channels.join(", ")})`);
+    } catch (error) {
+      add("Tools", "fail", `Workspace ${dir} is not writable: ${describe(error)}`);
+    }
+    const policy = new AllowlistPolicy(config.tools.allow);
+    const allowed = workspaceTools(loaded, new InMemorySessionStore()).filter((tool) => policy.check(tool).allowed);
+    if (allowed.length === 0) add("Tools", "warn", "Workspace is on but no workspace_* tool is in tools.allow");
   }
   if (config.handoff.enabled) add("Tools", "ok", `Human handoff enabled${secrets.handoffWebhookUrl !== undefined ? " (webhook notifications on)" : ""}`);
 

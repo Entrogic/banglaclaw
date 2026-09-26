@@ -40,6 +40,7 @@ $ banglaclaw agent run "২৫ * ৪ কত?"
 | **Agent runtime** | A LangGraph agent loop with streaming, iteration, tool-call and timeout limits, per-run checkpoints, and a record of every run, including failed ones |
 | **Models** | OpenAI-compatible APIs (OpenAI, Ollama, vLLM and others) and Anthropic, behind a provider interface |
 | **Tools & MCP** | Zod-validated tools with risk levels, a deny-by-default allowlist and audit logging. An MCP client (stdio and Streamable HTTP), and BanglaClaw itself exposed as an MCP server |
+| **Workspace** | Sandboxed per-user files the agent can create, edit and update. Every change can be undone (history and trash), with quotas, and it's off by default |
 | **Skills** | `SKILL.md` instruction packs selected by deterministic Bangla and Latin triggers |
 | **Memory & knowledge** | Sessions in memory or PostgreSQL, RAG over txt, md, html, pdf, docx and URLs (Qdrant or in-memory vectors), and owner-scoped long-term memory |
 | **Multi-agent** | A supervisor that routes to `AGENT.md` specialists with scoped tools, plus human handoff with an operator queue |
@@ -142,7 +143,7 @@ The gateway, channels, agent runtime and tools stay independently replaceable ([
 
 | Path | Contents |
 |---|---|
-| `packages/` | The runtime libraries: `agent`, `agents`, `gateway`, `channels`, `providers`, `tools`, `mcp`, `skills`, `session`, `storage`, `knowledge`, `auth`, `observability`, `client`, `plugin-sdk`, `shared` |
+| `packages/` | The runtime libraries: `agent`, `agents`, `gateway`, `channels`, `providers`, `tools`, `mcp`, `skills`, `session`, `storage`, `knowledge`, `workspace`, `auth`, `observability`, `client`, `plugin-sdk`, `shared` |
 | `apps/cli` | The `banglaclaw` command-line interface and terminal chat |
 | `apps/dashboard` | The admin dashboard (Vite + React) |
 | `mcp-servers/bangladesh` | A reference MCP server with Bangladeshi divisions and districts |
@@ -176,6 +177,27 @@ pnpm banglaclaw serve                     # long polling; also serves the web ch
 ```
 
 WhatsApp Cloud API and Facebook Messenger use signed webhooks. Voice notes are transcribed and answered like text.
+
+</details>
+
+<details>
+<summary><b>Workspace: files the agent creates and edits</b> · <a href="docs/24-workspace.md">docs</a></summary>
+
+```yaml
+# banglaclaw.yaml
+workspace:
+  enabled: true
+tools:
+  allow: [calculator, current_datetime, "workspace_*"]
+```
+
+```bash
+pnpm banglaclaw agent run "amar bazar list e chal 5 kg ar dal 1 kg likhe rakho"
+pnpm banglaclaw workspace list                    # the files it created
+pnpm banglaclaw workspace restore shop/list.md    # undo the last change
+```
+
+Each user, chat and visitor has a separate folder. Edits and deletes can always be undone.
 
 </details>
 
@@ -268,7 +290,7 @@ Run `pnpm banglaclaw --help` for the full command list, and see [Configuration](
 | [Goals & Non-goals](docs/02-goals.md) | [Gateway](docs/05-gateway.md) | [Model Providers](docs/12-model-providers.md) | [Deployment](docs/21-deployment.md) |
 | [Configuration](docs/16-configuration.md) | [Sessions](docs/06-session.md) | [API](docs/18-api.md) | [Operations](docs/22-operations.md) |
 | [CLI](docs/17-cli.md) | [Memory & Knowledge](docs/07-memory.md) | [Plugins](docs/23-plugins.md) | [Storage](docs/13-storage.md) |
-| [Development](docs/19-development.md) | [Skills](docs/08-skills.md) · [Tools](docs/09-tools.md) | | [Roadmap](docs/20-roadmap.md) |
+| [Development](docs/19-development.md) | [Skills](docs/08-skills.md) · [Tools](docs/09-tools.md) | [Workspace](docs/24-workspace.md) | [Roadmap](docs/20-roadmap.md) |
 
 Design decisions are recorded as [Architecture Decision Records](docs/adr/). Bangla versions of the gateway, skills, MCP and channels docs are in [docs/bn](docs/bn/README.md).
 

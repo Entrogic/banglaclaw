@@ -12,6 +12,7 @@ import type { PermissionPolicy } from "@entrogic-net/tools";
 import { PostgresStorage } from "@entrogic-net/storage";
 import { AllowlistPolicy, ToolRegistry, builtinTools, type AnyTool } from "@entrogic-net/tools";
 import { setupKnowledge, type KnowledgeSetup } from "./knowledge.js";
+import { workspaceTools } from "./workspace.js";
 import { loadPlugins, type LoadedPlugin } from "./plugins.js";
 import { VERSION } from "./version.js";
 
@@ -164,7 +165,7 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
     const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
     const knowledge = setupKnowledge(services.loaded, services.sessions, logger);
     const plugins = await loadPlugins(services.loaded);
-    const registry = buildRegistry(mcp, [...knowledge.tools, ...plugins.flatMap((p) => p.plugin.tools ?? [])]);
+    const registry = buildRegistry(mcp, [...knowledge.tools, ...workspaceTools(services.loaded, services.sessions, logger), ...plugins.flatMap((p) => p.plugin.tools ?? [])]);
     const policy = new AllowlistPolicy(config.tools.allow);
     const skills = loadSkills(services.loaded, plugins);
     const profiles = loadAgents(services.loaded, plugins);

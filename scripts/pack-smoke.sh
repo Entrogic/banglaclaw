@@ -32,7 +32,7 @@ npx --no-install banglaclaw --help >/dev/null
 # The built-in skills ship inside the CLI and load without any config.
 node node_modules/@entrogic-net/cli/dist/index.js skill list --json | grep -q '"calculation"' || { echo "built-in skills missing"; exit 1; }
 node --input-type=module -e '
-  const libs = ["agent", "agents", "auth", "channels", "client", "gateway", "knowledge", "mcp", "observability", "plugin-sdk", "providers", "session", "shared", "skills", "storage", "tools"];
+  const libs = ["agent", "agents", "auth", "channels", "client", "gateway", "knowledge", "mcp", "observability", "plugin-sdk", "providers", "session", "shared", "skills", "storage", "tools", "workspace"];
   for (const lib of libs) await import(`@entrogic-net/${lib}`);
   const { BanglaClawClient } = await import("@entrogic-net/client");
   if (typeof BanglaClawClient !== "function") throw new Error("client export missing");

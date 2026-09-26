@@ -36,11 +36,13 @@ When enabled (docs/07): `search_knowledge` (safe), `remember` (sensitive), `reca
 
 Tools discovered on MCP servers are registered as `<server>__<tool>` with risk `sensitive` or `destructive` — see docs/10.
 
+## Workspace tools (v1.4)
+
+`workspace_list`, `workspace_read`, `workspace_create`, `workspace_write`, `workspace_edit`, `workspace_delete` and `workspace_restore` keep per-owner text files in a sandboxed folder, with history and trash so every change can be undone. They are off by default (`workspace.enabled`) and need `workspace_*` in `tools.allow` — see docs/24.
+
 ## Planned tools
 
-- calculator
 - web search
-- filesystem
 - shell
 - PostgreSQL
 - GitHub

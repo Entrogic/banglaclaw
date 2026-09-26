@@ -1,17 +1,17 @@
 {
-  "name": "@entrogic-net/knowledge",
+  "name": "@entrogic-net/workspace",
   "version": "1.3.0",
-  "description": "RAG knowledge base and long-term memory for BanglaClaw (Bangla-aware chunking, Qdrant)",
+  "description": "Sandboxed per-owner workspace and file tools for BanglaClaw agents (create, edit, undo)",
   "keywords": [
     "banglaclaw",
     "bangla",
     "bengali",
     "banglish",
     "ai-agent",
-    "rag",
-    "knowledge-base",
-    "qdrant",
-    "memory"
+    "workspace",
+    "files",
+    "tools",
+    "sandbox"
   ],
   "license": "Apache-2.0",
   "author": "Entrogic",
@@ -19,7 +19,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Entrogic/banglaclaw.git",
-    "directory": "packages/knowledge"
+    "directory": "packages/workspace"
   },
   "bugs": {
     "url": "https://github.com/Entrogic/banglaclaw/issues"
@@ -49,14 +49,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@entrogic-net/agent": "workspace:*",
     "@entrogic-net/session": "workspace:*",
     "@entrogic-net/shared": "workspace:*",
     "@entrogic-net/tools": "workspace:*",
-    "unpdf": "^1.8.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@entrogic-net/agent": "workspace:*",
     "@entrogic-net/providers": "workspace:*"
   }
 }
