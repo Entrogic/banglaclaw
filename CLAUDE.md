@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project state
 
-BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **Version 1.1.0** (1.1 added the professional CLI: Ink chat, `init` wizard, `--json`): all roadmap milestones (v0.1–v1.0) are implemented; see CHANGELOG.md and docs/20-roadmap.md ("After 1.0" lists ideas). The `/v1` HTTP API is stable and changes must be additive (docs/18). Architecture is specified in `docs/` first (`docs/bn/` has Bangla versions of 05, 08, 10 and 11; keep them in sync when those change): when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
+BanglaClaw is a Bangla-first, open-source AI agent runtime (TypeScript + LangGraph + MCP) that understands Bangla, Banglish and English. **Version 1.1.0** (1.1 added the professional CLI: Ink chat, `init` wizard, `--json`): all roadmap milestones (v0.1–v1.0) are implemented; see CHANGELOG.md and docs/20-roadmap.md ("After 1.0" lists ideas). Work since 1.1.0 (admin API, dashboard, Messenger, voice notes, DOCX/URL sources, MCP server, live operator replies) is under `## Unreleased` in CHANGELOG.md; add new user-visible changes there. The version lives in `apps/cli/src/version.ts` and the root `package.json`. The `/v1` HTTP API is stable and changes must be additive (docs/18). Architecture is specified in `docs/` first (`docs/bn/` has Bangla versions of 05, 08, 10 and 11; keep them in sync when those change): when behavior or design changes, update the relevant `docs/` file (and add an ADR in `docs/adr/` for significant decisions) in the same change.
 
 ## Commands
 
@@ -14,7 +14,8 @@ pnpm workspaces + Turborepo. Never use npm or yarn. Node 22+.
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # pre-PR gate
 pnpm banglaclaw init           # setup wizard; `pnpm banglaclaw --help` for grouped commands
-pnpm banglaclaw <cmd>          # CLI from source: chat | agent run | session | run | skill list | tool list | mcp list | db migrate | serve | key | init | doctor
+pnpm banglaclaw <cmd>          # CLI from source: chat | agent run/list | session | run | kb | memory | serve | key | handoff | audit | init | doctor | db migrate/status | tool/skill list | mcp list/serve | version
+pnpm audit:deps                # dependency audit (high severity)
 pnpm dev                       # full-screen chat from source (no watch mode: tsx watch restarts on Enter)
 pnpm --filter @banglaclaw/agent test language              # one test file (name filter)
 pnpm --filter @banglaclaw/agent exec vitest run -t "maxIterations"   # one test by name
@@ -59,7 +60,7 @@ What exists:
   - **Plugins** (docs/23). `@banglaclaw/plugin-sdk` (`definePlugin`, `defineTool`, `z`); `apps/cli/src/plugins.ts` loads `plugins:` (paths relative to the config, or package names). Plugins are trusted in-process code.
   - **Docker.** `Dockerfile` (pnpm deploy, non-root, healthcheck on `$BANGLACLAW_GATEWAY_PORT`), `docker/compose.prod.yaml`, `docker/banglaclaw.docker.yaml`. CI is `.github/workflows/ci.yml`. The version constant lives in `apps/cli/src/version.ts`.
 - **Admin API** (`packages/gateway/src/admin.ts`, docs/18): `/v1/admin/{stats,sessions,keys}` (admin role) plus `dashboardRoutes` serving `gateway.dashboardDir` at `/admin` with a strict CSP. Stats come from `RunStore.stats()`, which aggregates in SQL in Postgres and uses `computeStats` in `session/src/stats.ts` in memory. Both exclude `agent: "human"` runs and control tools. `InMemoryRunStore` takes the `InMemorySessionStore` for channel breakdowns. Costs come from `pricing` (USD per 1M tokens, keyed by provider id).
-- **Dashboard** (`apps/dashboard`, ADR-0011): Vite + React SPA built with `base: "/admin/"`; it depends only on `@banglaclaw/client` (the gateway packages are devDependencies for tests). It uses Bundler module resolution (extensionless imports, DOM lib) and is excluded from the root `tsconfig.json`. Charts are hand-written SVG in `src/charts/`; pages live in `src/pages/` and are routed in `App.tsx` (`/`, `/sessions[/:id]`, `/handoffs[/:id]`, `/agent`, `/knowledge`, `/keys`, `/audit`). Its tests (jsdom) render `App` against a real `createGatewayApp` through an injected `fetch`. `pnpm --filter @banglaclaw/dashboard demo` + `dev` for UI work without a model key.
+- **Dashboard** (`apps/dashboard`, ADR-0011): Vite + React SPA built with `base: "/admin/"`; it depends only on `@banglaclaw/client` (the gateway packages are devDependencies for tests). It uses Bundler module resolution (extensionless imports, DOM lib) and is excluded from the root `tsconfig.json`. Styling is one `src/styles.css` of `light-dark()` colour tokens (the same palette as `web-chat.ts` and the TUI's `palette` in `ui/theme.ts`); `src/theme.tsx` is the light/dark/system toggle, and fonts are bundled via `@fontsource` (CSP allows only `'self'`). Charts are hand-written SVG in `src/charts/`; pages live in `src/pages/` and are routed in `App.tsx` (`/`, `/sessions[/:id]`, `/handoffs[/:id]`, `/agent`, `/knowledge`, `/keys`, `/audit`). Its tests (jsdom) render `App` against a real `createGatewayApp` through an injected `fetch`. `pnpm --filter @banglaclaw/dashboard demo` + `dev` for UI work without a model key.
 - **Multi-agent + handoff** (docs/04, ADR-0009):
   - `packages/agents` parses `AGENT.md` files.
   - `buildAgentGraph({team})` builds a per-agent view: the prompt uses `teamRole()`, tools are the profile subset (the supervisor gets unclaimed tools plus `transfer_to_*`), and a scoped policy enforces each agent's tools.
@@ -96,7 +97,7 @@ What exists:
   - `src/mcp-server.ts` (`createBanglaClawMcpServer`) is BanglaClaw as an MCP server (`mcp serve`, stdio): `ask` runs the agent on channel `mcp` keyed by conversation name; `search_knowledge` when enabled. stdout is the protocol, so that command must never `print`. Tested with `InMemoryTransport`.
 - **Config** (`packages/shared/config.ts`): `banglaclaw.yaml` + `BANGLACLAW_*` env overrides validated by a strict Zod schema. API keys and `DATABASE_URL` come only from env, and the strict schema rejects them in YAML. Relative paths (such as `skills.dirs`) resolve against `baseDir`, which is the config file's directory or else cwd. The logger writes redacted JSON to stderr, because stdout is reserved for streamed replies.
 
-Post-1.0 ideas (docs/20): per-tenant document ACLs, push of operator replies to API clients, shared rate-limit store, router/planner/verifier nodes, more channels, exposing BanglaClaw as an MCP server.
+Post-1.0 ideas: see docs/20-roadmap.md "After 1.0" (the single source of truth; move items to "shipped" there when they land).
 
 ## Rules that matter here (from AGENT.md, docs/14)
 
