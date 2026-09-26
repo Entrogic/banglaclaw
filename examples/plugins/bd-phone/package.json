@@ -10,6 +10,6 @@
     "@entrogic-net/plugin-sdk": "workspace:*"
   },
   "peerDependencies": {
-    "@entrogic-net/plugin-sdk": "^1.2.0"
+    "@entrogic-net/plugin-sdk": "^1.3.0"
   }
 }

@@ -1,5 +1,13 @@
 # @entrogic-net/tools
 
+## 1.3.0
+
+### Patch Changes
+
+- Updated dependencies [3fccbd1]
+- Updated dependencies [0fbd3fe]
+  - @entrogic-net/shared@1.3.0
+
 ## 1.2.0
 
 ### Minor Changes
