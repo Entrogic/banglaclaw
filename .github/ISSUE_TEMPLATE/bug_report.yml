@@ -1,0 +1,89 @@
+name: Bug report
+description: Something in BanglaClaw doesn't work as documented
+title: "bug: "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. You can write in Bangla or English.
+        **Security problems must not be reported here.** Use [private reporting](https://github.com/Entrogic/banglaclaw/security/advisories/new) instead (see SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+      placeholder: I ran `banglaclaw agent run "২৫ * ৪ কত?"` and expected …, but …
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The smallest set of steps, config (`banglaclaw.yaml` without secrets) or code that shows the problem.
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - CLI / terminal chat
+        - Gateway / HTTP API
+        - Web chat (/chat)
+        - Admin dashboard (/admin)
+        - Channels (Telegram, WhatsApp, Messenger, voice)
+        - Agent runtime / multi-agent / handoff
+        - Tools / MCP / plugins
+        - Knowledge base / memory
+        - Storage / migrations
+        - Docker / deployment
+        - Docs
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: BanglaClaw version
+      description: Output of `banglaclaw version` (or the commit hash if running from source).
+    validations:
+      required: true
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Storage
+      options: [memory, postgres]
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Model provider
+      options:
+        - OpenAI-compatible (OpenAI)
+        - OpenAI-compatible (local, e.g. Ollama or vLLM)
+        - Anthropic
+        - Not relevant
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js version (`node -v`), and Docker if used.
+      placeholder: Ubuntu 24.04, Node 22.12, Docker 27
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and output
+      description: Relevant output, `banglaclaw doctor` results or stack traces. **Remove API keys, tokens and personal data.**
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

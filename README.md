@@ -238,7 +238,7 @@ See the [CHANGELOG](CHANGELOG.md) for details and the [roadmap](docs/20-roadmap.
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first. Before opening a pull request, run the same checks as CI:
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first. Questions go to [Discussions](https://github.com/Entrogic/banglaclaw/discussions) (see [SUPPORT.md](SUPPORT.md)), and [GOVERNANCE.md](GOVERNANCE.md) explains how decisions are made. Before opening a pull request, run the same checks as CI:
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build

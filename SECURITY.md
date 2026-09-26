@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please **do not open a public issue** for security problems. Report them privately through GitHub's "Report a vulnerability" (Security → Advisories) on the repository, or email the maintainers. Include steps to reproduce and the affected version. We aim to acknowledge reports within 3 working days.
+Please **do not open a public issue** for security problems. Report them privately through GitHub's [Report a vulnerability](https://github.com/Entrogic/banglaclaw/security/advisories/new) form (Security → Advisories). Include steps to reproduce and the affected version. We aim to acknowledge reports within 3 working days.
 
 ## Supported versions
 

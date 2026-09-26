@@ -1,0 +1,53 @@
+name: Feature request
+description: Suggest an idea or improvement for BanglaClaw
+title: "feat: "
+labels: [enhancement, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ideas are welcome in Bangla or English. Check the [roadmap](https://github.com/Entrogic/banglaclaw/blob/master/docs/20-roadmap.md) first, since your idea may already be planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen. Config, API or CLI examples help.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you use now, or other designs you thought about.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      multiple: true
+      options:
+        - CLI / terminal chat
+        - Gateway / HTTP API
+        - Web chat (/chat)
+        - Admin dashboard (/admin)
+        - Channels
+        - Agent runtime / multi-agent / handoff
+        - Tools / MCP / plugins
+        - Skills
+        - Knowledge base / memory
+        - Language (Bangla / Banglish)
+        - Deployment / operations
+        - Docs
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      description: Behavior and design changes are specified in `docs/` first, and significant decisions get an ADR (see CONTRIBUTING.md).
+      options:
+        - label: I would like to work on this myself.

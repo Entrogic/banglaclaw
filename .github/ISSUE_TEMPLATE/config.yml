@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and discussions
+    url: https://github.com/Entrogic/banglaclaw/discussions
+    about: Ask how to use BanglaClaw, share what you built, or discuss ideas (Bangla or English).
+  - name: Report a security vulnerability
+    url: https://github.com/Entrogic/banglaclaw/security/advisories/new
+    about: Please report security problems privately, never in a public issue.
+  - name: Documentation
+    url: https://github.com/Entrogic/banglaclaw/tree/master/docs
+    about: Guides for configuration, the CLI, the API, channels, MCP and deployment.
