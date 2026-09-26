@@ -15,9 +15,14 @@
     "lint": "eslint .",
     "typecheck": "turbo run typecheck",
     "banglaclaw": "tsx --conditions=@banglaclaw/source apps/cli/src/index.ts",
-    "audit:deps": "pnpm audit --audit-level high"
+    "audit:deps": "pnpm audit --audit-level high",
+    "changeset": "changeset",
+    "version-packages": "changeset version && pnpm install --lockfile-only",
+    "release": "pnpm build && bash scripts/pack-smoke.sh && changeset publish",
+    "pack:smoke": "bash scripts/pack-smoke.sh"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.2",
     "eslint": "^10.11.0",
     "tsx": "^4.23.15",

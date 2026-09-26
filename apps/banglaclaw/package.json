@@ -1,16 +1,16 @@
 {
-  "name": "@banglaclaw/tools",
+  "name": "banglaclaw",
   "version": "1.1.0",
-  "description": "Zod-validated tools, permission policy and executor for BanglaClaw",
+  "description": "Bangla-first AI agent runtime. Run `npx banglaclaw init` to start (installs @banglaclaw/cli).",
   "keywords": [
     "banglaclaw",
     "bangla",
     "bengali",
     "banglish",
     "ai-agent",
-    "tools",
-    "zod",
-    "permissions"
+    "cli",
+    "langgraph",
+    "mcp"
   ],
   "license": "Apache-2.0",
   "author": "Entrogic",
@@ -18,7 +18,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Entrogic/banglaclaw.git",
-    "directory": "packages/tools"
+    "directory": "apps/banglaclaw"
   },
   "bugs": {
     "url": "https://github.com/Entrogic/banglaclaw/issues"
@@ -27,28 +27,18 @@
     "node": ">=22"
   },
   "type": "module",
-  "exports": {
-    ".": {
-      "@banglaclaw/source": "./src/index.ts",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+  "bin": {
+    "banglaclaw": "./bin.js"
   },
   "files": [
-    "dist",
-    "src"
+    "bin.js",
+    "README.md"
   ],
   "publishConfig": {
     "access": "public",
     "provenance": true
   },
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
-  },
   "dependencies": {
-    "@banglaclaw/shared": "workspace:*",
-    "zod": "^4.6.5"
+    "@banglaclaw/cli": "workspace:*"
   }
 }

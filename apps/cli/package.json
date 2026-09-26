@@ -1,8 +1,31 @@
 {
   "name": "@banglaclaw/cli",
   "version": "1.1.0",
+  "description": "BanglaClaw command-line interface: terminal chat, gateway server, setup wizard and admin commands",
+  "keywords": [
+    "banglaclaw",
+    "bangla",
+    "bengali",
+    "banglish",
+    "ai-agent",
+    "cli",
+    "chat",
+    "tui"
+  ],
   "license": "Apache-2.0",
-  "private": true,
+  "author": "Entrogic",
+  "homepage": "https://github.com/Entrogic/banglaclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Entrogic/banglaclaw.git",
+    "directory": "apps/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/Entrogic/banglaclaw/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "exports": {
     ".": {
@@ -13,6 +36,14 @@
   },
   "bin": {
     "banglaclaw": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

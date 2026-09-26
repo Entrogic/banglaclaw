@@ -26,4 +26,5 @@ Closes #
 - [ ] New gateway routes are documented in `packages/gateway/src/openapi.ts`, and `/v1` changes are additive
 - [ ] Schema changes include a generated migration (`pnpm --filter @banglaclaw/storage db:generate`)
 - [ ] New tools declare input/output schemas and a `risk` level; permissions are enforced in code, not prompts
+- [ ] Changes to published packages include a changeset (`pnpm changeset`)
 - [ ] User-visible changes have an entry under `## Unreleased` in `CHANGELOG.md`

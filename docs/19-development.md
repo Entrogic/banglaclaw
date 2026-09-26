@@ -78,7 +78,21 @@ Workspace packages export `src/index.ts` under the `@banglaclaw/source` conditio
 
 ## CI and releases
 
-`.github/workflows/ci.yml` runs lint, typecheck, tests (with PostgreSQL and Qdrant services), build and `pnpm audit --audit-level high` on every push and pull request. Release notes go in `CHANGELOG.md`; contribution rules are in `CONTRIBUTING.md`.
+`.github/workflows/ci.yml` runs lint, typecheck, tests (with PostgreSQL and Qdrant services), build, the npm pack smoke test and `pnpm audit --audit-level high` on every push and pull request. Contribution rules are in `CONTRIBUTING.md`.
+
+## Releasing
+
+BanglaClaw is published to npm as the `@banglaclaw/*` packages plus the unscoped `banglaclaw` wrapper (so `npx banglaclaw` works), with [Changesets](https://github.com/changesets/changesets) ([ADR-0012](adr/0012-npm-publishing.md)).
+
+| Published | Not published |
+|---|---|
+| `packages/*` (16 libraries), `apps/cli` (`@banglaclaw/cli`, the `banglaclaw` bin), `apps/banglaclaw` (wrapper), `mcp-servers/bangladesh` | `apps/dashboard` (shipped in the Docker image), `examples/*` |
+
+- **Versioning.** All published packages share one version (`fixed` in `.changeset/config.json`). A `patch` changeset for a fix bumps every package's patch version. `major` is reserved for breaking changes to the `/v1` API or public exports. `apps/cli/src/version.ts` reads the CLI's `package.json`, so `--version`, `/health` and metrics follow automatically.
+- **Changesets.** A pull request that changes published behavior adds one with `pnpm changeset` (one line for users). The curated project summary stays in the root `CHANGELOG.md`, and Changesets writes a `CHANGELOG.md` per package.
+- **Flow.** Changesets merged into `master` make `.github/workflows/release.yml` open a "chore: version packages" pull request (`pnpm version-packages`). Merging it runs `pnpm release`: build, `scripts/pack-smoke.sh`, then `changeset publish` with npm provenance, and git tags per package.
+- **Package contents.** Each package ships `dist/` (JS, types and source maps), `src/` (so the maps resolve and the `@banglaclaw/source` export condition stays valid), a README and the license. `pnpm pack` rewrites `workspace:*` to exact versions. `scripts/pack-smoke.sh` (`pnpm pack:smoke`) packs everything, rejects tests, `.env` files and leftover `workspace:` ranges, installs the tarballs with npm in an empty project, and checks the CLI, the wrapper, the MCP server bin and every library import.
+- **One-time setup.** Create the `banglaclaw` organisation on npmjs.com (this reserves the `@banglaclaw` scope), publish the unscoped `banglaclaw` name from an org owner's account, and add an automation token as the `NPM_TOKEN` repository secret. Once the packages exist, npm trusted publishing (OIDC) can replace the token.
 
 ## Development principle
 

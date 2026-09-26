@@ -8,7 +8,7 @@ Stateful, tool-using, multi-channel agents that understand **বাংলা**, 
 
 [![CI](https://github.com/Entrogic/banglaclaw/actions/workflows/ci.yml/badge.svg)](https://github.com/Entrogic/banglaclaw/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-0b6b4f.svg)](LICENSE)
-![Version](https://img.shields.io/badge/version-1.1.0-0b6b4f.svg)
+[![npm](https://img.shields.io/npm/v/@banglaclaw/cli?color=0b6b4f&label=npm)](https://www.npmjs.com/package/@banglaclaw/cli)
 ![Node.js](https://img.shields.io/badge/node-%E2%89%A522-339933.svg?logo=node.js&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)
 
@@ -49,6 +49,19 @@ $ banglaclaw agent run "২৫ * ৪ কত?"
 | **Production** | An audit log, OpenTelemetry tracing, Prometheus metrics, token and cost tracking, plugins, and a non-root Docker image |
 
 ## Quickstart
+
+### From npm
+
+Requires **Node.js 22+**.
+
+```bash
+npx banglaclaw init         # guided setup: provider, key check, storage, features
+npx banglaclaw chat         # full-screen chat
+
+npm install -g @banglaclaw/cli   # or install the `banglaclaw` command globally
+```
+
+Libraries are published under the [`@banglaclaw`](https://www.npmjs.com/org/banglaclaw) scope, for example [`@banglaclaw/client`](https://www.npmjs.com/package/@banglaclaw/client) (typed API client) and [`@banglaclaw/plugin-sdk`](https://www.npmjs.com/package/@banglaclaw/plugin-sdk).
 
 ### From source
 

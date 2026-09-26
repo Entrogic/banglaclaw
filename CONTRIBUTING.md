@@ -24,7 +24,17 @@ TEST_DATABASE_URL=postgres://banglaclaw:banglaclaw@localhost:54329/banglaclaw_te
 TEST_QDRANT_URL=http://localhost:56333 pnpm test    # include integration tests
 ```
 
-CI runs the same checks plus `pnpm audit --audit-level high`.
+CI runs the same checks plus the npm pack smoke test (`pnpm pack:smoke`) and `pnpm audit --audit-level high`.
+
+## Changesets
+
+If your change affects a published package (anything outside `docs/`, `examples/` and the dashboard), add a changeset:
+
+```bash
+pnpm changeset    # choose patch / minor, then write one line for users
+```
+
+All packages share one version. Maintainers release by merging the automatic "version packages" pull request (see [docs/19-development.md](docs/19-development.md#releasing)).
 
 ## Guidelines
 
