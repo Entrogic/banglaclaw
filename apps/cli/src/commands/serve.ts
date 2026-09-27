@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ApiKeyAuthenticator } from "@entrogic-net/auth";
-import { startGateway, type RunningGateway } from "@entrogic-net/gateway";
+import { startGateway, type A2aOptions, type RunningGateway } from "@entrogic-net/gateway";
 import { Metrics } from "@entrogic-net/observability";
-import { BanglaClawError, ConfigError, createLogger, parseLogLevel } from "@entrogic-net/shared";
+import { BanglaClawError, ConfigError, createLogger, parseLogLevel, type BanglaClawConfig } from "@entrogic-net/shared";
 import { createRuntime, type GlobalOptions } from "../bootstrap.js";
 import { createDeliver, setupChannels } from "../channels.js";
 import { print, printAlways, warn } from "../ui/output.js";
@@ -59,6 +59,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       routes: channels.routes,
       webChat: config.channels.web.enabled,
       ...(widget.options !== undefined && { widget: widget.options }),
+      ...(config.a2a.server.enabled && { a2a: a2aOptions(config.a2a.server) }),
       ...apiFiles,
       ...(bundle.knowledge.kb !== undefined && { knowledge: { kb: bundle.knowledge.kb, searchLimit: config.knowledge.searchLimit, minScore: config.knowledge.minScore } }),
       ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
@@ -91,6 +92,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   ];
   if (config.channels.web.enabled) rows.push(["Web chat", `${gateway.url}/chat`]);
   if (widget.options !== undefined) rows.push(["Widget", `<script src="${gateway.url}/widget.js" async></script> ${c.dim(`(${widget.options.allowedOrigins.join(", ")})`)}`]);
+  if (config.a2a.server.enabled) rows.push(["A2A", `${config.a2a.server.publicUrl ?? gateway.url}/.well-known/agent-card.json ${c.dim("(JSON-RPC at /a2a, API key)")}`]);
   if (dashboardDir !== undefined) rows.push(["Admin", `${gateway.url}/admin/ ${c.dim("(admin API key)")}`]);
   if (config.gateway.metrics) rows.push(["Metrics", `${gateway.url}/metrics${services.loaded.secrets.metricsToken !== undefined ? c.dim(" (METRICS_TOKEN)") : ""}`]);
   if (bundle.profiles.length > 0) rows.push(["Agents", `supervisor → ${bundle.profiles.map((p) => p.name).join(", ")}`]);
@@ -124,4 +126,8 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   await channels.stop();
   await gateway.close();
   await services.close();
+}
+
+function a2aOptions({ enabled: _enabled, ...options }: BanglaClawConfig["a2a"]["server"]): A2aOptions {
+  return options;
 }

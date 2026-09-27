@@ -33,6 +33,9 @@ export interface GatewayUploads {
 /** The embeddable widget (channels.widget without `enabled`), plus the secret that signs visitor tokens. */
 export type WidgetOptions = Omit<BanglaClawConfig["channels"]["widget"], "enabled"> & { secret: string };
 
+/** The A2A server (a2a.server without `enabled`). */
+export type A2aOptions = Omit<BanglaClawConfig["a2a"]["server"], "enabled">;
+
 export interface GatewayDeps {
   runtime: AgentRuntime;
   sessions: SessionStore;
@@ -50,6 +53,8 @@ export interface GatewayDeps {
   webChat?: boolean;
   /** Serve the embeddable website widget (/widget.js, /widget/frame, /widget/api/*) for anonymous visitors. */
   widget?: WidgetOptions;
+  /** Serve the agent over the A2A protocol (agent card + JSON-RPC at /a2a, docs/25). */
+  a2a?: A2aOptions;
   /** The caller's workspace files at /v1/workspace (docs/24); absent = those routes answer 404. */
   workspace?: GatewayWorkspace;
   /** Uploads into the workspace (POST /v1/workspace/uploads). */

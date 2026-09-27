@@ -539,6 +539,9 @@ importers:
 
   packages/gateway:
     dependencies:
+      '@a2a-js/sdk':
+        specifier: ^1.2.1
+        version: 1.2.1(express@5.2.1(supports-color@7.2.0))
       '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../agent
@@ -797,6 +800,21 @@ importers:
         version: link:../providers
 
 packages:
+
+  '@a2a-js/sdk@1.2.1':
+    resolution: {integrity: sha512-czCgk8Hw5TKgL0y9peDcxhHV3gGlVE8cHwPMhDOKoGM1QMsDCP1G8Fma6Snnpnr7Ci/U/1f0bFHnCyd7YnmioA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@bufbuild/protobuf': ^2.10.2
+      '@grpc/grpc-js': ^1.11.0
+      express: ^4.21.2 || ^5.1.0
+    peerDependenciesMeta:
+      '@bufbuild/protobuf':
+        optional: true
+      '@grpc/grpc-js':
+        optional: true
+      express:
+        optional: true
 
   '@alcalzone/ansi-tokenize@0.3.1':
     resolution: {integrity: sha512-cUD0PT0YX+rImRhfn7BfMRduP/tX/Zqt/N0dHlAyn2RlcJssCb5KsCJkhln61eh9vuJDkH8wKn3L8zJzzWXPFg==}
@@ -3619,6 +3637,12 @@ packages:
     resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
 snapshots:
+
+  '@a2a-js/sdk@1.2.1(express@5.2.1(supports-color@7.2.0))':
+    dependencies:
+      jose: 6.2.12
+    optionalDependencies:
+      express: 5.2.1(supports-color@7.2.0)
 
   '@alcalzone/ansi-tokenize@0.3.1':
     dependencies:

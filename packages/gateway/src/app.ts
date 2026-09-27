@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Hono, type Context } from "hono";
+import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { matchedRoutes } from "hono/route";
@@ -17,6 +17,7 @@ import { HttpError, toHttpError, type ErrorBody } from "./errors.js";
 import { respondWithSessionEvents } from "./events.js";
 import { respondWithRun } from "./run.js";
 import { createSessionBody, limitQuery, messageBody, renameSessionBody, runBody } from "./schemas.js";
+import { a2aRoutes } from "./a2a/routes.js";
 import { adminRoutes, dashboardRoutes } from "./admin.js";
 import { openApiSpec } from "./openapi.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
@@ -149,21 +150,9 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
     });
   }
 
-  if (deps.widget !== undefined) app.route("/", widgetRoutes(gw, deps.widget, audit));
-
-  for (const routes of deps.routes ?? []) app.route("/", routes);
-  if (deps.dashboardDir !== undefined) app.route("/", dashboardRoutes(deps.dashboardDir));
-
-  if (upgradeWebSocket !== undefined) {
-    // Authenticated inside the protocol (browsers cannot set headers on WebSocket upgrades).
-    app.get("/v1/ws", websocketHandler(gw, upgradeWebSocket, logger));
-  }
-
-  const v1 = new Hono<Env>();
   const defaultBodyLimit = bodyLimit({ maxSize: 256 * 1024, onError: () => { throw new HttpError(413, "payload_too_large", "Request body too large"); } });
-  // Uploads and audio have their own, larger limits (files.ts).
-  v1.use("*", (c, next) => (LARGE_BODY_PATHS.has(c.req.path) ? next() : defaultBodyLimit(c, next)));
-  v1.use("*", async (c, next) => {
+  /** Bearer API key, per-key rate limit and scope check (GET needs "read", everything else "run"). */
+  const apiKeyAuth: MiddlewareHandler<Env> = async (c, next) => {
     const header = c.req.header("authorization");
     const token = header?.match(/^Bearer\s+(.+)$/i)?.[1];
     const principal = await deps.auth.authenticate(token);
@@ -189,7 +178,23 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
       throw new HttpError(403, "insufficient_scope", `This API key lacks the "${scope}" scope`);
     }
     await next();
-  });
+  };
+
+  if (deps.widget !== undefined) app.route("/", widgetRoutes(gw, deps.widget, audit));
+  if (deps.a2a !== undefined) app.route("/", a2aRoutes(gw, deps.a2a, [defaultBodyLimit, apiKeyAuth]));
+
+  for (const routes of deps.routes ?? []) app.route("/", routes);
+  if (deps.dashboardDir !== undefined) app.route("/", dashboardRoutes(deps.dashboardDir));
+
+  if (upgradeWebSocket !== undefined) {
+    // Authenticated inside the protocol (browsers cannot set headers on WebSocket upgrades).
+    app.get("/v1/ws", websocketHandler(gw, upgradeWebSocket, logger));
+  }
+
+  const v1 = new Hono<Env>();
+  // Uploads and audio have their own, larger limits (files.ts).
+  v1.use("*", (c, next) => (LARGE_BODY_PATHS.has(c.req.path) ? next() : defaultBodyLimit(c, next)));
+  v1.use("*", apiKeyAuth);
 
   registerFileRoutes(v1, deps);
 

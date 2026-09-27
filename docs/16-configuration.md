@@ -157,6 +157,12 @@ mcp:
     #   url: https://mcp.example.com/mcp
     #   headers: { Authorization: "Bearer ${REMOTE_MCP_TOKEN}" }
 
+a2a:
+  server:
+    enabled: false          # agent card + JSON-RPC at /a2a on the gateway (docs/25)
+    # publicUrl: https://bot.example.com   # advertised in the agent card; set it behind a proxy
+    # description: "..."
+
 timezone: Asia/Dhaka
 ```
 

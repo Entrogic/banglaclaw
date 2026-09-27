@@ -80,4 +80,5 @@
 - Router/planner/verifier graph nodes (live Telegram replies shipped in 1.4)
 - Discord channel (Facebook Messenger shipped after 1.1, the website widget in 1.3)
 - Images, sitemap crawling, spoken replies (voice notes, DOCX and URL loaders shipped after 1.1)
-- Publishing `@entrogic-net/*` packages to npm; MCP resources and prompts for the BanglaClaw MCP server
+- MCP resources and prompts for the BanglaClaw MCP server (publishing `@entrogic-net/*` to npm shipped in 1.2)
+- A2A client: remote A2A agents as tools (the A2A server shipped after 1.6, docs/25)

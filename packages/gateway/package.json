@@ -49,6 +49,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@a2a-js/sdk": "^1.2.1",
     "@entrogic-net/agent": "workspace:*",
     "@entrogic-net/auth": "workspace:*",
     "@entrogic-net/knowledge": "workspace:*",

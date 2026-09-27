@@ -301,6 +301,24 @@ export const ConfigSchema = z.strictObject({
         .default({}),
     })
     .prefault({}),
+  /** Agent2Agent protocol (docs/25, ADR-0015). */
+  a2a: z
+    .strictObject({
+      /** Serve this agent over A2A on the gateway: GET /.well-known/agent-card.json and JSON-RPC at POST /a2a (API key required). */
+      server: z
+        .strictObject({
+          enabled: z.boolean().default(false),
+          /** Public base URL advertised in the agent card (e.g. https://bot.example.com). Unset: taken from the request. */
+          publicUrl: z
+            .url({ protocol: /^https?$/ })
+            .transform((u) => u.replace(/\/+$/, ""))
+            .optional(),
+          /** Agent card description; defaults to a generic Bangla-first description. */
+          description: z.string().min(1).max(1000).optional(),
+        })
+        .prefault({}),
+    })
+    .prefault({}),
 });
 
 export type BanglaClawConfig = z.infer<typeof ConfigSchema> & {

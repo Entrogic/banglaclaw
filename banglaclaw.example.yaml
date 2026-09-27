@@ -126,4 +126,10 @@ mcp:
     #   url: https://mcp.example.com/mcp
     #   headers: { Authorization: "Bearer ${REMOTE_MCP_TOKEN}" }  # ${VAR} is read from the environment
 
+# Agent2Agent: let other agents (ADK, LangGraph, other BanglaClaws) call this one over A2A (docs/25).
+a2a:
+  server:
+    enabled: false
+    # publicUrl: https://bot.example.com   # advertised in the agent card
+
 timezone: Asia/Dhaka

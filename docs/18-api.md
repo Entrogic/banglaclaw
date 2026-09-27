@@ -49,6 +49,8 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | GET | `/metrics` | Prometheus metrics (no API key; `METRICS_TOKEN` if set) |
 | GET | `/admin/` | Admin dashboard static files when `gateway.dashboardDir` is set (no API key; the page calls `/v1/admin` with an admin key) |
 | GET | `/v1/ws` | WebSocket (see below) |
+| GET | `/.well-known/agent-card.json` | A2A agent card when `a2a.server.enabled` (no auth; docs/25) |
+| POST | `/a2a` | A2A JSON-RPC (v1.0 with `A2A-Version: 1.0`, otherwise v0.3); same API keys, rate limit and `run` scope as `/v1` (docs/25) |
 
 - `externalId` is the channel-native conversation id (for example a chat id). It is namespaced per user, so two API users never share or discover each other's sessions.
 - Sessions, messages and runs of other users always return `404`.

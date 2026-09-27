@@ -4,6 +4,8 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Agent2Agent (A2A) server** (docs/25, ADR-0015): with `a2a.server.enabled`, the gateway serves an agent card at `/.well-known/agent-card.json` and JSON-RPC at `POST /a2a`, protocol v1.0 plus v0.3, using the official `@a2a-js/sdk`. Other agents (Google ADK, LangGraph and others) can send BanglaClaw tasks with an ordinary API key. The same rate limit, scopes and concurrency limit apply as for `/v1`. Each A2A context becomes an `a2a` session with its own history, replies arrive as an artifact, streaming and cancel are supported, and handoff shows up as `input-required`.
+
 - **Web chat tools:**
   - Files tab over the caller's workspace: preview, download, history and restore, delete with undo.
   - 📎 attach and drag-and-drop uploads into `uploads/`, with the message telling the agent where the file is.
