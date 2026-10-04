@@ -48,6 +48,6 @@
   },
   "dependencies": {
     "@entrogic-net/shared": "workspace:*",
-    "@langchain/core": "^1.2.12"
+    "@langchain/core": "^1.2.14"
   }
 }
