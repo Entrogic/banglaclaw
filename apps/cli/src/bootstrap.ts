@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 import type { BaseCheckpointSaver } from "@langchain/langgraph";
+import { A2aManager } from "@entrogic-net/a2a";
 import { AgentRuntime, type AgentRuntimeOptions } from "@entrogic-net/agent";
 import { loadAgentProfiles, type AgentProfile } from "@entrogic-net/agents";
 import { InMemoryAuthStore, type AuthStore } from "@entrogic-net/auth";
@@ -40,6 +41,13 @@ export async function connectMcp(loaded: LoadedConfig): Promise<McpManager> {
     clientVersion: VERSION,
     logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }),
   });
+  await manager.connectAll();
+  return manager;
+}
+
+/** Fetches the cards of configured remote A2A agents. Unreachable agents are reported via status(), not thrown. */
+export async function connectA2a(loaded: LoadedConfig): Promise<A2aManager> {
+  const manager = new A2aManager({ agents: loaded.config.a2a.agents, logger: createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) }) });
   await manager.connectAll();
   return manager;
 }
@@ -135,11 +143,12 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
   };
 }
 
-/** Wires config → provider, tools (built-in + MCP), policy, skills, storage → AgentRuntime. */
+/** Wires config → provider, tools (built-in + MCP + A2A), policy, skills, storage → AgentRuntime. */
 export interface RuntimeBundle {
   runtime: AgentRuntime;
   services: Services;
   mcp: McpManager;
+  a2a: A2aManager;
   registry: ToolRegistry;
   policy: PermissionPolicy;
   skills: SkillSet;
@@ -152,10 +161,11 @@ export interface RuntimeBundle {
 export async function createRuntime(options: GlobalOptions, hooks: { onRunComplete?: AgentRuntimeOptions["onRunComplete"] } = {}): Promise<RuntimeBundle> {
   const services = await openServices(options);
   let mcp: McpManager | undefined;
+  let a2a: A2aManager | undefined;
   try {
     const { config, secrets } = services.loaded;
     const provider = createProvider(config.models.default, secrets);
-    mcp = await connectMcp(services.loaded);
+    [mcp, a2a] = await Promise.all([connectMcp(services.loaded), connectA2a(services.loaded)]);
     const connected = mcp;
     const closeStorage = services.close;
     services.close = async () => {
@@ -165,7 +175,7 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
     const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
     const knowledge = setupKnowledge(services.loaded, services.sessions, logger);
     const plugins = await loadPlugins(services.loaded);
-    const registry = buildRegistry(mcp, [...knowledge.tools, ...workspaceTools(services.loaded, services.sessions, logger), ...plugins.flatMap((p) => p.plugin.tools ?? [])]);
+    const registry = buildRegistry(mcp, [...knowledge.tools, ...workspaceTools(services.loaded, services.sessions, logger), ...plugins.flatMap((p) => p.plugin.tools ?? []), ...a2a.tools()]);
     const policy = new AllowlistPolicy(config.tools.allow);
     const skills = loadSkills(services.loaded, plugins);
     const profiles = loadAgents(services.loaded, plugins);
@@ -193,7 +203,7 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
       ...(hooks.onRunComplete !== undefined && { onRunComplete: hooks.onRunComplete }),
       logger,
     });
-    return { runtime, services, mcp, registry, policy, skills, providerId: provider.id, knowledge, profiles, plugins };
+    return { runtime, services, mcp, a2a, registry, policy, skills, providerId: provider.id, knowledge, profiles, plugins };
   } catch (error) {
     await services.close();
     await mcp?.close();

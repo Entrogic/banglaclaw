@@ -50,6 +50,7 @@ packages/session    Session/Run models, SessionStore/RunStore, in-memory stores,
 packages/skills     SKILL.md parsing, discovery, trigger-based selection
 packages/storage    Drizzle schema + migrations, Postgres stores, PostgresSaver checkpoints
 packages/mcp        MCP client manager, MCP tool wrapping (stdio + Streamable HTTP)
+packages/a2a        A2A client: remote A2A agents as tools (A2aManager)
 packages/auth       users, API key generation/verification, AuthStore + in-memory store
 packages/gateway    Hono HTTP gateway: REST, SSE, WebSocket, rate limits, request ids, /chat page
 packages/channels   ChannelRouter + Telegram (polling/webhook), WhatsApp Cloud API and Facebook Messenger adapters
@@ -104,7 +105,7 @@ BanglaClaw is published to npm as the `@entrogic-net/*` packages plus the unscop
 
 | Published | Not published |
 |---|---|
-| `packages/*` (17 libraries), `apps/cli` (`@entrogic-net/cli`, the `banglaclaw` bin), `apps/banglaclaw` (wrapper), `mcp-servers/bangladesh` | `apps/dashboard` (shipped in the Docker image), `examples/*` |
+| `packages/*` (18 libraries), `apps/cli` (`@entrogic-net/cli`, the `banglaclaw` bin), `apps/banglaclaw` (wrapper), `mcp-servers/bangladesh` | `apps/dashboard` (shipped in the Docker image), `examples/*` |
 
 - **Versioning.** All published packages share one version (`fixed` in `.changeset/config.json`). A `patch` changeset for a fix bumps every package's patch version. `major` is reserved for breaking changes to the `/v1` API or public exports. `apps/cli/src/version.ts` reads the CLI's `package.json`, so `--version`, `/health` and metrics follow automatically.
 - **Changesets.** A pull request that changes published behavior adds one with `pnpm changeset` (one line for users). The curated project summary stays in the root `CHANGELOG.md`, and Changesets writes a `CHANGELOG.md` per package.

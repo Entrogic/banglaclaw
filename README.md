@@ -45,7 +45,7 @@ $ banglaclaw agent run "২৫ * ৪ কত?"
 | **Memory & knowledge** | Sessions in memory or PostgreSQL, RAG over txt, md, html, pdf, docx and URLs (Qdrant or in-memory vectors), and owner-scoped long-term memory |
 | **Multi-agent** | A supervisor that routes to `AGENT.md` specialists with scoped tools, plus human handoff with an operator queue |
 | **Channels** | Telegram, WhatsApp Cloud API and Facebook Messenger, including voice-note transcription, a built-in web chat, and an embeddable **website widget** for anonymous visitors |
-| **Gateway** | A stable `/v1` HTTP API with REST, SSE and WebSocket, API keys with scopes and roles, rate limits, an OpenAPI spec and a typed TypeScript client, and an optional A2A (Agent2Agent) server |
+| **Gateway** | A stable `/v1` HTTP API with REST, SSE and WebSocket, API keys with scopes and roles, rate limits, an OpenAPI spec and a typed TypeScript client, and an optional A2A (Agent2Agent) server; remote A2A agents can be called as tools |
 | **Interfaces** | A full-screen terminal chat, the web chat at `/chat`, and an admin dashboard at `/admin` (analytics, sessions, handoffs, keys, audit) |
 | **Production** | An audit log, OpenTelemetry tracing, Prometheus metrics, token and cost tracking, plugins, and a non-root Docker image |
 
@@ -143,7 +143,7 @@ The gateway, channels, agent runtime and tools stay independently replaceable ([
 
 | Path | Contents |
 |---|---|
-| `packages/` | The runtime libraries: `agent`, `agents`, `gateway`, `channels`, `providers`, `tools`, `mcp`, `skills`, `session`, `storage`, `knowledge`, `workspace`, `auth`, `observability`, `client`, `plugin-sdk`, `shared` |
+| `packages/` | The runtime libraries: `agent`, `agents`, `gateway`, `channels`, `providers`, `tools`, `mcp`, `a2a`, `skills`, `session`, `storage`, `knowledge`, `workspace`, `auth`, `observability`, `client`, `plugin-sdk`, `shared` |
 | `apps/cli` | The `banglaclaw` command-line interface and terminal chat |
 | `apps/dashboard` | The admin dashboard (Vite + React) |
 | `mcp-servers/bangladesh` | A reference MCP server with Bangladeshi divisions and districts |
@@ -240,7 +240,7 @@ claude mcp add bangladesh -- npx -y @entrogic-net/mcp-server-bangladesh
 </details>
 
 <details>
-<summary><b>Agent2Agent (A2A): other agents delegate to BanglaClaw</b> · <a href="docs/25-a2a.md">docs</a></summary>
+<summary><b>Agent2Agent (A2A): other agents delegate to BanglaClaw, and it calls them</b> · <a href="docs/25-a2a.md">docs</a></summary>
 
 ```yaml
 # banglaclaw.yaml
@@ -254,6 +254,22 @@ a2a:
 pnpm banglaclaw serve
 curl -s -H "A2A-Version: 1.0" https://bot.example.com/.well-known/agent-card.json
 # A2A clients (Google ADK, LangGraph, a2a-js…) send tasks to https://bot.example.com/a2a with a BanglaClaw API key
+```
+
+Remote A2A agents become tools (`a2a__<name>`):
+
+```yaml
+a2a:
+  agents:
+    weather:
+      url: https://weather.example.com
+      headers: { Authorization: "Bearer ${WEATHER_AGENT_KEY}" }
+tools:
+  allow: [calculator, a2a__weather]
+```
+
+```bash
+pnpm banglaclaw a2a list
 ```
 
 </details>

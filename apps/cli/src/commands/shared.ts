@@ -1,6 +1,7 @@
 import type { AgentRuntime } from "@entrogic-net/agent";
 import { ApiKeyAuthenticator } from "@entrogic-net/auth";
 import type { KnowledgeBase, LongTermMemory } from "@entrogic-net/knowledge";
+import type { A2aManager } from "@entrogic-net/a2a";
 import type { McpManager } from "@entrogic-net/mcp";
 import { HandoffDesk, InMemorySessionStore, SessionManager, isOperatorMessage, type Session } from "@entrogic-net/session";
 import { BanglaClawError, auditRecorder, createLogger, parseLogLevel, type LoadedConfig } from "@entrogic-net/shared";
@@ -35,6 +36,11 @@ export function firstLine(text: string | undefined): string {
 /** Warns (stderr) about MCP servers that failed to connect. */
 export function reportMcpFailures(mcp: McpManager): void {
   for (const s of mcp.status()) if (s.state === "failed") warn(`MCP server ${s.name} unavailable: ${firstLine(s.error)}`);
+}
+
+/** Warns (stderr) about remote A2A agents whose card could not be fetched. */
+export function reportA2aFailures(a2a: A2aManager): void {
+  for (const s of a2a.status()) if (s.state === "failed") warn(`A2A agent ${s.name} unavailable: ${firstLine(s.error)}`);
 }
 
 export function memoryNotice(services: Services): void {

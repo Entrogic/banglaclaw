@@ -11,12 +11,12 @@ import { c, sym } from "../ui/theme.js";
 import { VERSION } from "../version.js";
 import { resolveWidget } from "../widget.js";
 import { gatewayFileDeps } from "../workspace.js";
-import { prepareKnowledge, reportMcpFailures } from "./shared.js";
+import { prepareKnowledge, reportA2aFailures, reportMcpFailures } from "./shared.js";
 
 export async function serve(options: GlobalOptions & { port?: string; host?: string }): Promise<void> {
   const metrics = new Metrics({ version: VERSION });
   const bundle = await createRuntime(options, { onRunComplete: metrics.observeRun });
-  const { services, mcp } = bundle;
+  const { services, mcp, a2a } = bundle;
   const config = services.loaded.config;
   const gatewayConfig = {
     ...config.gateway,
@@ -98,10 +98,12 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
   if (bundle.profiles.length > 0) rows.push(["Agents", `supervisor → ${bundle.profiles.map((p) => p.name).join(", ")}`]);
   if (bundle.plugins.length > 0) rows.push(["Plugins", bundle.plugins.map((p) => `${p.plugin.name}@${p.plugin.version}`).join(", ")]);
   if (mcp.tools().length > 0) rows.push(["MCP", `${mcp.tools().length} tools from ${mcp.status().filter((s) => s.state === "connected").map((s) => s.name).join(", ")}`]);
+  if (a2a.tools().length > 0) rows.push(["A2A out", a2a.status().filter((s) => s.state === "connected").map((s) => `${s.tool ?? s.name} → ${s.url}`).join(", ")]);
   for (const line of channels.summary) rows.push(["Channel", line]);
   for (const [k, v] of rows) print(`  ${c.dim(k.padEnd(9))} ${v}`);
   print();
   reportMcpFailures(mcp);
+  reportA2aFailures(a2a);
   for (const line of channels.warnings) warn(line);
   for (const line of widget.warnings) warn(line);
   if (devToken !== undefined) {

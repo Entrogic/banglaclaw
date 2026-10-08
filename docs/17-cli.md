@@ -29,7 +29,7 @@ banglaclaw serve     # API, web chat, metrics and channels
 | **Setup** | `init [--yes] [--force]` | Setup wizard; `--yes` writes the commented template |
 | | `doctor` | Checks config, keys, storage, MCP, channels, knowledge and plugins |
 | | `db migrate \| status` | PostgreSQL schema |
-| | `tool list`, `skill list`, `mcp list` | What the agent can use |
+| | `tool list`, `skill list`, `mcp list`, `a2a list` | What the agent can use (`a2a list` fetches the cards of remote A2A agents, docs/25) |
 | | `version` | Version, Node.js, config, model and storage |
 | | `completion bash\|zsh\|fish` | Shell completion script |
 

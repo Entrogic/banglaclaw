@@ -2,7 +2,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createRuntime, type GlobalOptions } from "../bootstrap.js";
 import { createBanglaClawMcpServer } from "../mcp-server.js";
 import { VERSION } from "../version.js";
-import { prepareKnowledge, reportMcpFailures } from "./shared.js";
+import { prepareKnowledge, reportA2aFailures, reportMcpFailures } from "./shared.js";
 
 /**
  * `banglaclaw mcp serve`: BanglaClaw as an MCP server on stdio (docs/10). stdout carries the
@@ -15,6 +15,7 @@ export async function mcpServe(options: GlobalOptions): Promise<void> {
   try {
     await prepareKnowledge(bundle.knowledge, false);
     reportMcpFailures(bundle.mcp);
+    reportA2aFailures(bundle.a2a);
     const server = createBanglaClawMcpServer({
       runtime: bundle.runtime,
       agentName: config.agent.name,

@@ -1,7 +1,7 @@
 import { Command, Option } from "commander";
 import type { GlobalOptions } from "./bootstrap.js";
 import { auditList, dbMigrate, dbStatus, handoffList, handoffRelease, handoffReply, handoffShow, keyCreate, keyList, keyRevoke } from "./commands/admin.js";
-import { agentList, mcpList, skillList, toolList } from "./commands/catalog.js";
+import { a2aList, agentList, mcpList, skillList, toolList } from "./commands/catalog.js";
 import { mcpServe } from "./commands/mcp-serve.js";
 import { agentRun, chat } from "./commands/chat.js";
 import { completionScript } from "./commands/completion.js";
@@ -177,7 +177,7 @@ export function buildProgram(): Command {
   const db = program.command("db").description("PostgreSQL schema (DATABASE_URL)");
   db.command("migrate").description("apply migrations and create checkpoint tables").action(() => dbMigrate(g()));
   db.command("status").description("migration status").action(() => dbStatus(g()));
-  program.command("tool").description("tools").command("list").description("built-in, plugin and MCP tools").action(() => toolList(g()));
+  program.command("tool").description("tools").command("list").description("built-in, plugin, MCP and A2A tools").action(() => toolList(g()));
   program.command("skill").description("skills").command("list").description("discovered skills").action(() => skillList(g()));
   const mcp = program.command("mcp").description("MCP servers, and BanglaClaw as an MCP server");
   mcp.command("list").description("connect and list MCP servers and tools").action(() => mcpList(g()));
@@ -186,6 +186,7 @@ export function buildProgram(): Command {
     .description("run BanglaClaw as an MCP server on stdio (Claude Desktop, Cursor, Claude Code…)")
     .addHelpText("after", examples(["banglaclaw mcp serve", "claude mcp add banglaclaw -- banglaclaw -c /path/to/banglaclaw.yaml mcp serve"]))
     .action(() => mcpServe(g()));
+  program.command("a2a").description("remote Agent2Agent (A2A) agents used as tools").command("list").description("fetch agent cards and list remote A2A agents").action(() => a2aList(g()));
   program.command("version").description("version and environment details").action(() => version(g()));
   program.helpCommand("help [command]", "show help for a command");
   program

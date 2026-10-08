@@ -5,7 +5,7 @@ import { requiredApiKeyEnv } from "@entrogic-net/providers";
 import { InMemorySessionStore } from "@entrogic-net/session";
 import { createLogger, type LoadedConfig } from "@entrogic-net/shared";
 import { AllowlistPolicy, type AnyTool } from "@entrogic-net/tools";
-import { buildRegistry, connectMcp, load, loadAgents, loadSkills, openPostgres, type GlobalOptions } from "../bootstrap.js";
+import { buildRegistry, connectA2a, connectMcp, load, loadAgents, loadSkills, openPostgres, type GlobalOptions } from "../bootstrap.js";
 import { setupKnowledge } from "../knowledge.js";
 import { loadPlugins } from "../plugins.js";
 import { describe } from "../ui/errors.js";
@@ -109,6 +109,15 @@ export async function collectChecks(options: GlobalOptions): Promise<Check[]> {
       }
     } finally {
       await mcp.close();
+    }
+  }
+  if (Object.keys(config.a2a.agents).length > 0) {
+    const a2a = await connectA2a(loaded);
+    for (const s of a2a.status()) {
+      if (s.state === "disabled") add("Integrations", "ok", `A2A ${s.name}: disabled`);
+      else if (s.state === "failed") add("Integrations", "fail", `A2A ${s.name}: ${firstLine(s.error)}`);
+      else if (a2a.tools().some((t) => t.name === s.tool && !policy.check(t).allowed)) add("Integrations", "warn", `A2A ${s.name}: connected, but ${s.tool ?? ""} is not in tools.allow`);
+      else add("Integrations", "ok", `A2A ${s.name}: ${s.card?.name ?? ""} (A2A ${s.card?.protocolVersion ?? "?"})`);
     }
   }
   if (config.knowledge.enabled || config.memory.longTerm.enabled) {

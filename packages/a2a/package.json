@@ -1,0 +1,63 @@
+{
+  "name": "@entrogic-net/a2a",
+  "version": "1.6.0",
+  "description": "Agent2Agent (A2A) client for BanglaClaw: remote A2A agents as permission-checked tools",
+  "keywords": [
+    "banglaclaw",
+    "bangla",
+    "bengali",
+    "banglish",
+    "ai-agent",
+    "a2a",
+    "agent2agent"
+  ],
+  "license": "Apache-2.0",
+  "author": "Entrogic",
+  "homepage": "https://github.com/Entrogic/banglaclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Entrogic/banglaclaw.git",
+    "directory": "packages/a2a"
+  },
+  "bugs": {
+    "url": "https://github.com/Entrogic/banglaclaw/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "@banglaclaw/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^1.2.1",
+    "@entrogic-net/shared": "workspace:*",
+    "@entrogic-net/tools": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@entrogic-net/agent": "workspace:*",
+    "@entrogic-net/auth": "workspace:*",
+    "@entrogic-net/gateway": "workspace:*",
+    "@entrogic-net/providers": "workspace:*",
+    "@entrogic-net/session": "workspace:*",
+    "@entrogic-net/skills": "workspace:*"
+  }
+}

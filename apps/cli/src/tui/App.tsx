@@ -52,6 +52,7 @@ function Banner({ bundle, session }: { bundle: RuntimeBundle; session: Session }
   const extras = [
     bundle.profiles.length > 0 ? `agents: ${bundle.profiles.map((p) => p.name).join(", ")}` : undefined,
     bundle.mcp.tools().length > 0 ? `MCP: ${bundle.mcp.tools().length} tools` : undefined,
+    bundle.a2a.tools().length > 0 ? `A2A: ${bundle.a2a.tools().map((t) => t.name.slice("a2a__".length)).join(", ")}` : undefined,
     bundle.plugins.length > 0 ? `plugins: ${bundle.plugins.map((p) => p.plugin.name).join(", ")}` : undefined,
     cfg.knowledge.enabled ? "knowledge base" : undefined,
     cfg.memory.longTerm.enabled ? "long-term memory" : undefined,

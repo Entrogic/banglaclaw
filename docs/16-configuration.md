@@ -162,11 +162,21 @@ a2a:
     enabled: false          # agent card + JSON-RPC at /a2a on the gateway (docs/25)
     # publicUrl: https://bot.example.com   # advertised in the agent card; set it behind a proxy
     # description: "..."
+  agents: {}                # remote A2A agents called as tools a2a__<name> (docs/25)
+  # agents:
+  #   weather:
+  #     url: https://weather.example.com
+  #     headers: { Authorization: "Bearer ${WEATHER_AGENT_KEY}" }   # sent only to this origin
+  #     # cardPath: /.well-known/agent-card.json
+  #     # description: "..."    # overrides the card's description in the tool
+  #     # timeoutMs: 120000     # per call
+  #     # connectTimeoutMs: 15000
+  #     # enabled: true
 
 timezone: Asia/Dhaka
 ```
 
-`banglaclaw init` writes this template. MCP tools must also be allowed in `tools.allow`, for example `bangladesh__*`.
+`banglaclaw init` writes this template. MCP tools must also be allowed in `tools.allow`, for example `bangladesh__*`, and so must A2A agents (`a2a__weather` or `a2a__*`).
 
 Unknown keys are rejected, which also prevents API keys from being written into the file.
 

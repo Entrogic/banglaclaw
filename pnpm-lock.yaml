@@ -202,6 +202,9 @@ importers:
       '@clack/prompts':
         specifier: ^1.8.1
         version: 1.8.1
+      '@entrogic-net/a2a':
+        specifier: workspace:*
+        version: link:../../packages/a2a
       '@entrogic-net/agent':
         specifier: workspace:*
         version: link:../../packages/agent
@@ -423,6 +426,40 @@ importers:
       zod:
         specifier: ^4.6.5
         version: 4.6.5
+
+  packages/a2a:
+    dependencies:
+      '@a2a-js/sdk':
+        specifier: ^1.2.1
+        version: 1.2.1(express@5.2.1(supports-color@7.2.0))
+      '@entrogic-net/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@entrogic-net/tools':
+        specifier: workspace:*
+        version: link:../tools
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@entrogic-net/agent':
+        specifier: workspace:*
+        version: link:../agent
+      '@entrogic-net/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@entrogic-net/gateway':
+        specifier: workspace:*
+        version: link:../gateway
+      '@entrogic-net/providers':
+        specifier: workspace:*
+        version: link:../providers
+      '@entrogic-net/session':
+        specifier: workspace:*
+        version: link:../session
+      '@entrogic-net/skills':
+        specifier: workspace:*
+        version: link:../skills
 
   packages/agent:
     dependencies:

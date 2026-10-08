@@ -50,6 +50,23 @@ export const McpServerConfigSchema = z.discriminatedUnion("transport", [
 ]);
 export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
 
+/** A remote agent called over A2A (docs/25). It becomes the tool `a2a__<name>`. */
+export const A2aAgentConfigSchema = z.strictObject({
+  /** Base URL of the agent; its card is fetched from `<url><cardPath>`. */
+  url: z.url({ protocol: /^https?$/ }).transform((u) => u.replace(/\/+$/, "")),
+  cardPath: z.string().startsWith("/").default("/.well-known/agent-card.json"),
+  /** Request headers such as `Authorization: Bearer ${AGENT_KEY}`; sent only to the origin of `url`. */
+  headers: EnvMapSchema.default({}),
+  /** Tool description for the model; defaults to the description and skills in the agent card. */
+  description: z.string().min(1).max(1000).optional(),
+  enabled: z.boolean().default(true),
+  /** Per call, including waiting for the remote task to finish. */
+  timeoutMs: z.int().min(1_000).max(600_000).default(120_000),
+  /** Timeout for fetching the agent card. */
+  connectTimeoutMs: z.int().min(100).max(120_000).default(15_000),
+});
+export type A2aAgentConfig = z.infer<typeof A2aAgentConfigSchema>;
+
 const AccessSchema = z.enum(["allowlist", "open"]);
 
 /** A site allowed to embed the widget: an origin such as https://shop.example.com, or "*" for any (development only). */
@@ -298,6 +315,7 @@ export const ConfigSchema = z.strictObject({
       /** Server name → connection. Names prefix tool names: <server>__<tool>. */
       servers: z
         .record(z.string().regex(/^[a-z][a-z0-9_]{0,30}$/, "use lower snake_case (max 31 chars)"), McpServerConfigSchema)
+        .refine((servers) => !Object.hasOwn(servers, "a2a"), "the server name a2a is reserved for A2A agent tools (a2a__<agent>)")
         .default({}),
     })
     .prefault({}),
@@ -317,6 +335,10 @@ export const ConfigSchema = z.strictObject({
           description: z.string().min(1).max(1000).optional(),
         })
         .prefault({}),
+      /** Remote A2A agents to call as tools: agent name → connection. Names give tool names: a2a__<name>. */
+      agents: z
+        .record(z.string().regex(/^[a-z][a-z0-9_]{0,30}$/, "use lower snake_case (max 31 chars)"), A2aAgentConfigSchema)
+        .default({}),
     })
     .prefault({}),
 });

@@ -1,6 +1,7 @@
 import { AIMessageChunk } from "@langchain/core/messages";
 import { render } from "ink-testing-library";
 import { afterEach, describe, expect, it } from "vitest";
+import { A2aManager } from "@entrogic-net/a2a";
 import { AgentRuntime } from "@entrogic-net/agent";
 import { InMemoryAuthStore } from "@entrogic-net/auth";
 import { McpManager } from "@entrogic-net/mcp";
@@ -55,6 +56,7 @@ async function setup(provider: ModelProvider) {
     runtime,
     services: { loaded, sessions, runs, auth: new InMemoryAuthStore(), audit: new InMemoryAuditStore(), persistent: false, close: async () => {} },
     mcp: new McpManager({ servers: {} }),
+    a2a: new A2aManager({ agents: {} }),
     registry,
     policy,
     skills: new SkillSet([]),

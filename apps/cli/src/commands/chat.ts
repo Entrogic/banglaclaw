@@ -2,7 +2,7 @@ import { createRuntime, type RuntimeBundle } from "../bootstrap.js";
 import { createLineRenderer, plainChat } from "../chat-plain.js";
 import { EXIT } from "../ui/errors.js";
 import { emit, isJson, note } from "../ui/output.js";
-import { prepareKnowledge, reportMcpFailures, resolveSession, type SessionOption } from "./shared.js";
+import { prepareKnowledge, reportA2aFailures, reportMcpFailures, resolveSession, type SessionOption } from "./shared.js";
 
 async function openChat(options: SessionOption): Promise<{ bundle: RuntimeBundle; session: Awaited<ReturnType<typeof resolveSession>> }> {
   const bundle = await createRuntime(options);
@@ -27,6 +27,7 @@ export async function chat(options: SessionOption & { plain?: boolean }): Promis
       last = await runTui(bundle, session);
     } else {
       reportMcpFailures(bundle.mcp);
+      reportA2aFailures(bundle.a2a);
       last = await plainChat(bundle, session);
     }
   } finally {
@@ -38,9 +39,10 @@ export async function chat(options: SessionOption & { plain?: boolean }): Promis
 /** `banglaclaw agent run`: one message, streamed reply (or the run record under --json). */
 export async function agentRun(message: string, options: SessionOption): Promise<void> {
   const { bundle, session } = await openChat(options);
-  const { runtime, services, mcp } = bundle;
+  const { runtime, services, mcp, a2a } = bundle;
   try {
     reportMcpFailures(mcp);
+    reportA2aFailures(a2a);
     const controller = new AbortController();
     process.once("SIGINT", () => controller.abort());
     const json = isJson();

@@ -108,6 +108,22 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ cwd: tempDir("mcp:\n  servers:\n    s:\n      transport: ws\n      url: ws://x\n"), env: {} })).toThrow(ConfigError);
   });
 
+  it("parses remote A2A agents with defaults", () => {
+    const cwd = tempDir("a2a:\n  agents:\n    weather:\n      url: https://weather.example.com/\n      headers: { Authorization: 'Bearer ${WEATHER_KEY}' }\n");
+    const { config } = loadConfig({ cwd, env: {} });
+    expect(config.a2a.agents.weather).toEqual({
+      url: "https://weather.example.com", cardPath: "/.well-known/agent-card.json", headers: { Authorization: "Bearer ${WEATHER_KEY}" },
+      enabled: true, timeoutMs: 120_000, connectTimeoutMs: 15_000,
+    });
+    expect(loadConfig({ cwd: tempDir(), env: {} }).config.a2a.agents).toEqual({});
+  });
+
+  it("rejects bad A2A agents and an MCP server named a2a", () => {
+    expect(() => loadConfig({ cwd: tempDir("a2a:\n  agents:\n    Bad-Name:\n      url: https://x.example.com\n"), env: {} })).toThrow(/Invalid key/);
+    expect(() => loadConfig({ cwd: tempDir("a2a:\n  agents:\n    x:\n      url: ftp://x.example.com\n"), env: {} })).toThrow(ConfigError);
+    expect(() => loadConfig({ cwd: tempDir("mcp:\n  servers:\n    a2a:\n      transport: stdio\n      command: x\n"), env: {} })).toThrow(/reserved/);
+  });
+
   it("overrides gateway host/port from env", () => {
     const { config } = loadConfig({ cwd: tempDir(), env: { BANGLACLAW_GATEWAY_PORT: "8080", BANGLACLAW_GATEWAY_HOST: "0.0.0.0" } });
     expect(config.gateway).toMatchObject({ host: "0.0.0.0", port: 8080 });

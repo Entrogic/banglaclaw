@@ -1,8 +1,8 @@
-import { ConfigError } from "@entrogic-net/shared";
+import { ConfigError } from "./errors.js";
 
 const VAR = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 
-/** Expands `${VAR}` references so secrets for MCP servers stay in the environment, not the config file. */
+/** Expands `${VAR}` references so secrets for MCP servers and A2A agents stay in the environment, not the config file. */
 export function interpolate(value: string, env: NodeJS.ProcessEnv, where: string): string {
   return value.replace(VAR, (_match, name: string) => {
     const resolved = env[name];

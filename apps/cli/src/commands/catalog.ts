@@ -1,6 +1,6 @@
 import { AllowlistPolicy } from "@entrogic-net/tools";
 import type { GlobalOptions } from "../bootstrap.js";
-import { buildRegistry, connectMcp, load, loadAgents, loadSkills } from "../bootstrap.js";
+import { buildRegistry, connectA2a, connectMcp, load, loadAgents, loadSkills } from "../bootstrap.js";
 import { InMemorySessionStore } from "@entrogic-net/session";
 import { loadPlugins } from "../plugins.js";
 import { workspaceTools } from "../workspace.js";
@@ -8,20 +8,23 @@ import { emit, empty, print } from "../ui/output.js";
 import { withSpinner } from "../ui/spinner.js";
 import { table } from "../ui/table.js";
 import { c, statusCell, statusWord } from "../ui/theme.js";
-import { reportMcpFailures } from "./shared.js";
+import { reportA2aFailures, reportMcpFailures } from "./shared.js";
 
 export async function toolList(options: GlobalOptions): Promise<void> {
   const loaded = load(options);
   const policy = new AllowlistPolicy(loaded.config.tools.allow);
   const plugins = await loadPlugins(loaded);
-  const mcp = Object.keys(loaded.config.mcp.servers).length > 0 ? await withSpinner("Connecting MCP servers…", () => connectMcp(loaded)) : await connectMcp(loaded);
+  const remote = Object.keys(loaded.config.mcp.servers).length + Object.keys(loaded.config.a2a.agents).length > 0;
+  const connect = () => Promise.all([connectMcp(loaded), connectA2a(loaded)]);
+  const [mcp, a2a] = remote ? await withSpinner("Connecting MCP servers and A2A agents…", connect) : await connect();
   try {
     reportMcpFailures(mcp);
+    reportA2aFailures(a2a);
     const pluginTools = new Map(plugins.flatMap((p) => (p.plugin.tools ?? []).map((t) => [t.name, p.plugin.name] as const)));
     // Listed only (never executed here), so a throwaway session store is enough.
-    const rows = buildRegistry(mcp, [...workspaceTools(loaded, new InMemorySessionStore()), ...plugins.flatMap((p) => p.plugin.tools ?? [])]).list().map((tool) => {
+    const rows = buildRegistry(mcp, [...workspaceTools(loaded, new InMemorySessionStore()), ...plugins.flatMap((p) => p.plugin.tools ?? []), ...a2a.tools()]).list().map((tool) => {
       const decision = policy.check(tool);
-      const source = tool.name.includes("__") ? `mcp:${tool.name.split("__")[0]}` : pluginTools.has(tool.name) ? `plugin:${pluginTools.get(tool.name)}` : tool.name.startsWith("workspace_") ? "workspace" : "builtin";
+      const source = tool.name.startsWith("a2a__") ? "a2a" : tool.name.includes("__") ? `mcp:${tool.name.split("__")[0]}` : pluginTools.has(tool.name) ? `plugin:${pluginTools.get(tool.name)}` : tool.name.startsWith("workspace_") ? "workspace" : "builtin";
       return { name: tool.name, risk: tool.risk, source, allowed: decision.allowed, ...(!decision.allowed && { reason: decision.reason }), description: tool.description };
     });
     emit(rows, (list) =>
@@ -136,4 +139,32 @@ export async function mcpList(options: GlobalOptions): Promise<void> {
   } finally {
     await mcp.close();
   }
+}
+
+export async function a2aList(options: GlobalOptions): Promise<void> {
+  const loaded = load(options);
+  if (Object.keys(loaded.config.a2a.agents).length === 0) {
+    emit([], () => empty("No remote A2A agents configured. Add them under a2a.agents in banglaclaw.yaml (see docs/25-a2a.md)."));
+    return;
+  }
+  const policy = new AllowlistPolicy(loaded.config.tools.allow);
+  const a2a = await withSpinner("Fetching A2A agent cards…", () => connectA2a(loaded));
+  const tools = new Map(a2a.tools().map((t) => [t.name, t]));
+  const agents = a2a.status().map((s) => {
+    const tool = s.tool !== undefined ? tools.get(s.tool) : undefined;
+    return { ...s, ...(tool !== undefined && { allowed: policy.check(tool).allowed }) };
+  });
+  emit(agents, (list) =>
+    print(
+      table(list, [
+        { header: "AGENT", value: (a) => a.name, color: (s) => c.bold(s) },
+        { header: "STATE", value: (a) => a.state, color: statusCell },
+        { header: "TOOL", value: (a) => (a.tool === undefined ? "" : `${a.tool} (${a.allowed === true ? "allowed" : "denied"})`) },
+        { header: "REMOTE", value: (a) => (a.card !== undefined ? `${a.card.name} ${a.card.version} · A2A ${a.card.protocolVersion}` : (a.error?.split("\n")[0] ?? "")), color: (s) => c.dim(s), shrink: true },
+        { header: "URL", value: (a) => a.url, color: (s) => c.dim(s) },
+      ]),
+    ),
+  );
+  if (agents.some((a) => a.allowed === false)) print(c.dim("\nAllow remote agents in banglaclaw.yaml → tools.allow (for example a2a__* or a2a__<agent>)."));
+  if (agents.some((a) => a.state === "failed")) process.exitCode = 1;
 }

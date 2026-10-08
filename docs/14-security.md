@@ -61,6 +61,7 @@ Security is a core architecture requirement, not a later feature.
   - overwrites, edits and deletes are undoable (history, trash)
   - per-owner quotas that include history and trash
 - A2A (docs/25, ADR-0015): off by default; `/a2a` uses the same API keys, rate limit and `run` scope as `/v1`, contexts and tasks are scoped to the calling user, and only the agent card is public.
+- Remote A2A agents (docs/25, ADR-0016): each is a `sensitive` tool `a2a__<name>` that runs only when in `tools.allow`; configured headers (secrets via `${VAR}`) are sent only to the origin of the agent's `url`; replies and card text are untrusted model input, and `description` can replace the card's wording.
 - Plugins are trusted in-process code (docs/23); MCP servers are untrusted (docs/10).
 - Multi-agent:
   - specialist tool subsets are enforced by a scoped permission policy and can only narrow `tools.allow`
