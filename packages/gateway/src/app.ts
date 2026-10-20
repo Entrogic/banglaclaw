@@ -192,8 +192,8 @@ export function createGatewayApp(deps: GatewayDeps, upgradeWebSocket?: UpgradeWe
   }
 
   const v1 = new Hono<Env>();
-  // Uploads and audio have their own, larger limits (files.ts).
-  v1.use("*", (c, next) => (LARGE_BODY_PATHS.has(c.req.path) ? next() : defaultBodyLimit(c, next)));
+  // Uploads and audio (files.ts) and eval results (admin.ts) have their own, larger limits.
+  v1.use("*", (c, next) => (LARGE_BODY_PATHS.has(c.req.path) || c.req.path === "/v1/admin/evals" ? next() : defaultBodyLimit(c, next)));
   v1.use("*", apiKeyAuth);
 
   registerFileRoutes(v1, deps);

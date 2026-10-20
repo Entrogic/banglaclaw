@@ -1,13 +1,14 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { Hono, type Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
 import { windowStart, type RunStats } from "@entrogic-net/session";
-import type { NewAuditEvent } from "@entrogic-net/shared";
+import type { EvalRun, EvalStore, NewAuditEvent } from "@entrogic-net/shared";
 import type { GatewayDeps } from "./context.js";
 import { HttpError } from "./errors.js";
-import { limitQuery } from "./schemas.js";
+import { evalRunBody, limitQuery } from "./schemas.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
 
 export type Pricing = Record<string, { input: number; output: number }>;
@@ -28,6 +29,13 @@ const createKeyBody = z.strictObject({
   role: z.enum(["user", "operator", "admin"]).optional(),
   scopes: z.array(z.enum(["read", "run"])).min(1).default(["read", "run"]),
 });
+
+/** Eval uploads carry every case's input and output, so they get more room than the default 256 KB. */
+export const EVAL_BODY_LIMIT = 10 * 1024 * 1024;
+
+export function evalRunJson(r: EvalRun) {
+  return { ...r, createdAt: r.createdAt.toISOString() };
+}
 
 type Env = { Variables: { principal: Principal; requestId: string; ip: string | undefined } };
 
@@ -121,6 +129,44 @@ export function adminRoutes(
     if (!(await auth().store.revokeApiKey(id))) throw new HttpError(404, "key_not_found", "No active key with that id");
     helpers.audit(c, { action: "key.revoked", outcome: "success", actorId: principal.user.id, actorName: principal.user.name, target: id, metadata: { via: "api" } });
     return c.json({ revoked: id });
+  });
+
+  const evals = (): EvalStore => {
+    if (deps.evals === undefined) throw new HttpError(404, "evals_disabled", "Eval results are not stored on this gateway");
+    return deps.evals;
+  };
+
+  app.get("/evals", async (c) => {
+    const name = c.req.query("name")?.trim();
+    const runs = await evals().list({ limit: limitQuery(200, 50).parse(c.req.query("limit")), ...(name !== undefined && name !== "" && { name }) });
+    return c.json({ evals: runs.map(evalRunJson) });
+  });
+
+  /** Records a finished evaluation run (the DeepEval harness posts here, docs/26). */
+  app.post(
+    "/evals",
+    bodyLimit({ maxSize: EVAL_BODY_LIMIT, onError: () => { throw new HttpError(413, "payload_too_large", "Eval upload too large"); } }),
+    async (c) => {
+      const store = evals();
+      const body = await helpers.parseJson(c, evalRunBody);
+      const principal = c.get("principal");
+      const run = await store.save({ ...body, agentModel: body.agentModel ?? deps.agent.model, createdBy: principal.user.id });
+      helpers.audit(c, { action: "eval.recorded", outcome: "success", actorId: principal.user.id, actorName: principal.user.name, target: run.id, metadata: { name: run.name, cases: run.caseCount, passed: run.passedCount } });
+      return c.json({ eval: evalRunJson(run) }, 201);
+    },
+  );
+
+  app.get("/evals/:id", async (c) => {
+    const found = await evals().get(c.req.param("id"));
+    if (found === undefined) throw new HttpError(404, "eval_not_found", "Eval run not found");
+    return c.json({ eval: evalRunJson(found.run), cases: found.cases });
+  });
+
+  app.delete("/evals/:id", async (c) => {
+    if (!(await evals().delete(c.req.param("id")))) throw new HttpError(404, "eval_not_found", "Eval run not found");
+    const principal = c.get("principal");
+    helpers.audit(c, { action: "eval.deleted", outcome: "success", actorId: principal.user.id, actorName: principal.user.name, target: c.req.param("id") });
+    return c.body(null, 204);
   });
 
   return app;

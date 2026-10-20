@@ -45,6 +45,10 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | GET | `/v1/admin/keys` | Admins: all API keys (never the hash) |
 | POST | `/v1/admin/keys` | Admins: issue a key `{ user, name?, role?, scopes? }` → `{ key, token }` (201); the token is shown once |
 | POST | `/v1/admin/keys/:id/revoke` | Admins: revoke a key (409 for the key making the request) |
+| GET | `/v1/admin/evals?name=&limit=` | Admins: evaluation runs, newest first, with pass counts and mean score per metric (docs/26) |
+| POST | `/v1/admin/evals` | Admins: record an evaluation run with its cases, e.g. from the DeepEval harness (201; up to 10 MB, audited as `eval.recorded`) |
+| GET | `/v1/admin/evals/:id` | Admins: one evaluation run with every case and metric |
+| DELETE | `/v1/admin/evals/:id` | Admins: delete an evaluation run (204, audited as `eval.deleted`) |
 | GET | `/v1/openapi.json` | OpenAPI 3.1 spec (no auth) |
 | GET | `/metrics` | Prometheus metrics (no API key; `METRICS_TOKEN` if set) |
 | GET | `/admin/` | Admin dashboard static files when `gateway.dashboardDir` is set (no API key; the page calls `/v1/admin` with an admin key) |
@@ -164,6 +168,6 @@ When `pricing` lists a provider id (for example `openai-compatible:gpt-4o-mini`)
 
 ### Dashboard
 
-`apps/dashboard` (Vite + React, ADR-0011) is the web UI for these endpoints and the other admin-relevant ones: overview charts, a sessions browser with transcripts and runs, the handoff queue (reply as operator, release; the nav shows how many are waiting), the agent's model, tools and skills, knowledge documents with a search tester, API-key management and the audit log. `pnpm build` writes it to `apps/dashboard/dist`; set `gateway.dashboardDir` to that directory (the Docker image does) and open `/admin/`. It signs in with an admin key kept in `sessionStorage` for that tab only, and a 401 on any call signs out. For UI work, `pnpm --filter @entrogic-net/dashboard demo` starts a gateway with seeded in-memory data and prints an admin key, and `pnpm --filter @entrogic-net/dashboard dev` serves the page with hot reload at `http://localhost:5173/admin/`, proxying `/v1` to it (or to `BANGLACLAW_GATEWAY_URL`).
+`apps/dashboard` (Vite + React, ADR-0011) is the web UI for these endpoints and the other admin-relevant ones: overview charts, a sessions browser with transcripts and runs, the handoff queue (reply as operator, release; the nav shows how many are waiting), the agent's model, tools and skills, knowledge documents with a search tester, evaluation results (docs/26), API-key management and the audit log. `pnpm build` writes it to `apps/dashboard/dist`; set `gateway.dashboardDir` to that directory (the Docker image does) and open `/admin/`. It signs in with an admin key kept in `sessionStorage` for that tab only, and a 401 on any call signs out. For UI work, `pnpm --filter @entrogic-net/dashboard demo` starts a gateway with seeded in-memory data and prints an admin key, and `pnpm --filter @entrogic-net/dashboard dev` serves the page with hot reload at `http://localhost:5173/admin/`, proxying `/v1` to it (or to `BANGLACLAW_GATEWAY_URL`).
 
 Key creation and revocation through `/v1/admin/keys` are audited (`key.created`, `key.revoked` with `via: "api"`), the same as the CLI `key` commands. `POST` routes need the `run` scope.

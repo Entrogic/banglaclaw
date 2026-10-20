@@ -1112,6 +1112,34 @@ textarea {
   color: var(--accent-text);
 }
 
+/* Evals */
+
+.chips.flat {
+  margin: 0;
+}
+.eval-cases .card-head {
+  margin-bottom: 6px;
+}
+.eval-case .details {
+  min-width: 180px;
+}
+.eval-case summary {
+  flex-wrap: nowrap;
+}
+.case-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prewrap {
+  white-space: pre-wrap;
+}
+.eval-case .table {
+  margin-bottom: 4px;
+}
+
 /* Knowledge and audit */
 
 .hits {

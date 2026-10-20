@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
-import { bigint, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { StoredMessage } from "@langchain/core/messages";
+import type { EvalMetricResult, EvalMetricSummary } from "@entrogic-net/shared";
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
@@ -134,4 +135,48 @@ export const auditLogs = pgTable(
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   },
   (t) => [index("audit_logs_at_idx").on(t.at), index("audit_logs_action_idx").on(t.action, t.at), index("audit_logs_actor_idx").on(t.actorId, t.at)],
+);
+
+/** Evaluation runs submitted by an eval harness such as DeepEval (docs/26); the summary columns avoid re-aggregating cases. */
+export const evalRuns = pgTable(
+  "eval_runs",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    name: text("name").notNull(),
+    dataset: text("dataset"),
+    framework: text("framework").notNull(),
+    frameworkVersion: text("framework_version"),
+    judgeModel: text("judge_model"),
+    agentModel: text("agent_model"),
+    metadata: jsonb("metadata").$type<Record<string, string | number | boolean>>(),
+    createdBy: text("created_by"),
+    caseCount: integer("case_count").notNull(),
+    passedCount: integer("passed_count").notNull(),
+    metrics: jsonb("metrics").$type<EvalMetricSummary[]>().notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("eval_runs_created_at_idx").on(t.createdAt), index("eval_runs_name_idx").on(t.name, t.createdAt)],
+);
+
+export const evalCases = pgTable(
+  "eval_cases",
+  {
+    evalId: uuid("eval_id")
+      .notNull()
+      .references(() => evalRuns.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    name: text("name"),
+    input: text("input").notNull(),
+    actualOutput: text("actual_output"),
+    expectedOutput: text("expected_output"),
+    language: text("language"),
+    /** Not foreign keys: evaluated sessions may be deleted later. */
+    sessionId: text("session_id"),
+    runId: text("run_id"),
+    toolsCalled: text("tools_called").array(),
+    expectedTools: text("expected_tools").array(),
+    success: boolean("success").notNull(),
+    metrics: jsonb("metrics").$type<EvalMetricResult[]>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.evalId, t.seq] })],
 );

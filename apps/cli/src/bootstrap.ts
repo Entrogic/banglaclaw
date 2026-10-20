@@ -7,7 +7,7 @@ import { InMemoryAuthStore, type AuthStore } from "@entrogic-net/auth";
 import { McpManager } from "@entrogic-net/mcp";
 import { createProvider } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunStore, type SessionStore } from "@entrogic-net/session";
-import { ConfigError, InMemoryAuditStore, auditRecorder, createLogger, loadConfig, parseLogLevel, type AuditStore, type LoadedConfig } from "@entrogic-net/shared";
+import { ConfigError, InMemoryAuditStore, InMemoryEvalStore, auditRecorder, createLogger, loadConfig, parseLogLevel, type AuditStore, type EvalStore, type LoadedConfig } from "@entrogic-net/shared";
 import { SkillSet, loadSkillsFromDirs } from "@entrogic-net/skills";
 import type { PermissionPolicy } from "@entrogic-net/tools";
 import { PostgresStorage } from "@entrogic-net/storage";
@@ -88,6 +88,8 @@ export interface Services {
   runs: RunStore;
   auth: AuthStore;
   audit: AuditStore;
+  /** Eval results recorded through /v1/admin/evals (docs/26). */
+  evals: EvalStore;
   /** Set when storage.provider is postgres. */
   postgres?: PostgresStorage;
   checkpointer?: BaseCheckpointSaver;
@@ -115,6 +117,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
       runs: new InMemoryRunStore(sessions),
       auth: new InMemoryAuthStore(),
       audit: new InMemoryAuditStore(),
+      evals: new InMemoryEvalStore(),
       persistent: false,
       close: async () => {},
     };
@@ -136,6 +139,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
     runs: postgres.runs,
     auth: postgres.auth,
     audit: postgres.audit,
+    evals: postgres.evals,
     postgres,
     ...(loaded.config.storage.checkpoints && { checkpointer: postgres.checkpointer }),
     persistent: true,

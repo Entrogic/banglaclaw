@@ -11,7 +11,9 @@ export type AuditAction =
   | "handoff.replied"
   | "handoff.released"
   | "memory.forgotten"
-  | "session.deleted";
+  | "session.deleted"
+  | "eval.recorded"
+  | "eval.deleted";
 
 export type AuditOutcome = "success" | "failure" | "denied";
 

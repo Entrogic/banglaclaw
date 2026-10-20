@@ -3,4 +3,5 @@ export { PostgresSessionStore } from "./sessions.js";
 export { PostgresRunStore } from "./runs.js";
 export { PostgresAuthStore } from "./auth.js";
 export { PostgresAuditStore } from "./audit.js";
+export { PostgresEvalStore } from "./evals.js";
 export * as schema from "./schema.js";

@@ -1,0 +1,44 @@
+# Sample goldens for the default agent (built-in tools: calculator, current_datetime).
+# Fields: name, input, expected_output, expected_tools, context, turns (earlier messages in the
+# same session), reply_language (bn | bn-en | en; default: the input's language), tags. See docs/26.
+goldens:
+  - name: multiply-bn
+    input: "৬ গুণ ৭ কত?"
+    expected_output: "৬ × ৭ = ৪২"
+    expected_tools: [calculator]
+    tags: [bn, tools]
+
+  - name: vat-en
+    input: "What is 15% VAT on 2400 taka?"
+    expected_output: "15% VAT on ৳2,400 is ৳360, so the total is ৳2,760."
+    expected_tools: [calculator]
+    tags: [en, tools]
+
+  - name: discount-banglish
+    input: "1250 takar jinis e 20% discount dile koto taka dite hobe?"
+    expected_output: "20% discount e 250 taka kom, tai 1000 taka dite hobe."
+    expected_tools: [calculator]
+    tags: [bn-en, tools]
+
+  - name: capital-bn
+    input: "বাংলাদেশের রাজধানীর নাম কী?"
+    expected_output: "বাংলাদেশের রাজধানী ঢাকা।"
+    expected_tools: []
+    tags: [bn]
+
+  - name: greeting-banglish
+    input: "assalamualaikum, apni kemon achen?"
+    expected_tools: []
+    tags: [bn-en, smalltalk]
+
+  - name: follow-up-bn
+    turns: ["আমার নাম রাহিম।"]
+    input: "আমার নাম কী বলেছিলাম?"
+    expected_output: "আপনার নাম রাহিম।"
+    tags: [bn, memory]
+
+  - name: english-on-request
+    input: "Bangladesh er national fruit er naam ki? Please answer in English."
+    expected_output: "The national fruit of Bangladesh is the jackfruit."
+    reply_language: en
+    tags: [bn-en]

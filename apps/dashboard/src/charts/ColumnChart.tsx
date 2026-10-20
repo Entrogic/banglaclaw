@@ -49,7 +49,7 @@ function tooltipLeft(center: number, barW: number, width: number): number {
 }
 
 /** Stacked daily columns with a per-column tooltip, a legend and a table view. */
-export function ColumnChart({ title, series, columns, format = fmtInt }: { title: string; series: Series[]; columns: Column[]; format?: (n: number) => string }) {
+export function ColumnChart({ title, series, columns, format = fmtInt, labelHeader = "Day" }: { title: string; series: Series[]; columns: Column[]; format?: (n: number) => string; labelHeader?: string }) {
   const [ref, width] = useWidth<HTMLDivElement>(640);
   const [active, setActive] = useState<number | undefined>(undefined);
   const innerW = width - PAD.left - PAD.right;
@@ -172,7 +172,7 @@ export function ColumnChart({ title, series, columns, format = fmtInt }: { title
         <table>
           <thead>
             <tr>
-              <th>Day</th>
+              <th>{labelHeader}</th>
               {series.map((s) => (
                 <th key={s.name} className="num">
                   {s.name}

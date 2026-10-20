@@ -65,6 +65,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       ...(bundle.knowledge.memory !== undefined && { memory: bundle.knowledge.memory }),
       deliver: createDeliver(services.loaded, logger),
       audit: services.audit,
+      evals: services.evals,
       pricing: config.pricing,
       timezone: config.timezone,
       ...(dashboardDir !== undefined && { dashboardDir }),

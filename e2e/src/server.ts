@@ -14,7 +14,7 @@ import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
 import { startGateway } from "@entrogic-net/gateway";
 import { FakeProvider, type ModelCallOptions, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { createLogger } from "@entrogic-net/shared";
+import { InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { Workspace, createWorkspaceTools } from "@entrogic-net/workspace";
@@ -80,6 +80,7 @@ const gateway = await startGateway({
   agent: { name: "banglaclaw", model: provider.id },
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 4_000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 10_000, maxConcurrentRuns: 10 } },
   version: "e2e", logger, timezone: "Asia/Dhaka",
+  evals: new InMemoryEvalStore(),
   webChat: true,
   workspace,
   uploads: {

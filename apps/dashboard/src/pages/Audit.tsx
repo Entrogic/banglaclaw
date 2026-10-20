@@ -15,6 +15,9 @@ const ACTIONS = [
   "handoff.replied",
   "handoff.released",
   "memory.forgotten",
+  "session.deleted",
+  "eval.recorded",
+  "eval.deleted",
 ] as const;
 
 /** Security audit log (docs/14); `null` when the gateway has no audit store. */

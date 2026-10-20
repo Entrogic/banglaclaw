@@ -19,6 +19,8 @@ PostgreSQL is the initial recommended relational database.
 | `runs` | status (incl. `handoff`), stop_reason, language, skills[], agent, agent_path[], handoff_reason, input_tokens, output_tokens, input/output/error, provider, prompt_version, timings |
 | `audit_logs` | at, action, outcome, actor_id/name, target, ip, request_id, metadata (v1.0) |
 | `tool_calls` | run_id + seq, tool, input/output jsonb, status, error, duration |
+| `eval_runs` | name, dataset, framework (+ version), judge and agent model, metadata jsonb, created_by, case/passed counts, per-metric summary jsonb (docs/26) |
+| `eval_cases` | eval_id + seq, input, actual/expected output, language, session_id, run_id (not foreign keys), tools called/expected, success, metrics jsonb |
 | `checkpoints*` | LangGraph `PostgresSaver` tables, one thread per run (`thread_id = runId`) |
 
 - The schema lives in `packages/storage/src/schema.ts`, and migrations are generated into `packages/storage/drizzle/` with `pnpm --filter @entrogic-net/storage db:generate` and committed.

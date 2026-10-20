@@ -7,7 +7,7 @@ import { InMemoryAuthStore } from "@entrogic-net/auth";
 import { McpManager } from "@entrogic-net/mcp";
 import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryAuditStore, createLogger, loadConfig } from "@entrogic-net/shared";
+import { InMemoryAuditStore, InMemoryEvalStore, createLogger, loadConfig } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import type { RuntimeBundle } from "../src/bootstrap.js";
@@ -54,7 +54,7 @@ async function setup(provider: ModelProvider) {
   const loaded = loadConfig({ cwd: "/", env: {} });
   const bundle = {
     runtime,
-    services: { loaded, sessions, runs, auth: new InMemoryAuthStore(), audit: new InMemoryAuditStore(), persistent: false, close: async () => {} },
+    services: { loaded, sessions, runs, auth: new InMemoryAuthStore(), audit: new InMemoryAuditStore(), evals: new InMemoryEvalStore(), persistent: false, close: async () => {} },
     mcp: new McpManager({ servers: {} }),
     a2a: new A2aManager({ agents: {} }),
     registry,

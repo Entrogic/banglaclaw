@@ -5,6 +5,7 @@ import { useAsync } from "./api";
 import { useInterval } from "./components";
 import { Agent } from "./pages/Agent";
 import { Audit } from "./pages/Audit";
+import { Evals } from "./pages/Evals";
 import { Handoffs } from "./pages/Handoffs";
 import { Keys } from "./pages/Keys";
 import { Knowledge } from "./pages/Knowledge";
@@ -23,6 +24,7 @@ const NAV = [
   { to: "/handoffs", label: "Handoffs" },
   { to: "/agent", label: "Agent" },
   { to: "/knowledge", label: "Knowledge" },
+  { to: "/evals", label: "Evals" },
   { to: "/keys", label: "API keys" },
   { to: "/audit", label: "Audit log" },
 ] as const;
@@ -77,20 +79,22 @@ export function App({ fetch: fetchImpl }: { fetch?: FetchLike } = {}) {
 
 function Shell() {
   const path = usePath();
-  // "/sessions/<id>" and "/handoffs/<id>" belong to their list's section.
+  // "/sessions/<id>", "/handoffs/<id>" and "/evals/<id>" belong to their list's section.
   const match = /^(\/[^/]+)\/([^/]+)\/?$/.exec(path);
   const section = match?.[1] ?? (path.replace(/\/+$/, "") || "/");
   const itemId = match?.[2] === undefined ? undefined : decodeURIComponent(match[2]);
   const title = NAV.find((n) => n.to === section)?.label ?? "Not found";
   const sessionDetail = section === "/sessions" && itemId !== undefined;
+  const evalDetail = section === "/evals" && itemId !== undefined;
 
   useEffect(() => {
-    document.title = `${sessionDetail ? "Session" : title} · BanglaClaw Admin`;
-  }, [title, sessionDetail]);
+    document.title = `${sessionDetail ? "Session" : evalDetail ? "Eval run" : title} · BanglaClaw Admin`;
+  }, [title, sessionDetail, evalDetail]);
 
   let page;
   if (sessionDetail) page = <SessionDetail id={itemId} />;
   else if (section === "/handoffs") page = <Handoffs {...(itemId !== undefined && { id: itemId })} />;
+  else if (section === "/evals") page = <Evals {...(itemId !== undefined && { id: itemId })} />;
   else if (itemId !== undefined) page = <NotFound />;
   else if (section === "/") page = <Overview />;
   else if (section === "/sessions") page = <Sessions />;
@@ -104,7 +108,7 @@ function Shell() {
     <div className="shell">
       <Header current={section} />
       <main className="content">
-        {!sessionDetail && <h2 className="page-title">{title}</h2>}
+        {!sessionDetail && !evalDetail && <h2 className="page-title">{title}</h2>}
         {page}
       </main>
     </div>

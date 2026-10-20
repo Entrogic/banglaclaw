@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createSessionBody, messageBody, renameSessionBody, runBody } from "./schemas.js";
+import { createSessionBody, evalRunBody, messageBody, renameSessionBody, runBody } from "./schemas.js";
 
 type Schema = Record<string, unknown>;
 const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` });
@@ -127,6 +127,22 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
       "/v1/admin/keys/{id}/revoke": {
         post: { tags: ["admin"], summary: "Revoke an API key (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { revoked: str } }), ...errors(401, 403, 404, 409) } },
       },
+      "/v1/admin/evals": {
+        get: {
+          tags: ["admin"], summary: "Evaluation runs, newest first (admin role, docs/26)",
+          parameters: [limitParam(200, 50), { name: "name", in: "query", description: "Only runs with this name", schema: str }],
+          responses: { "200": json({ type: "object", properties: { evals: { type: "array", items: ref("EvalRun") } } }), ...errors(401, 403, 404) },
+        },
+        post: {
+          tags: ["admin"], summary: "Record an evaluation run with its cases, e.g. from the DeepEval harness (admin role, body up to 10 MB)",
+          requestBody: body(evalRunBody),
+          responses: { "201": json({ type: "object", properties: { eval: ref("EvalRun") } }, "Recorded"), ...errors(400, 401, 403, 404, 413) },
+        },
+      },
+      "/v1/admin/evals/{id}": {
+        get: { tags: ["admin"], summary: "An evaluation run with every case and metric (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { eval: ref("EvalRun"), cases: { type: "array", items: ref("EvalCase") } } }), ...errors(401, 403, 404) } },
+        delete: { tags: ["admin"], summary: "Delete an evaluation run (admin role)", parameters: [idParam("id")], responses: { "204": { description: "Deleted" }, ...errors(401, 403, 404) } },
+      },
       "/admin/{path}": { get: { tags: ["system"], security: [], summary: "Admin dashboard (static web app, when built)", parameters: [idParam("path")], responses: { "200": { description: "HTML/JS/CSS" } } } },
       "/v1/ws": { get: { tags: ["agent"], security: [], summary: "WebSocket upgrade; authenticate with a first {type:\"auth\"} message, run with {type:\"run\"}, follow sessions with {type:\"subscribe\"} (see docs/18)", responses: { "101": { description: "Switching protocols" } } } },
     },
@@ -181,6 +197,26 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
             byProvider: { type: "array", items: { type: "object", properties: { provider: str, runs: { type: "integer" }, inputTokens: { type: "integer" }, outputTokens: { type: "integer" }, costUsd: { type: "number" } } } },
             byAgent: { type: "array", items: { type: "object", properties: { agent: str, runs: { type: "integer" } } } },
             topTools: { type: "array", items: { type: "object", properties: { tool: str, calls: { type: "integer" }, failures: { type: "integer" } } } },
+          },
+        },
+        EvalMetric: { type: "object", required: ["name", "threshold", "success"], properties: { name: str, score: { type: "number", minimum: 0, maximum: 1 }, threshold: { type: "number" }, success: { type: "boolean" }, reason: str, error: str } },
+        EvalCase: {
+          type: "object",
+          required: ["input", "success", "metrics"],
+          properties: {
+            name: str, input: str, actualOutput: str, expectedOutput: str, language: str, sessionId: str, runId: str,
+            toolsCalled: { type: "array", items: str }, expectedTools: { type: "array", items: str },
+            success: { type: "boolean", description: "Every metric passed" }, metrics: { type: "array", items: ref("EvalMetric") },
+          },
+        },
+        EvalRun: {
+          type: "object",
+          required: ["id", "name", "framework", "createdAt", "caseCount", "passedCount", "metrics"],
+          properties: {
+            id: str, name: str, dataset: str, framework: str, frameworkVersion: str, judgeModel: str, agentModel: str,
+            metadata: { type: "object", additionalProperties: { type: ["string", "number", "boolean"] } }, createdBy: str, createdAt: time,
+            caseCount: { type: "integer" }, passedCount: { type: "integer" },
+            metrics: { type: "array", items: { type: "object", properties: { name: str, avgScore: { type: "number" }, passed: { type: "integer" }, total: { type: "integer" } } } },
           },
         },
         AuditEvent: { type: "object", properties: { id: str, at: time, action: str, outcome: { enum: ["success", "failure", "denied"] }, actorId: str, actorName: str, target: str, ip: str, requestId: str, metadata: { type: "object" } } },

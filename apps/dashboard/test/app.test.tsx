@@ -6,7 +6,7 @@ import { BanglaClawClient } from "@entrogic-net/client";
 import { createGatewayApp } from "@entrogic-net/gateway";
 import { FakeProvider } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryAuditStore, createLogger } from "@entrogic-net/shared";
+import { InMemoryAuditStore, InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { App } from "../src/App";
@@ -22,18 +22,19 @@ async function setup() {
   const provider = new FakeProvider([{ toolCalls: [{ name: "calculator", args: { expression: "6*7" } }] }, { content: "৪২", usage: { input: 120, output: 8 } }]);
   const runtime = new AgentRuntime({ provider, registry, policy, sessions, runs, limits: { maxIterations: 4, maxToolCalls: 4 }, timeoutMs: 5_000, timezone: "Asia/Dhaka", logger: silent });
   const audit = new InMemoryAuditStore();
+  const evals = new InMemoryEvalStore();
   const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
   const user = await auth.issueKey("shop-bot");
   const admin = await auth.issueKey("ops", "laptop", "admin");
   const app = createGatewayApp({
     runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
-    version: "test", logger: silent, timezone: "Asia/Dhaka", audit, pricing: { [provider.id]: { input: 1, output: 2 } },
+    version: "test", logger: silent, timezone: "Asia/Dhaka", audit, evals, pricing: { [provider.id]: { input: 1, output: 2 } },
   });
   const fetchViaApp = async (url: string, init?: RequestInit) => app.request(url.replace(window.location.origin, ""), init);
   const client = new BanglaClawClient({ baseUrl: window.location.origin, apiKey: user.token, fetch: fetchViaApp });
   const { sessionId } = await client.run("৬ গুণ ৭ কত?", { externalId: "chat-77" });
-  return { fetchViaApp, userToken: user.token, adminToken: admin.token, sessionId, sessions, audit };
+  return { fetchViaApp, userToken: user.token, adminToken: admin.token, sessionId, sessions, audit, evals };
 }
 
 async function signIn(token: string) {
@@ -173,6 +174,53 @@ describe("dashboard", () => {
     expect(row?.textContent).toContain("tool.denied");
     expect(row?.textContent).toContain("Denied");
     expect(row?.textContent).toContain("reason=not allowed");
+  });
+
+  it("lists eval runs, opens one with its cases and deletes it", async () => {
+    const { fetchViaApp, adminToken, sessionId, evals } = await setup();
+    const metric = (name: string, score: number, success: boolean, reason?: string) => ({ name, score, threshold: 0.7, success, ...(reason !== undefined && { reason }) });
+    await evals.save({ name: "nightly-bn", framework: "deepeval", cases: [{ input: "6*7?", actualOutput: "42", metrics: [metric("Answer Relevancy", 1, true)] }] });
+    const run = await evals.save({
+      name: "nightly-bn",
+      framework: "deepeval",
+      frameworkVersion: "3.4.0",
+      judgeModel: "gpt-4.1",
+      metadata: { commit: "abc123" },
+      cases: [
+        { name: "multiply", input: "৬ গুণ ৭ কত?", actualOutput: "৪২", sessionId, toolsCalled: ["calculator"], expectedTools: ["calculator"], metrics: [metric("Answer Relevancy", 0.9, true)] },
+        { name: "capital", input: "ঢাকা কোন দেশের রাজধানী?", actualOutput: "ভারতের", metrics: [metric("Answer Relevancy", 0.3, false, "উত্তরটি ভুল দেশ বলেছে")] },
+      ],
+    });
+    sessionStorage.setItem("banglaclaw.adminKey", adminToken);
+    window.history.replaceState(null, "", "/admin/evals");
+    render(<App fetch={fetchViaApp} />);
+
+    await screen.findByRole("heading", { name: "Evals" });
+    // The run list, not the chart's table view.
+    const table = (await screen.findAllByRole("table")).find((t) => t.classList.contains("clickable")) as HTMLElement;
+    const rows = (await within(table).findAllByText("nightly-bn")).map((el) => el.closest("tr"));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.textContent).toContain("1/2 passed");
+    expect(rows[0]?.textContent).toContain("Answer Relevancy 0.60");
+    expect(rows[1]?.textContent).toContain("Passed");
+    expect(screen.getByText("Cases per eval run")).toBeTruthy();
+
+    fireEvent.click(rows[0] as HTMLElement);
+    await screen.findByRole("heading", { name: "nightly-bn" });
+    expect(window.location.pathname).toBe(`/admin/evals/${run.id}`);
+    expect(screen.getByText("Pass rate").closest(".stat")?.textContent).toContain("50%");
+    expect(screen.getByText("commit=abc123")).toBeTruthy();
+    expect(screen.getByText("উত্তরটি ভুল দেশ বলেছে")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open the conversation →" }).getAttribute("href")).toBe(`/admin/sessions/${sessionId}`);
+
+    fireEvent.click(screen.getByLabelText("Failed only"));
+    expect(screen.queryByText("multiply")).toBeNull();
+    expect(screen.getByText("capital")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/admin/evals"));
+    expect(await evals.get(run.id)).toBeUndefined();
   });
 
   it("switches and remembers the colour theme", () => {

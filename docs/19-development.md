@@ -95,9 +95,21 @@ PW_CHANNEL=chrome pnpm e2e                                      # use an install
 The tests cover:
 - web chat: connect, a streamed markdown reply with a folded tool card, the session title in the header and sidebar, history after reload, `/new`, slash commands and the theme;
 - widget: bubble → iframe on a customer site, the reply without tool details, closing from the frame, the conversation kept across reloads, and the `frame-ancestors` header;
-- dashboard: sign-in, analytics, sessions searched by title, the session detail, and the theme toggle.
+- dashboard: sign-in, analytics, sessions searched by title, the session detail, an eval run recorded through the API, and the theme toggle.
 
 CI runs them in a separate `e2e` job and uploads the Playwright report when they fail. Keys are written to `e2e/.state.json` (git-ignored) when the server starts.
+
+### Eval harness (Python)
+
+`evals/deepeval/` is a Python package outside the pnpm workspace (docs/26, ADR-0017). Its tests are offline: DeepEval's judge gets a dummy key and an unreachable URL, and the gateway is an `httpx.MockTransport`.
+
+```bash
+cd evals/deepeval
+python -m venv .venv && . .venv/bin/activate && pip install -e '.[test]'
+python -m pytest -q
+```
+
+CI runs them in the `evals` job. To try the harness without a model key, start the e2e gateway (`pnpm --filter @entrogic-net/e2e exec tsx --conditions=@banglaclaw/source src/server.ts`), take the admin key from `e2e/.state.json`, and run only the metrics that make no judge calls: `--metrics tool_correctness,language_match` with `OPENAI_API_KEY=sk-offline`.
 
 ## Releasing
 

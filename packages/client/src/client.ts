@@ -1,4 +1,4 @@
-import type { AdminKey, AdminSession, AdminStats, AuditEvent, Features, KnowledgeHit, Me, Memory, Message, Run, RunResponse, Session, SessionEvent, StreamEvent, WorkspaceEntry } from "./types.js";
+import type { AdminKey, AdminSession, AdminStats, AuditEvent, EvalCase, EvalRun, Features, KnowledgeHit, Me, Memory, Message, NewEvalRun, Run, RunResponse, Session, SessionEvent, StreamEvent, WorkspaceEntry } from "./types.js";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -236,6 +236,11 @@ export class BanglaClawClient {
     createKey: (body: { user: string; name?: string; role?: "user" | "operator" | "admin"; scopes?: ("read" | "run")[] }): Promise<{ key: Omit<AdminKey, "status" | "createdAt">; token: string }> =>
       this.#json("POST", "/v1/admin/keys", body),
     revokeKey: (id: string): Promise<{ revoked: string }> => this.#json("POST", `/v1/admin/keys/${enc(id)}/revoke`, {}),
+    /** Evaluation runs, newest first (docs/26). */
+    evals: (options: { limit?: number; name?: string } = {}): Promise<{ evals: EvalRun[] }> => this.#json("GET", `/v1/admin/evals${query(options)}`),
+    eval: (id: string): Promise<{ eval: EvalRun; cases: EvalCase[] }> => this.#json("GET", `/v1/admin/evals/${enc(id)}`),
+    recordEval: (body: NewEvalRun): Promise<{ eval: EvalRun }> => this.#json("POST", "/v1/admin/evals", body),
+    deleteEval: (id: string): Promise<void> => this.#json("DELETE", `/v1/admin/evals/${enc(id)}`),
   };
 
   /** Admin role required. */

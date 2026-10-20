@@ -357,6 +357,60 @@ describe("admin API and dashboard", () => {
     expect((await audit.list({ action: "key.created" })).map((e) => e.metadata?.via)).toContain("api");
   });
 
+  it("records, lists, shows and deletes eval runs for admins only", async () => {
+    const { InMemoryAuditStore, InMemoryEvalStore } = await import("@entrogic-net/shared");
+    const { deps, alice } = await makeDeps();
+    const audit = new InMemoryAuditStore();
+    const app = createGatewayApp({ ...deps, audit, evals: new InMemoryEvalStore() });
+    const admin = (await deps.auth.issueKey("root", "ci", "admin")).token;
+    const metric = (name: string, score: number | null, success: boolean) => ({ name, score, threshold: 0.7, success, reason: null });
+    const upload = {
+      name: "nightly-bn",
+      dataset: "datasets/sample.yaml",
+      frameworkVersion: "3.4.0",
+      judgeModel: "gpt-4.1",
+      metadata: { commit: "abc123", pr: 42 },
+      cases: [
+        { name: "dhaka", input: "ঢাকা কোন দেশের রাজধানী?", actualOutput: "বাংলাদেশের।", language: "bn", toolsCalled: [], metrics: [metric("Answer Relevancy", 0.95, true)] },
+        { input: "6*7 koto?", actualOutput: "41", expectedOutput: "42", expectedTools: ["calculator"], sessionId: null, metrics: [metric("Answer Relevancy", 0.4, false), metric("Tool Correctness", null, false)] },
+      ],
+    };
+
+    expect((await app.request("/v1/admin/evals", json(alice, upload))).status).toBe(403);
+    expect((await app.request("/v1/admin/evals", json(admin, { ...upload, cases: [] }))).status).toBe(400);
+    expect((await app.request("/v1/admin/evals", json(admin, { ...upload, cases: [{ input: "x", metrics: [metric("m", 1.5, true)] }] }))).status).toBe(400);
+
+    const created = await app.request("/v1/admin/evals", json(admin, upload));
+    expect(created.status).toBe(201);
+    const { eval: run } = (await created.json()) as { eval: { id: string; framework: string; agentModel: string; caseCount: number; passedCount: number; metrics: unknown[] } };
+    expect(run).toMatchObject({ framework: "deepeval", agentModel: "fake:scripted", caseCount: 2, passedCount: 1 });
+    expect(run.metrics).toEqual([
+      { name: "Answer Relevancy", avgScore: 0.675, passed: 1, total: 2 },
+      { name: "Tool Correctness", passed: 0, total: 1 },
+    ]);
+
+    const list = (await (await app.request("/v1/admin/evals?name=nightly-bn", get(admin))).json()) as { evals: { id: string }[] };
+    expect(list.evals.map((e) => e.id)).toEqual([run.id]);
+    expect(((await (await app.request("/v1/admin/evals?name=other", get(admin))).json()) as { evals: unknown[] }).evals).toEqual([]);
+    const detail = (await (await app.request(`/v1/admin/evals/${run.id}`, get(admin))).json()) as { cases: { success: boolean; language?: string; sessionId?: string }[] };
+    expect(detail.cases.map((c) => c.success)).toEqual([true, false]);
+    expect(detail.cases[0]?.language).toBe("bn");
+    expect(detail.cases[1]).not.toHaveProperty("sessionId");
+
+    expect((await app.request(`/v1/admin/evals/${run.id}`, { method: "DELETE", ...get(admin) })).status).toBe(204);
+    expect((await app.request(`/v1/admin/evals/${run.id}`, get(admin))).status).toBe(404);
+    expect((await audit.list()).map((e) => e.action).filter((a) => a.startsWith("eval."))).toEqual(["eval.deleted", "eval.recorded"]);
+
+    // Larger than the default 256 KB body limit, within the eval limit.
+    const big = { ...upload, cases: Array.from({ length: 40 }, (_, i) => ({ input: `q${i}`, actualOutput: "অ".repeat(10_000), metrics: [metric("m", 1, true)] })) };
+    expect((await app.request("/v1/admin/evals", json(admin, big))).status).toBe(201);
+
+    const { deps: plain } = await makeDeps();
+    const disabled = createGatewayApp(plain);
+    const plainAdmin = (await plain.auth.issueKey("root", "ci", "admin")).token;
+    expect(((await (await disabled.request("/v1/admin/evals", get(plainAdmin))).json()) as { error: { code: string } }).error.code).toBe("evals_disabled");
+  });
+
   it("serves the dashboard with SPA fallback, caching and CSP, and blocks path traversal", async () => {
     const { mkdirSync, mkdtempSync, writeFileSync } = await import("node:fs");
     const { tmpdir } = await import("node:os");

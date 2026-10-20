@@ -275,6 +275,20 @@ pnpm banglaclaw a2a list
 </details>
 
 <details>
+<summary><b>Evaluations: score answers with DeepEval, track them in the dashboard</b> · <a href="docs/26-evals.md">docs</a></summary>
+
+```bash
+cd evals/deepeval && pip install -e .
+export BANGLACLAW_API_KEY=bck_…  OPENAI_API_KEY=sk-…   # admin key; judge model
+python -m banglaclaw_evals run datasets/sample.yaml --judge-model gpt-4.1-mini --min-pass-rate 0.8
+# sample: 6/7 cases passed (86%) — open /admin/evals to compare runs and read each case
+```
+
+Goldens in Bangla, Banglish and English run through the live agent; DeepEval scores answer relevancy, Bangla-aware correctness, tool use and reply language.
+
+</details>
+
+<details>
 <summary><b>Knowledge base and long-term memory</b> · <a href="docs/07-memory.md">docs</a></summary>
 
 ```bash
@@ -325,7 +339,7 @@ Run `pnpm banglaclaw --help` for the full command list, and see [Configuration](
 | [Goals & Non-goals](docs/02-goals.md) | [Gateway](docs/05-gateway.md) | [Model Providers](docs/12-model-providers.md) | [Deployment](docs/21-deployment.md) |
 | [Configuration](docs/16-configuration.md) | [Sessions](docs/06-session.md) | [API](docs/18-api.md) | [Operations](docs/22-operations.md) |
 | [CLI](docs/17-cli.md) | [Memory & Knowledge](docs/07-memory.md) | [Plugins](docs/23-plugins.md) | [Storage](docs/13-storage.md) |
-| [Development](docs/19-development.md) | [Skills](docs/08-skills.md) · [Tools](docs/09-tools.md) | [Workspace](docs/24-workspace.md) | [Roadmap](docs/20-roadmap.md) |
+| [Development](docs/19-development.md) | [Skills](docs/08-skills.md) · [Tools](docs/09-tools.md) | [Workspace](docs/24-workspace.md) · [A2A](docs/25-a2a.md) | [Evals](docs/26-evals.md) · [Roadmap](docs/20-roadmap.md) |
 
 Design decisions are recorded as [Architecture Decision Records](docs/adr/). Bangla versions of the gateway, skills, MCP and channels docs are in [docs/bn](docs/bn/README.md).
 

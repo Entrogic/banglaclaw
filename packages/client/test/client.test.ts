@@ -4,7 +4,7 @@ import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
 import { createGatewayApp } from "@entrogic-net/gateway";
 import { FakeProvider } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { createLogger } from "@entrogic-net/shared";
+import { InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { BanglaClawApiError, BanglaClawClient, parseSSE, type StreamEvent } from "../src/index.js";
@@ -28,7 +28,7 @@ async function setup() {
   const app = createGatewayApp({
     runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: true, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
-    version: "1.0.0", logger: silent,
+    version: "1.0.0", logger: silent, evals: new InMemoryEvalStore(),
   });
   const fetchViaApp = async (url: string, init?: RequestInit) => app.request(url.replace("http://gateway.test", ""), init);
   return {
@@ -74,6 +74,12 @@ describe("BanglaClawClient", () => {
     expect(token).toMatch(/^bck_/);
     expect((await admin.admin.keys()).keys.map((k) => k.id)).toContain(key.id);
     expect(await admin.admin.revokeKey(key.id)).toEqual({ revoked: key.id });
+    const { eval: run } = await admin.admin.recordEval({ name: "smoke", cases: [{ input: "হ্যালো", actualOutput: "হ্যালো!", metrics: [{ name: "Answer Relevancy", score: 1, threshold: 0.7, success: true }] }] });
+    expect(run).toMatchObject({ name: "smoke", framework: "deepeval", caseCount: 1, passedCount: 1 });
+    expect((await admin.admin.evals({ name: "smoke" })).evals.map((e) => e.id)).toEqual([run.id]);
+    expect((await admin.admin.eval(run.id)).cases[0]?.success).toBe(true);
+    await admin.admin.deleteEval(run.id);
+    expect((await admin.admin.evals()).evals).toEqual([]);
     await expect(client.admin.stats()).rejects.toMatchObject({ status: 403 });
   });
 

@@ -1,6 +1,6 @@
 export { createGatewayApp } from "./app.js";
 export { openApiSpec } from "./openapi.js";
-export { adminRoutes, dashboardRoutes, withCosts, DASHBOARD_CSP } from "./admin.js";
+export { adminRoutes, dashboardRoutes, withCosts, evalRunJson, DASHBOARD_CSP, EVAL_BODY_LIMIT } from "./admin.js";
 export { startGateway, type RunningGateway } from "./server.js";
 export { GatewayContext, API_CHANNEL, type GatewayConfig, type GatewayDeps, type GatewayMetrics, type GatewayUploads, type GatewayWorkspace, type WidgetOptions, type A2aOptions } from "./context.js";
 export { WIDGET_CHANNEL } from "./widget/routes.js";

@@ -159,3 +159,56 @@ export interface AdminKey {
   lastUsedAt?: string;
   revokedAt?: string;
 }
+
+/** One metric's verdict on an eval case (docs/26). Scores are 0–1. */
+export interface EvalMetric {
+  name: string;
+  score?: number;
+  threshold: number;
+  success: boolean;
+  reason?: string;
+  error?: string;
+}
+
+export interface EvalCase {
+  name?: string;
+  input: string;
+  actualOutput?: string;
+  expectedOutput?: string;
+  language?: string;
+  sessionId?: string;
+  runId?: string;
+  toolsCalled?: string[];
+  expectedTools?: string[];
+  /** Every metric passed. */
+  success: boolean;
+  metrics: EvalMetric[];
+}
+
+export interface EvalRun {
+  id: string;
+  name: string;
+  dataset?: string;
+  framework: string;
+  frameworkVersion?: string;
+  judgeModel?: string;
+  agentModel?: string;
+  metadata?: Record<string, string | number | boolean>;
+  createdBy?: string;
+  createdAt: string;
+  caseCount: number;
+  passedCount: number;
+  metrics: { name: string; avgScore?: number; passed: number; total: number }[];
+}
+
+/** Body of POST /v1/admin/evals; `success` per case is computed by the gateway. */
+export interface NewEvalRun {
+  name: string;
+  dataset?: string;
+  framework?: string;
+  frameworkVersion?: string;
+  judgeModel?: string;
+  agentModel?: string;
+  metadata?: Record<string, string | number | boolean>;
+  cases: Omit<EvalCase, "success">[];
+}

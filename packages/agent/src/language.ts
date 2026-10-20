@@ -3,7 +3,7 @@ import type { Language } from "@entrogic-net/shared";
 const BENGALI = /\p{Script=Bengali}/u;
 const WORDLIKE = /[\p{L}\p{N}]/u;
 
-/** Frequent romanised-Bangla words that rarely occur in English text. */
+/** Frequent romanised-Bangla words that rarely occur in English text (mirrored in evals/deepeval/banglaclaw_evals/language.py). */
 const BANGLISH_WORDS = new Set([
   "ami", "amar", "amake", "amra", "tumi", "tomar", "tomake", "apni", "apnar", "apnake", "se", "tar", "ora",
   "ki", "kii", "keno", "kemon", "kivabe", "kibhabe", "kothay", "kokhon", "koto", "koyta", "kon", "ke",

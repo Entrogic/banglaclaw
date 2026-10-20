@@ -12,7 +12,7 @@ import { startGateway } from "@entrogic-net/gateway";
 import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@entrogic-net/knowledge";
 import { FakeProvider } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@entrogic-net/session";
-import { InMemoryAuditStore, createLogger } from "@entrogic-net/shared";
+import { InMemoryAuditStore, InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet, loadSkillsFromDirs } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 
@@ -86,6 +86,44 @@ await audit.record({ action: "auth.failed", outcome: "failure", ip: "203.0.113.7
 await audit.record({ action: "tool.denied", outcome: "denied", actorId: "system", target: "shell_exec", metadata: { reason: "not in tools.allow" }, at: new Date(Date.now() - 2 * 3_600_000) });
 await audit.record({ action: "handoff.requested", outcome: "success", actorId: "system", target: ids[1] ?? "", metadata: { reason: "Customer asked for a refund" }, at: new Date(Date.now() - 3_600_000) });
 
+// Eval runs as the DeepEval harness (evals/deepeval, docs/26) would record them.
+const evals = new InMemoryEvalStore();
+const goldens = [
+  { name: "delivery-bn", input: "ঢাকার বাইরে ডেলিভারি চার্জ কত?", expectedOutput: "৳১২০, ৩-৫ দিন", tools: ["knowledge_search"] },
+  { name: "refund-banglish", input: "refund koto din e pabo?", expectedOutput: "৫-৭ কর্মদিবসে", tools: ["knowledge_search"] },
+  { name: "vat-en", input: "What is 15% VAT on 2400 taka?", expectedOutput: "৳360", tools: ["calculator"] },
+  { name: "greeting-bn", input: "হ্যালো, কেমন আছেন?", tools: [] },
+];
+for (let n = 0; n < 8; n++) {
+  const quality = 0.62 + n * 0.04;
+  await evals.save({
+    name: "nightly",
+    dataset: "datasets/sample.yaml",
+    framework: "deepeval",
+    frameworkVersion: "3.4.0",
+    judgeModel: "gpt-4.1-mini",
+    agentModel: providers[0] ?? "",
+    metadata: { commit: (0xabc000 + n * 0x1d3).toString(16) },
+    cases: goldens.map((g) => {
+      const relevancy = Math.min(1, quality + rand() * 0.3);
+      const correct = Math.min(1, quality - 0.1 + rand() * 0.35);
+      return {
+        name: g.name,
+        input: g.input,
+        actualOutput: "…",
+        ...(g.expectedOutput !== undefined && { expectedOutput: g.expectedOutput }),
+        toolsCalled: g.tools,
+        expectedTools: g.tools,
+        metrics: [
+          { name: "Answer Relevancy", score: relevancy, threshold: 0.7, success: relevancy >= 0.7, reason: "উত্তরটি প্রশ্নের সাথে প্রাসঙ্গিক।" },
+          { name: "Bangla Correctness [GEval]", score: correct, threshold: 0.6, success: correct >= 0.6 },
+          { name: "Language Match", score: 1, threshold: 1, success: true },
+        ],
+      };
+    }),
+  });
+}
+
 const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
 const admin = await auth.issueKey("demo-admin", "laptop", "admin");
 await auth.issueKey("shop-bot", "production", "user");
@@ -96,7 +134,7 @@ const port = Number(process.env.PORT ?? 3000);
 const gateway = await startGateway({
   runtime, sessions, runs, auth, registry, policy, skills: new SkillSet(loadSkillsFromDirs(["skills"], fileURLToPath(new URL("../../..", import.meta.url)))), agent: { name: "banglaclaw", model: provider.id },
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 8000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 600, maxConcurrentRuns: 2 } },
-  version: "demo", logger, timezone: "Asia/Dhaka", audit,
+  version: "demo", logger, timezone: "Asia/Dhaka", audit, evals,
   knowledge: { kb, searchLimit: 5, minScore: 0 },
   pricing: { "openai-compatible:gpt-4o-mini": { input: 0.15, output: 0.6 }, "anthropic:claude-sonnet-5": { input: 3, output: 15 } },
   ...(existsSync(`${dist}/index.html`) && { dashboardDir: dist }),

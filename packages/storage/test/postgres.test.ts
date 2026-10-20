@@ -27,7 +27,7 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
 
   beforeEach(async () => {
     await storage.pool.query(
-      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, audit_logs, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
+      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, audit_logs, eval_runs, eval_cases, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
     );
   });
 
@@ -135,6 +135,40 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     const ops = await auth.issueKey("ops", "console", "operator");
     expect(ops.user.role).toBe("operator");
     expect((await auth.authenticate(ops.token))?.user.role).toBe("operator");
+  });
+
+  it("stores eval runs with their cases and summary, and deletes them", async () => {
+    const metric = (name: string, score: number, success: boolean) => ({ name, score, threshold: 0.7, success, reason: "কারণ" });
+    const saved = await storage.evals.save({
+      name: "nightly",
+      framework: "deepeval",
+      judgeModel: "gpt-4.1",
+      metadata: { commit: "abc123", ci: true },
+      createdBy: "admin-1",
+      cases: [
+        { name: "dhaka", input: "ঢাকার জনসংখ্যা কত?", actualOutput: "প্রায় ২ কোটি", language: "bn", toolsCalled: ["knowledge_search"], metrics: [metric("Answer Relevancy", 0.9, true)] },
+        { input: "6*7?", actualOutput: "41", expectedTools: ["calculator"], metrics: [metric("Answer Relevancy", 0.5, false), metric("Tool Correctness", 0, false)] },
+      ],
+    });
+    await storage.evals.save({ name: "smoke", framework: "deepeval", cases: [] });
+
+    expect(saved).toMatchObject({ name: "nightly", caseCount: 2, passedCount: 1, metadata: { commit: "abc123", ci: true } });
+    expect(saved.metrics).toEqual([
+      { name: "Answer Relevancy", avgScore: 0.7, passed: 1, total: 2 },
+      { name: "Tool Correctness", avgScore: 0, passed: 0, total: 1 },
+    ]);
+    expect((await storage.evals.list()).map((r) => r.name)).toEqual(["smoke", "nightly"]);
+    expect(await storage.evals.list({ name: "nightly", limit: 5 })).toHaveLength(1);
+
+    const detail = await storage.evals.get(saved.id);
+    expect(detail?.cases.map((c) => c.success)).toEqual([true, false]);
+    expect(detail?.cases[0]).toMatchObject({ name: "dhaka", toolsCalled: ["knowledge_search"], metrics: [{ reason: "কারণ" }] });
+    expect(detail?.cases[1]?.expectedTools).toEqual(["calculator"]);
+    expect(await storage.evals.get("not-a-uuid")).toBeUndefined();
+
+    expect(await storage.evals.delete(saved.id)).toBe(true);
+    expect(await storage.evals.get(saved.id)).toBeUndefined();
+    expect((await storage.pool.query("SELECT count(*)::int AS n FROM eval_cases")).rows[0]).toEqual({ n: 0 });
   });
 
   it("round-trips messages including tool calls, oldest first", async () => {

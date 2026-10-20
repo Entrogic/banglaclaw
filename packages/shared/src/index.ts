@@ -6,3 +6,4 @@ export * from "./rate-limit.js";
 export * from "./audit.js";
 export * from "./transcription.js";
 export * from "./interpolate.js";
+export * from "./evals.js";

@@ -45,6 +45,22 @@ jobs:
       - name: Dependency audit (high and critical)
         run: pnpm audit --audit-level high
 
+  evals:
+    # Offline tests of the DeepEval harness (docs/26); no model or network calls.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: evals/deepeval
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install -e '.[test]'
+      - run: python -m pytest -q
+        env:
+          DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+
   e2e:
     runs-on: ubuntu-latest
     steps:

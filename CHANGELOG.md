@@ -4,6 +4,11 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Evaluations with DeepEval** (docs/26, ADR-0017): a Python harness in `evals/deepeval` runs a dataset of Bangla, Banglish and English goldens through the live agent over `/v1`, scores the answers with DeepEval (answer relevancy, Bangla-aware G-Eval correctness and fluency, faithfulness, contextual relevancy, tool correctness, and a deterministic language-match metric), and records the result on the gateway. `--min-pass-rate` makes it a CI gate.
+  - **New additive API:** `GET`/`POST /v1/admin/evals` and `GET`/`DELETE /v1/admin/evals/:id` (admin role; uploads up to 10 MB, audited as `eval.recorded` / `eval.deleted`), in the OpenAPI document and the typed client.
+  - **Storage:** `eval_runs` and `eval_cases` (migration `0006_evals`; run `banglaclaw db migrate`). Memory storage keeps the last 500 runs.
+  - **Dashboard:** an Evals page with pass rates, mean metric scores and a passed/failed chart over runs, and a run page with every case's answer, tools and metric reasons, linked to the conversation.
+
 - **A2A client: remote agents as tools** (docs/25, ADR-0016): each `a2a.agents.<name>` entry (URL plus optional `${VAR}` headers) becomes a `sensitive` tool `a2a__<name>` that sends a message to that A2A agent and returns its reply. It works with JSON-RPC and HTTP+JSON agents on protocol v1.0 or v0.3. Each BanglaClaw session keeps its own remote conversation, and credentials are sent only to the configured origin. New `banglaclaw a2a list`, plus checks in `doctor` and `tool list`. The new `@entrogic-net/a2a` package holds the client. Continuing `input-required` tasks is not supported yet.
 
 - **Agent2Agent (A2A) server** (docs/25, ADR-0015): with `a2a.server.enabled`, the gateway serves an agent card at `/.well-known/agent-card.json` and JSON-RPC at `POST /a2a`, protocol v1.0 plus v0.3, using the official `@a2a-js/sdk`. Other agents (Google ADK, LangGraph and others) can send BanglaClaw tasks with an ordinary API key. The same rate limit, scopes and concurrency limit apply as for `/v1`. Each A2A context becomes an `a2a` session with its own history, replies arrive as an artifact, streaming and cancel are supported, and handoff shows up as `input-required`.
