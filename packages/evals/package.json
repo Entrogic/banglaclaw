@@ -51,7 +51,7 @@
     "@entrogic-net/providers": "workspace:*",
     "@entrogic-net/session": "workspace:*",
     "@entrogic-net/shared": "workspace:*",
-    "@langchain/core": "^1.2.12",
+    "@langchain/core": "^1.2.18",
     "zod": "^4.6.5"
   },
   "devDependencies": {
