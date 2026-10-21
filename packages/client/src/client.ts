@@ -94,9 +94,9 @@ export class BanglaClawClient {
     return res;
   }
 
-  /** POSTs raw bytes (uploads, audio) and parses the JSON answer. */
+  /** POSTs raw bytes (uploads, audio) and parses the JSON answer. Bytes are copied because the DOM's BodyInit only takes ArrayBuffer-backed views (not a Node Buffer's type). */
   async #binary<T>(path: string, data: Uint8Array | Blob, contentType: string): Promise<T> {
-    const res = await this.#fetch(`${this.#base}${path}`, { method: "POST", headers: { ...this.#headers, "Content-Type": contentType }, body: data });
+    const res = await this.#fetch(`${this.#base}${path}`, { method: "POST", headers: { ...this.#headers, "Content-Type": contentType }, body: data instanceof Blob ? data : new Uint8Array(data) });
     if (!res.ok) {
       const err = (await res.json().catch(() => ({}))) as { error?: { code?: string; message?: string; requestId?: string } };
       throw new BanglaClawApiError(res.status, err.error?.code ?? "http_error", err.error?.message ?? res.statusText, err.error?.requestId ?? res.headers.get("x-request-id") ?? undefined);

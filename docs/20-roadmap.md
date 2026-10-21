@@ -82,4 +82,4 @@
 - Images, sitemap crawling, spoken replies (voice notes, DOCX and URL loaders shipped after 1.1)
 - MCP resources and prompts for the BanglaClaw MCP server (publishing `@entrogic-net/*` to npm shipped in 1.2)
 - Eval follow-ups: multi-turn (conversational) DeepEval metrics, running evals from the dashboard, Bangla judge prompts (DeepEval evaluations with results in the dashboard shipped after the A2A client; docs/26)
-- A2A client follow-ups: continuing `input-required` tasks, streaming partial replies (the A2A server shipped after 1.6 and the client, remote agents as `a2a__*` tools, after it; docs/25)
+- A2A client follow-ups: OAuth and other non-header auth, resubscribing to dropped streams (the A2A server shipped after 1.6, the client with remote agents as `a2a__*` tools after it, then continuing `input-required` tasks and streamed partial replies; docs/25)

@@ -17,6 +17,8 @@ interface BanglaClawTool<I, O> {
 }
 ```
 
+`ToolContext` carries `runId`, `sessionId`, `timezone` and the run's `signal`. A tool that produces output gradually (a remote A2A agent streaming its reply) may also call `ctx.progress(text)` with the whole text so far. The runtime turns each call into a `tool_progress` run event (ADR-0018). Progress is best effort and display-only: the model sees only the final output, and a listener that throws never fails the tool.
+
 Implemented in `packages/tools`. `ToolRegistry` holds tools and produces provider-neutral `ToolSpec`s.
 
 ## Permission policy

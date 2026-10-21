@@ -15,6 +15,11 @@ export interface ToolContext {
   sessionId: string;
   timezone: string;
   signal: AbortSignal;
+  /**
+   * Reports partial output while the tool runs, as the whole text so far (each call replaces the
+   * last). Best effort: it never affects the result, and the final output still comes from execute().
+   */
+  progress?: (text: string) => void;
 }
 
 export interface BanglaClawTool<I = unknown, O = unknown> {

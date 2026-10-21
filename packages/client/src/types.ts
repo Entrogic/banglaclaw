@@ -84,6 +84,7 @@ export type StreamEvent =
   | { event: "run_start"; data: { runId: string; sessionId: string; language: Language; skills: string[]; agent: string } }
   | { event: "token"; data: { runId: string; text: string } }
   | { event: "tool_start"; data: { runId: string; toolCallId: string; tool: string; input: unknown } }
+  | { event: "tool_progress"; data: { runId: string; toolCallId: string; tool: string; text: string } }
   | { event: "tool_end"; data: { runId: string; audit: { tool: string; status: ToolCall["status"]; output?: unknown; error?: string; durationMs: number } } }
   | { event: "agent_transfer"; data: { runId: string; from: string; to: string } }
   | { event: "handoff"; data: { runId: string; reason: string; pending: boolean } }

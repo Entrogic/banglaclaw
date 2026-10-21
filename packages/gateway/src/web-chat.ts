@@ -473,6 +473,7 @@ const SCRIPT_MAIN = String.raw`
     card.dataset.state = ok ? "ok" : "fail";
     card.querySelector(".ticon").textContent = ok ? "✓" : "!";
     if (ms != null) card.querySelector(".tdur").textContent = ms < 1000 ? ms + "ms" : (ms / 1000).toFixed(1) + "s";
+    card.querySelectorAll(".tplabel, .tprogress").forEach((el) => el.remove());
     card.querySelector(".tbody").append(h("div", "tlabel", ok ? "Result" : "Error"), h("pre", ok ? null : "err", ok ? json(output) : error || "failed"));
   }
   // Tool activity folds into one "Worked for …" line under the speaker, like a finished task log.
@@ -617,6 +618,11 @@ const SCRIPT_MAIN = String.raw`
       run.cards[ev.toolCallId] = card; run.tools++;
       activity(t).append(card);
       scrollEnd();
+    } else if (ev.type === "tool_progress" && run.cards[ev.toolCallId]) {
+      const body = run.cards[ev.toolCallId].querySelector(".tbody");
+      let pre = body.querySelector(".tprogress");
+      if (!pre) { body.append(h("div", "tlabel tplabel", "Reply so far")); pre = h("pre", "tprogress"); body.append(pre); }
+      pre.textContent = ev.text;
     } else if (ev.type === "tool_end" && run.cards[ev.audit.toolCallId]) {
       const a = ev.audit;
       finishCard(run.cards[a.toolCallId], a.status === "ok", a.output, a.status + (a.error ? ": " + a.error : ""), a.durationMs);

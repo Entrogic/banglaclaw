@@ -4,6 +4,11 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **A2A client: questions and streaming** (docs/25, ADR-0018): when a remote agent's task ends `input-required`, the `a2a__<name>` tool now returns its question with `state: "input-required"` instead of an error, and the session's next call continues that task. `newTask: true` starts over instead. Agents that advertise streaming are called with `SendStreamingMessage`, and their partial reply is shown while it arrives.
+  - **New run event `tool_progress`** (`{ toolCallId, tool, text }`, the tool's output so far) on `/v1` SSE and WebSocket streams and in the typed client. This is an additive change; the widget does not forward it. The web chat shows it in the tool card and the TUI in its status line.
+  - **`ToolContext.progress(text)`** lets any tool report partial output (docs/09).
+  - The A2A tool's output gains `state`, and its input an optional `newTask`.
+
 - **Evaluations with DeepEval** (docs/26, ADR-0017): a Python harness in `evals/deepeval` runs a dataset of Bangla, Banglish and English goldens through the live agent over `/v1`, scores the answers with DeepEval (answer relevancy, Bangla-aware G-Eval correctness and fluency, faithfulness, contextual relevancy, tool correctness, and a deterministic language-match metric), and records the result on the gateway. `--min-pass-rate` makes it a CI gate.
   - **New additive API:** `GET`/`POST /v1/admin/evals` and `GET`/`DELETE /v1/admin/evals/:id` (admin role; uploads up to 10 MB, audited as `eval.recorded` / `eval.deleted`), in the OpenAPI document and the typed client.
   - **Storage:** `eval_runs` and `eval_cases` (migration `0006_evals`; run `banglaclaw db migrate`). Memory storage keeps the last 500 runs.

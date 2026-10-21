@@ -5,7 +5,8 @@ import { createLogger, type RunEvent } from "@entrogic-net/shared";
 import { FakeProvider, type ScriptedTurn } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
 import { SkillSet, parseSkill } from "@entrogic-net/skills";
-import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
+import { z } from "zod";
+import { AllowlistPolicy, ToolRegistry, builtinTools, defineTool, type AnyTool } from "@entrogic-net/tools";
 import { AgentRunError, AgentRuntime, LIMIT_MESSAGES } from "../src/index.js";
 
 const silent = createLogger({ write: () => {} });
@@ -26,6 +27,7 @@ interface Overrides {
   timeoutMs?: number;
   maxHistoryMessages?: number;
   checkpointer?: MemorySaver;
+  tools?: AnyTool[];
 }
 
 function makeRuntime(script: ScriptedTurn[], overrides: Overrides = {}) {
@@ -33,7 +35,7 @@ function makeRuntime(script: ScriptedTurn[], overrides: Overrides = {}) {
   const sessions = new InMemorySessionStore();
   const runs = new InMemoryRunStore();
   const registry = new ToolRegistry();
-  for (const tool of builtinTools) registry.register(tool);
+  for (const tool of [...builtinTools, ...(overrides.tools ?? [])]) registry.register(tool);
   const runtime = new AgentRuntime({
     provider,
     registry,
@@ -94,6 +96,34 @@ describe("AgentRuntime", () => {
 
     const saved = await runs.get(record.id);
     expect(saved?.toolCalls[0]?.status).toBe("ok");
+  });
+
+  it("emits tool_progress for a tool that reports partial output, and survives a throwing listener", async () => {
+    const slow = defineTool({
+      name: "slow_reply",
+      description: "Replies in pieces",
+      risk: "safe",
+      inputSchema: z.strictObject({}),
+      outputSchema: z.strictObject({ text: z.string() }),
+      async execute(_input, ctx) {
+        ctx.progress?.("ঢাকা");
+        ctx.progress?.("ঢাকায় বৃষ্টি");
+        return { text: "ঢাকায় বৃষ্টি" };
+      },
+    });
+    const { runtime, events, sessionIdFor } = makeRuntime([{ toolCalls: [{ name: "slow_reply", args: {} }] }, { content: "বৃষ্টি হচ্ছে" }], { allow: ["slow_reply"], tools: [slow] });
+    const record = await runtime.run("আবহাওয়া?", {
+      sessionId: await sessionIdFor("s1"),
+      onEvent: (e) => {
+        events.push(e);
+        if (e.type === "tool_progress") throw new Error("listener bug");
+      },
+    });
+    expect(record.toolCalls[0]).toMatchObject({ tool: "slow_reply", status: "ok" });
+    const start = events.find((e) => e.type === "tool_start");
+    const progress = events.filter((e) => e.type === "tool_progress");
+    expect(progress.map((e) => e.text)).toEqual(["ঢাকা", "ঢাকায় বৃষ্টি"]);
+    expect(progress[0]).toMatchObject({ tool: "slow_reply", toolCallId: start?.type === "tool_start" ? start.toolCallId : "" });
   });
 
   it("does not advertise or run tools outside the allowlist", async () => {

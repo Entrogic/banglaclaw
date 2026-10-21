@@ -68,6 +68,7 @@ Add `?stream=true` or `Accept: text/event-stream` to either run endpoint. Events
 event: session    data: {"sessionId":"…","created":true}
 event: run_start  data: {"type":"run_start","runId":"…","language":"bn","skills":["calculation"]}
 event: tool_start data: {"type":"tool_start","tool":"calculator","input":{…}}
+event: tool_progress data: {"type":"tool_progress","toolCallId":"…","tool":"a2a__weather","text":"…"}   (partial tool output so far; each replaces the last)
 event: tool_end   data: {"type":"tool_end","audit":{"status":"ok",…}}
 event: agent_transfer data: {"type":"agent_transfer","from":"supervisor","to":"sales"}
 event: handoff    data: {"type":"handoff","reason":"…","pending":false}   (pending: true while a human owns the session)

@@ -148,6 +148,12 @@ export function useChat(bundle: RuntimeBundle, initial: Session) {
             setActivity(`running ${e.tool}…`);
             schedule();
             break;
+          case "tool_progress": {
+            // Partial reply of a streaming tool (a remote A2A agent): show its tail as the activity.
+            const tail = e.text.replace(/\s+/g, " ").trim().slice(-60);
+            setActivity(`${e.tool}: ${tail}`);
+            break;
+          }
           case "tool_end": {
             if (isControl(e.audit.tool)) break;
             const t = [...segments].reverse().find((s) => s.kind === "tool" && s.tool === e.audit.tool && s.status === undefined);

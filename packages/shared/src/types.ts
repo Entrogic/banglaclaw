@@ -39,6 +39,8 @@ export type RunEvent =
   | { type: "handoff"; runId: string; reason: string; pending: boolean }
   | { type: "token"; runId: string; text: string }
   | { type: "tool_start"; runId: string; toolCallId: string; tool: string; input: unknown }
+  /** Partial output of a running tool (for example a remote A2A agent's reply so far); each event replaces the previous one. */
+  | { type: "tool_progress"; runId: string; toolCallId: string; tool: string; text: string }
   | { type: "tool_end"; runId: string; audit: ToolAuditEvent }
   | { type: "final"; runId: string; text: string }
   | { type: "error"; runId: string; message: string };

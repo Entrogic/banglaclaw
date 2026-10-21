@@ -15,7 +15,7 @@ ADR-0015 made BanglaClaw an A2A server. The other direction is just as useful: a
 - **Any binding and version the card offers:** the SDK's JSON-RPC and HTTP+JSON transports with v0.3 compatibility on.
 - **One remote conversation per BanglaClaw session,** keyed by the `contextId` the remote agent returns, kept in a bounded in-memory map. The remote side owns that conversation's history; we do not persist it.
 - **Credentials only to the configured origin.** Headers from config (with `${VAR}` secrets) are attached only to requests for the origin of `url`, so a card that points elsewhere cannot collect them.
-- **`input-required` is not continued yet.** The task's question comes back as a tool error. Continuing interrupted tasks (including a remote human handoff) is deferred.
+- **`input-required` is continued** (superseding the first version, which returned it as an error): see ADR-0018.
 
 ## Consequences
 
@@ -26,4 +26,4 @@ Positive:
 Trade-offs:
 - Remote conversations are forgotten on restart (a new one starts)
 - A remote agent's reply and card are untrusted text in the prompt, as with MCP; operators can override the description
-- A multi-turn clarification with a remote agent is not possible until `input-required` continuation lands
+- Multi-turn clarification with a remote agent relies on the in-memory pending task (ADR-0018), so it is lost on restart

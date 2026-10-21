@@ -95,6 +95,14 @@ export function buildAgentGraph(options: AgentGraphOptions) {
   const skills = options.skills ?? [];
   const team: TeamOptions = options.team ?? { profiles: [], handoff: false, maxTransfers: 0 };
   const profiles = new Map(team.profiles.map((p) => [p.name, p]));
+  // A listener that throws must not turn into a tool failure.
+  const progressFor = (toolCallId: string, tool: string) => (text: string) => {
+    try {
+      emit({ type: "tool_progress", runId, toolCallId, tool, text });
+    } catch {
+      // ignored: progress is best effort
+    }
+  };
 
   // Only advertise tools the policy allows; executeTool re-checks every call regardless.
   const allowed: AnyTool[] = registry.list().filter((t) => policy.check(t).allowed);
@@ -269,7 +277,7 @@ export function buildAgentGraph(options: AgentGraphOptions) {
         try {
           const r = await executeTool(
             { id, name: call.name, args: call.args },
-            { registry, policy: scoped, ctx: { runId, sessionId: state.sessionId, timezone: options.timezone, signal }, onAudit },
+            { registry, policy: scoped, ctx: { runId, sessionId: state.sessionId, timezone: options.timezone, signal, progress: progressFor(id, call.name) }, onAudit },
           );
           span.setAttributes({ "gen_ai.operation.name": "execute_tool", "gen_ai.tool.name": call.name, "banglaclaw.tool.status": r.audit.status, "banglaclaw.agent": view.name });
           if (r.audit.status !== "ok") span.setStatus({ code: SpanStatusCode.ERROR, message: r.audit.status });

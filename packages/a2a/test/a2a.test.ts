@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AgentRuntime } from "@entrogic-net/agent";
 import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
 import { createGatewayApp } from "@entrogic-net/gateway";
@@ -49,11 +49,21 @@ async function connect(fetchImpl: typeof fetch, token: string, agents: Record<st
   return manager;
 }
 
-const ctx = (sessionId = "s1") => ({ runId: "r1", sessionId, timezone: "Asia/Dhaka", signal: new AbortController().signal });
+interface RunOptions {
+  sessionId?: string;
+  newTask?: boolean;
+  progress?: (text: string) => void;
+  signal?: AbortSignal;
+}
 /** Runs the tool through the normal lifecycle (validation, allowlist, timeout) and returns the audit event. */
-async function run(tool: AnyTool, message: string, sessionId?: string): Promise<{ ok: true; output: unknown } | { ok: false; error: string }> {
+async function run(tool: AnyTool, message: string, options: RunOptions = {}): Promise<{ ok: true; output: unknown } | { ok: false; error: string }> {
   const registry = new ToolRegistry().register(tool);
-  const { audit } = await executeTool({ id: "call1", name: tool.name, args: { message } }, { registry, policy: new AllowlistPolicy(["a2a__*"]), ctx: ctx(sessionId) });
+  const ctx = {
+    runId: "r1", sessionId: options.sessionId ?? "s1", timezone: "Asia/Dhaka", signal: options.signal ?? new AbortController().signal,
+    ...(options.progress !== undefined && { progress: options.progress }),
+  };
+  const args = { message, ...(options.newTask !== undefined && { newTask: options.newTask }) };
+  const { audit } = await executeTool({ id: "call1", name: tool.name, args }, { registry, policy: new AllowlistPolicy(["a2a__*"]), ctx });
   return audit.status === "ok" ? { ok: true, output: audit.output } : { ok: false, error: `${audit.status}: ${audit.error ?? ""}` };
 }
 
@@ -74,9 +84,12 @@ describe("A2aManager against a BanglaClaw A2A server", () => {
     const remote = await remoteBanglaClaw();
     const [tool] = (await connect(remote.fetch, remote.token)).tools();
     if (tool === undefined) throw new Error("no tool");
-    const result = await run(tool, "দোকান কখন খোলে?");
+    const progress: string[] = [];
+    const result = await run(tool, "দোকান কখন খোলে?", { progress: (t) => progress.push(t) });
     expect(result.ok).toBe(true);
-    expect(result.ok && result.output).toEqual({ agent: "dokan", reply: "দোকান খোলা সকাল ৯টায়", truncated: false });
+    expect(result.ok && result.output).toEqual({ agent: "dokan", reply: "দোকান খোলা সকাল ৯টায়", state: "completed", truncated: false });
+    // BanglaClaw's server streams: the reply artifact arrives as a progress update before the result.
+    expect(progress).toEqual(["দোকান খোলা সকাল ৯টায়"]);
     const rpc = remote.requests.find((r) => r.method === "POST");
     expect(rpc?.headers.get("authorization")).toBe(`Bearer ${remote.token}`);
     expect(rpc?.headers.get("a2a-version")).toBe("1.0");
@@ -86,9 +99,9 @@ describe("A2aManager against a BanglaClaw A2A server", () => {
     const remote = await remoteBanglaClaw({ script: [{ content: "one" }, { content: "two" }, { content: "three" }] });
     const [tool] = (await connect(remote.fetch, remote.token)).tools();
     if (tool === undefined) throw new Error("no tool");
-    await run(tool, "first", "s1");
-    await run(tool, "second", "s1");
-    await run(tool, "third", "s2");
+    await run(tool, "first", { sessionId: "s1" });
+    await run(tool, "second", { sessionId: "s1" });
+    await run(tool, "third", { sessionId: "s2" });
     const list = await remote.sessions.list({ channel: "a2a" });
     const counts = await Promise.all(list.map(async (s) => (await remote.sessions.recentMessages(s.id, 50)).length));
     expect(counts.sort()).toEqual([2, 4]);
@@ -131,8 +144,11 @@ describe("A2aManager against a BanglaClaw A2A server", () => {
   });
 });
 
+/** One scripted reply: a task (or GetTask result), a JSON-RPC error, or a stream of SSE events (`hang` keeps it open). */
+type Scripted = Record<string, unknown> | { rpcError: string } | { stream: Record<string, unknown>[]; hang?: boolean };
+
 /** A minimal hand-written A2A v1.0 JSON-RPC server, for behaviour BanglaClaw's own server never shows. */
-function scriptedServer(tasks: Record<string, unknown>[], card: Record<string, unknown> = {}) {
+function scriptedServer(replies: Scripted[], card: Record<string, unknown> = {}) {
   const calls: { method: string; params: unknown }[] = [];
   const fetchImpl: typeof fetch = async (input, init) => {
     const request = new Request(input, init);
@@ -146,13 +162,31 @@ function scriptedServer(tasks: Record<string, unknown>[], card: Record<string, u
     }
     const body = (await request.json()) as { id: number; method: string; params: unknown };
     calls.push({ method: body.method, params: body.params });
-    const task = tasks.shift() ?? {};
-    const result = body.method === "SendMessage" ? { task } : task;
+    const reply = replies.shift() ?? {};
+    if ("rpcError" in reply) return Response.json({ jsonrpc: "2.0", id: body.id, error: { code: -32001, message: reply.rpcError } });
+    if ("stream" in reply && Array.isArray(reply.stream)) {
+      const encoder = new TextEncoder();
+      const events = reply.stream;
+      const sse = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const result of events) controller.enqueue(encoder.encode(`data: ${JSON.stringify({ jsonrpc: "2.0", id: body.id, result })}\n\n`));
+          if (reply.hang !== true) controller.close();
+          else init?.signal?.addEventListener("abort", () => controller.error(new Error("aborted")));
+        },
+      });
+      return new Response(sse, { headers: { "content-type": "text/event-stream" } });
+    }
+    const result = body.method === "SendMessage" ? { task: reply } : reply;
     return Response.json({ jsonrpc: "2.0", id: body.id, result });
   };
   return { fetch: fetchImpl, calls };
 }
 
+/** The conversation and task a recorded call was sent to (empty ids are left out on the wire). */
+const sent = (call: { params: unknown } | undefined) => {
+  const message = (call?.params as { message?: { contextId?: string; taskId?: string } } | undefined)?.message;
+  return { contextId: message?.contextId, taskId: message?.taskId };
+};
 const task = (state: string, extra: Record<string, unknown> = {}) => ({ id: "t1", contextId: "ctx-9", status: { state }, artifacts: [], ...extra });
 const text = (t: string) => ({ parts: [{ text: t }] });
 
@@ -167,19 +201,92 @@ describe("A2A tool behaviour", () => {
     const [tool] = (await connect(server.fetch, "k")).tools();
     if (tool === undefined) throw new Error("no tool");
     const first = await run(tool, "go");
-    expect(first.ok && first.output).toEqual({ agent: "dokan", reply: "done", note: "note", truncated: false });
+    expect(first.ok && first.output).toEqual({ agent: "dokan", reply: "done", state: "completed", note: "note", truncated: false });
     expect(server.calls.map((c) => c.method)).toEqual(["SendMessage", "GetTask", "GetTask"]);
 
     await run(tool, "again");
     expect(server.calls[3]?.params).toMatchObject({ message: { contextId: "ctx-9" } });
   });
 
-  it("does not continue tasks that wait for input (paused for now)", async () => {
-    const server = scriptedServer([task("TASK_STATE_INPUT_REQUIRED", { status: { state: "TASK_STATE_INPUT_REQUIRED", message: { messageId: "m", role: "ROLE_AGENT", ...text("Which branch?") } } })]);
+  it("returns the agent's question and continues the same task on the next call", async () => {
+    const question = { state: "TASK_STATE_INPUT_REQUIRED", message: { messageId: "m", role: "ROLE_AGENT", ...text("Which branch?") } };
+    const server = scriptedServer([
+      task("TASK_STATE_INPUT_REQUIRED", { status: question }),
+      task("TASK_STATE_COMPLETED", { artifacts: [{ artifactId: "a", ...text("Gulshan opens at 10") }] }),
+      task("TASK_STATE_COMPLETED", { id: "t2", artifacts: [{ artifactId: "a", ...text("ok") }] }),
+    ]);
     const [tool] = (await connect(server.fetch, "k")).tools();
     if (tool === undefined) throw new Error("no tool");
-    const result = await run(tool, "go");
-    expect(!result.ok && result.error).toMatch(/waiting for more input.*Which branch\?/);
+    const asked = await run(tool, "When does the shop open?");
+    expect(asked.ok && asked.output).toEqual({ agent: "dokan", reply: "Which branch?", state: "input-required", truncated: false });
+
+    const answered = await run(tool, "Gulshan");
+    expect(answered.ok && answered.output).toMatchObject({ reply: "Gulshan opens at 10", state: "completed" });
+    expect(sent(server.calls[1])).toEqual({ contextId: "ctx-9", taskId: "t1" });
+
+    // The task is finished, so the next message starts a new one in the same conversation.
+    await run(tool, "Thanks");
+    expect(sent(server.calls[2])).toEqual({ contextId: "ctx-9", taskId: undefined });
+  });
+
+  it("starts a new task instead of answering when newTask is set", async () => {
+    const question = { state: "TASK_STATE_INPUT_REQUIRED", message: { messageId: "m", role: "ROLE_AGENT", ...text("Which branch?") } };
+    const server = scriptedServer([task("TASK_STATE_INPUT_REQUIRED", { status: question }), task("TASK_STATE_COMPLETED", { artifacts: [{ artifactId: "a", ...text("ok") }] })]);
+    const [tool] = (await connect(server.fetch, "k")).tools();
+    if (tool === undefined) throw new Error("no tool");
+    await run(tool, "When does the shop open?");
+    await run(tool, "Something else entirely", { newTask: true });
+    expect(sent(server.calls[1])).toEqual({ contextId: "ctx-9", taskId: undefined });
+  });
+
+  it("forgets a pending task the agent can no longer continue", async () => {
+    const question = { state: "TASK_STATE_INPUT_REQUIRED", message: { messageId: "m", role: "ROLE_AGENT", ...text("Which branch?") } };
+    const server = scriptedServer([task("TASK_STATE_INPUT_REQUIRED", { status: question }), { rpcError: "Task not found" }, task("TASK_STATE_COMPLETED", { artifacts: [{ artifactId: "a", ...text("ok") }] })]);
+    const [tool] = (await connect(server.fetch, "k")).tools();
+    if (tool === undefined) throw new Error("no tool");
+    await run(tool, "When does the shop open?");
+    const failed = await run(tool, "Gulshan");
+    expect(!failed.ok && failed.error).toMatch(/pending task could not be continued.*call again/);
+    expect((await run(tool, "Gulshan")).ok).toBe(true);
+    expect(sent(server.calls[2])).toEqual({ contextId: "ctx-9", taskId: undefined });
+  });
+
+  it("reports streamed artifact chunks as progress and returns the assembled reply", async () => {
+    const server = scriptedServer(
+      [
+        {
+          stream: [
+            { task: task("TASK_STATE_SUBMITTED") },
+            { statusUpdate: { taskId: "t1", contextId: "ctx-9", status: { state: "TASK_STATE_WORKING" } } },
+            { artifactUpdate: { taskId: "t1", contextId: "ctx-9", artifact: { artifactId: "a", ...text("ঢাকায়") }, append: false, lastChunk: false } },
+            { artifactUpdate: { taskId: "t1", contextId: "ctx-9", artifact: { artifactId: "a", ...text("বৃষ্টি") }, append: true, lastChunk: true } },
+            { statusUpdate: { taskId: "t1", contextId: "ctx-9", status: { state: "TASK_STATE_COMPLETED" } } },
+          ],
+        },
+      ],
+      { capabilities: { streaming: true } },
+    );
+    const [tool] = (await connect(server.fetch, "k")).tools();
+    if (tool === undefined) throw new Error("no tool");
+    const progress: string[] = [];
+    const result = await run(tool, "আবহাওয়া?", { progress: (t) => progress.push(t) });
+    expect(server.calls.map((c) => c.method)).toEqual(["SendStreamingMessage"]);
+    expect(progress).toEqual(["ঢাকায়", "ঢাকায়\nবৃষ্টি"]);
+    expect(result.ok && result.output).toMatchObject({ reply: "ঢাকায়\nবৃষ্টি", state: "completed" });
+  });
+
+  it("cancels the remote task when the run is aborted mid-stream", async () => {
+    const server = scriptedServer(
+      [{ stream: [{ task: task("TASK_STATE_WORKING") }, { artifactUpdate: { taskId: "t1", contextId: "ctx-9", artifact: { artifactId: "a", ...text("partial") }, append: false, lastChunk: false } }], hang: true }, {}],
+      { capabilities: { streaming: true } },
+    );
+    const [tool] = (await connect(server.fetch, "k")).tools();
+    if (tool === undefined) throw new Error("no tool");
+    const controller = new AbortController();
+    const result = await run(tool, "go", { signal: controller.signal, progress: () => controller.abort(new Error("stop")) });
+    expect(result.ok).toBe(false);
+    // executeTool returns on abort; the tool sends CancelTask as it unwinds.
+    await vi.waitFor(() => expect(server.calls.map((c) => c.method)).toEqual(["SendStreamingMessage", "CancelTask"]));
   });
 
   it("prefers the operator's description over the untrusted card", async () => {
@@ -217,11 +324,11 @@ describe("helpers", () => {
 
   it("bounds the remembered conversations", () => {
     const conversations = new Conversations(2);
-    conversations.set("a", "1");
-    conversations.set("b", "2");
+    conversations.set("a", { contextId: "1" });
+    conversations.set("b", { contextId: "2" });
     conversations.get("a");
-    conversations.set("c", "3");
-    expect([conversations.get("a"), conversations.get("b"), conversations.get("c")]).toEqual([undefined, "2", "3"]);
+    conversations.set("c", { contextId: "3" });
+    expect([conversations.get("a"), conversations.get("b"), conversations.get("c")]).toEqual([undefined, { contextId: "2" }, { contextId: "3" }]);
   });
 
   it("names tools and describes agents", () => {
