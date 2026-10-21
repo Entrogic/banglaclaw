@@ -36,11 +36,17 @@ export function Providers() {
 
 function Status({ data }: { data: ProviderList }) {
   return (
+    <>
+    {data.active.error !== undefined && (
+      <p className="banner" role="alert">
+        No model provider is configured, so the agent cannot answer yet. Add one below and press “Use”.
+      </p>
+    )}
     <div className="stats">
       <div className="stat">
         <div className="stat-label">New runs use</div>
-        <div className="stat-value small-value">{data.active.source === "stored" ? data.active.name : "Config provider"}</div>
-        <div className="muted small mono">{data.active.providerId}</div>
+        <div className="stat-value small-value">{data.active.source === "stored" ? data.active.name : data.active.error !== undefined ? "Nothing yet" : "Config provider"}</div>
+        <div className="muted small mono">{data.active.error !== undefined ? "no API key configured" : data.active.providerId}</div>
       </div>
       <div className="stat">
         <div className="stat-label">Storage</div>
@@ -53,6 +59,7 @@ function Status({ data }: { data: ProviderList }) {
         <div className="muted small">{data.encryption ? "AES-256-GCM with BANGLACLAW_SECRET_KEY" : "Set BANGLACLAW_SECRET_KEY to store keys"}</div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -4,6 +4,8 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Start without an API key:** with no `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`, no `baseUrl` and no active dashboard provider, BanglaClaw now starts instead of failing with `OPENAI_API_KEY is not set`. That way `banglaclaw serve` can run on a fresh install and a provider can be added at `/admin/providers`. Until then, runs fail with setup instructions; startup and `doctor` warn, and the Providers page shows a banner. `GET /v1/admin/providers` reports it through the new optional `active.error` field (`providerId: "unconfigured"`). New `UnconfiguredProvider` in `@entrogic-net/providers` (docs/12).
+
 - **Run evals from the dashboard** (docs/26, ADR-0020): the Evals page stores datasets (paste YAML/JSON in the harness format, pick a file, or use the sample) and runs them through the live agent inside the gateway, with progress and cancel. Results are recorded like harness runs (`framework: banglaclaw`). The new `@entrogic-net/evals` package holds `EvalJobRunner`:
   - **Bangla judge prompts:** correctness, answer relevancy and fluency rubrics in Bangla (the default) or English, with the harness's script- and digit-aware rules. The judge is the agent's provider or any profile from the Providers page.
   - **Multi-turn metric:** `conversation` judges whether the last reply stays consistent with earlier turns (goldens with `turns`).

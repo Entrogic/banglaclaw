@@ -51,7 +51,7 @@ export async function collectChecks(options: GlobalOptions): Promise<Check[]> {
   const keyEnv = requiredApiKeyEnv(model);
   const hasKey = keyEnv === "ANTHROPIC_API_KEY" ? secrets.anthropicApiKey !== undefined : secrets.openaiApiKey !== undefined;
   if (keyEnv === undefined) add("Model", "ok", "No API key needed for this base URL");
-  else add("Model", hasKey ? "ok" : "fail", hasKey ? `${keyEnv} is set` : `${keyEnv} is not set — run \`banglaclaw init\` or add it to .env`);
+  else add("Model", hasKey ? "ok" : "warn", hasKey ? `${keyEnv} is set` : `${keyEnv} is not set — BanglaClaw starts, but runs fail until you add a provider in the dashboard (/admin/providers), run \`banglaclaw init\`, or add the key to .env`);
   if (secrets.secretKey === undefined) add("Model", "ok", "BANGLACLAW_SECRET_KEY not set — providers added in the dashboard cannot hold an API key");
   else if (secrets.secretKey.length < MIN_SECRET_KEY_LENGTH) add("Model", "fail", `BANGLACLAW_SECRET_KEY is shorter than ${MIN_SECRET_KEY_LENGTH} characters`);
   else add("Model", "ok", "BANGLACLAW_SECRET_KEY is set (dashboard providers can store API keys)");

@@ -237,6 +237,8 @@ export interface ActiveProvider {
   providerId: string;
   profileId?: string;
   name?: string;
+  /** Set when no usable provider exists: runs fail with this message until one is added. */
+  error?: string;
 }
 
 export interface ProviderList {

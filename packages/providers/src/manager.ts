@@ -20,6 +20,7 @@ import {
   type Secrets,
 } from "@entrogic-net/shared";
 import { createProvider } from "./factory.js";
+import { UnconfiguredProvider } from "./unconfigured.js";
 import type { ModelProvider } from "./provider.js";
 
 type ModelConfig = BanglaClawConfig["models"]["default"];
@@ -63,8 +64,10 @@ export class ProviderManager implements ProviderAdmin {
   }
 
   /**
-   * Uses the active stored profile when it can be built; otherwise the config provider, which
-   * throws ConfigError (as before ADR-0019) when its key is missing.
+   * Uses the active stored profile when it can be built; otherwise the config provider. When that
+   * has no key either, it starts with an {@link UnconfiguredProvider} instead of failing, so the
+   * gateway can start and an admin can add a provider in the dashboard; until then runs fail with
+   * a message that says how to set one up.
    */
   static async open(options: ProviderManagerOptions): Promise<ProviderManager> {
     const manager = new ProviderManager(options);
@@ -77,8 +80,7 @@ export class ProviderManager implements ProviderAdmin {
         manager.#logger.warn("active provider profile unusable; using the config provider", { profile: active.name, error: error instanceof Error ? error.message : String(error) });
       }
     }
-    const provider = manager.#fromConfig();
-    manager.#current = { provider, info: { source: "config", providerId: provider.id } };
+    manager.#current = manager.#configOrPlaceholder();
     return manager;
   }
 
@@ -157,15 +159,9 @@ export class ProviderManager implements ProviderAdmin {
 
   async activate(id: string | undefined): Promise<ActiveProvider | undefined> {
     if (id === undefined) {
-      let provider: ModelProvider;
-      try {
-        provider = this.#fromConfig();
-      } catch (error) {
-        throw new ProviderSetupError(`The config provider is not usable (${error instanceof Error ? error.message : String(error)}); activate another profile instead`);
-      }
       await this.#options.store.setActive(undefined);
-      this.#current = { provider, info: { source: "config", providerId: provider.id } };
-      this.#logger.info("provider switched", { source: "config", provider: provider.id });
+      this.#current = this.#configOrPlaceholder();
+      this.#logger.info("provider switched", { source: "config", provider: this.#current.provider.id });
       return { ...this.#current.info };
     }
     const profile = await this.#options.store.get(id);
@@ -203,8 +199,17 @@ export class ProviderManager implements ProviderAdmin {
     return info;
   }
 
-  #fromConfig(): ModelProvider {
-    return this.#build(this.#options.config, this.#options.secrets);
+  /** The config/env provider, or a placeholder (with the reason) when it has no key. */
+  #configOrPlaceholder(): { provider: ModelProvider; info: ActiveProvider } {
+    try {
+      const provider = this.#build(this.#options.config, this.#options.secrets);
+      return { provider, info: { source: "config", providerId: provider.id } };
+    } catch (error) {
+      if (!(error instanceof ConfigError)) throw error;
+      const placeholder = new UnconfiguredProvider(error.message);
+      this.#logger.warn("no usable model provider; runs fail until one is configured", { reason: error.message });
+      return { provider: placeholder, info: { source: "config", providerId: placeholder.id, error: placeholder.message } };
+    }
   }
 
   /** A profile without its own key uses the matching key from the environment, if any. */

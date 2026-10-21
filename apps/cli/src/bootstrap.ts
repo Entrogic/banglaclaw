@@ -15,6 +15,7 @@ import { AllowlistPolicy, ToolRegistry, builtinTools, type AnyTool } from "@entr
 import { setupKnowledge, type KnowledgeSetup } from "./knowledge.js";
 import { workspaceTools } from "./workspace.js";
 import { loadPlugins, type LoadedPlugin } from "./plugins.js";
+import { warn } from "./ui/output.js";
 import { VERSION } from "./version.js";
 
 export interface GlobalOptions {
@@ -188,6 +189,10 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
       persistent: services.persistent,
       logger,
     });
+    if (providers.status().active.error !== undefined) {
+      // stderr only: `mcp serve` keeps stdout for the protocol.
+      warn("No model provider is configured, so the agent cannot answer yet. Run `banglaclaw serve` and add one at /admin/providers, or set OPENAI_API_KEY / ANTHROPIC_API_KEY in .env.");
+    }
     [mcp, a2a] = await Promise.all([connectMcp(services.loaded), connectA2a(services.loaded)]);
     const connected = mcp;
     const closeStorage = services.close;

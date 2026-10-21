@@ -273,7 +273,7 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
           required: ["id", "name", "provider", "model", "hasApiKey", "active", "createdAt", "updatedAt"],
           properties: { id: str, name: str, provider: { enum: ["openai-compatible", "anthropic"] }, model: str, baseUrl: str, temperature: { type: "number" }, hasApiKey: { type: "boolean" }, apiKeyHint: { type: "string", description: "Masked, e.g. sk-…a1b2" }, active: { type: "boolean" }, createdBy: str, createdAt: time, updatedAt: time },
         },
-        ActiveProvider: { type: "object", required: ["source", "providerId"], properties: { source: { enum: ["config", "stored"] }, providerId: str, profileId: str, name: str } },
+        ActiveProvider: { type: "object", required: ["source", "providerId"], properties: { source: { enum: ["config", "stored"] }, providerId: { type: "string", description: "\"unconfigured\" when no provider can be used" }, profileId: str, name: str, error: { type: "string", description: "Why no provider can be used; runs fail with it" } } },
         ProviderTestResult: { type: "object", required: ["ok", "latencyMs"], properties: { ok: { type: "boolean" }, latencyMs: { type: "integer" }, reply: str, error: str } },
         EvalRun: {
           type: "object",

@@ -71,9 +71,23 @@ describe("ProviderManager", () => {
     expect(noKey.manager.status()).toMatchObject({ active: { source: "config" }, encryption: false });
   });
 
+  it("starts without any key, fails runs with setup instructions, and recovers when a provider is added", async () => {
+    const { manager } = await open({ secrets: {} });
+    expect(manager.status().active).toMatchObject({ source: "config", providerId: "unconfigured", error: expect.stringContaining("Providers page") });
+    await expect(manager.current().chat([])).rejects.toThrow(/No model provider is configured \(no key\)\. Add one/);
+    const stream = manager.current().stream([]);
+    await expect(stream[Symbol.asyncIterator]().next()).rejects.toThrow(/OPENAI_API_KEY/);
+
+    const local = await manager.create({ name: "Ollama", provider: "openai-compatible", model: "qwen3", baseUrl: "http://localhost:11434/v1" });
+    await manager.activate(local.id);
+    expect(manager.current().id).toBe("openai-compatible:qwen3");
+    expect(manager.status().active).not.toHaveProperty("error");
+    // Deleting the only profile goes back to the placeholder instead of refusing.
+    await manager.delete(local.id);
+    expect(manager.status().active.providerId).toBe("unconfigured");
+  });
+
   it("validates profiles before storing or activating them", async () => {
-    // No config key and nothing stored: startup fails as before.
-    await expect(open({ secrets: {} })).rejects.toThrow(ConfigError);
 
     const ok = await open();
     await expect(ok.manager.create({ name: "Claude", provider: "anthropic", model: "claude-sonnet-5" })).rejects.toThrow(ProviderSetupError);

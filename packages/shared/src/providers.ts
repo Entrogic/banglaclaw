@@ -102,6 +102,8 @@ export interface ActiveProvider {
   providerId: string;
   profileId?: string;
   name?: string;
+  /** Set when no usable provider exists (no key, no active profile): runs fail with this message. */
+  error?: string;
 }
 
 export interface ProviderTestResult {
