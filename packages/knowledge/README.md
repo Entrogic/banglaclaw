@@ -1,6 +1,6 @@
 # @entrogic-net/knowledge
 
-RAG knowledge base and long-term memory for BanglaClaw (Bangla-aware chunking, Qdrant).
+RAG knowledge base and long-term memory for BanglaClaw (Bangla-aware chunking, Qdrant): ingest, search, list and read back documents.
 
 Part of [BanglaClaw](https://github.com/Entrogic/banglaclaw), a Bangla-first, open-source AI agent runtime built with TypeScript, LangGraph and MCP.
 

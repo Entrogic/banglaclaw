@@ -58,7 +58,7 @@ Typed executable capabilities.
 External tool/resource integration protocol.
 
 ### Model Provider
-Abstracts LLM APIs.
+Abstracts LLM APIs: OpenAI-compatible endpoints (OpenAI, Gemini, OpenRouter, Groq, Ollama…) and Anthropic. `ProviderManager` picks the one each run uses: the config/env provider, or one an admin added and activated in the dashboard (docs/12, ADR-0019).
 
 ### Storage
 Persists sessions, messages, runs, memories and audit information.

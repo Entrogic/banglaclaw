@@ -27,7 +27,9 @@ banglaclaw/
 │   ├── skills/
 │   ├── tools/
 │   ├── mcp/
+│   ├── a2a/
 │   ├── providers/
+│   ├── evals/
 │   ├── storage/
 │   └── shared/
 ├── skills/
@@ -39,12 +41,12 @@ banglaclaw/
 └── turbo.json
 ```
 
-## Implemented so far (v1.0)
+## Implemented so far
 
 ```text
 apps/cli            banglaclaw CLI (commander)
-packages/shared     types, errors, JSON logger, config loader
-packages/providers  ModelProvider + OpenAI-compatible / Anthropic adapters, FakeProvider
+packages/shared     types, errors, JSON logger, config loader, store interfaces, PROVIDER_PRESETS
+packages/providers  ModelProvider + OpenAI-compatible / Anthropic adapters, ProviderManager (runtime providers), FakeProvider
 packages/tools      tool contract, registry, permission policy, executeTool, built-ins
 packages/session    Session/Run models, SessionStore/RunStore, in-memory stores, SessionManager, trimHistory
 packages/skills     SKILL.md parsing, discovery, trigger-based selection
@@ -57,6 +59,8 @@ packages/channels   ChannelRouter + Telegram (polling/webhook), WhatsApp Cloud A
 packages/knowledge  embeddings, vector stores (memory/Qdrant), chunking, loaders, KnowledgeBase, LongTermMemory
 packages/agents     AGENT.md specialist profiles (parse/load)
 packages/observability  OpenTelemetry setup (initTelemetry) and Prometheus Metrics
+packages/evals      built-in eval runner (EvalJobRunner) with Bangla judge prompts, for dashboard evals
+packages/workspace  sandboxed per-owner files and the workspace_* tools
 packages/client     typed @entrogic-net/client SDK (REST + SSE)
 packages/plugin-sdk definePlugin/defineTool/z for plugin authors
 examples/plugins    example bd-phone plugin
@@ -64,6 +68,8 @@ examples/agents     sample sales and support specialists
 packages/agent      language detection, prompts, LangGraph graph, AgentRuntime
 mcp-servers/        bundled MCP servers (bangladesh)
 skills/             bundled skills (calculation, time-and-date)
+evals/deepeval/     Python DeepEval harness (outside the pnpm workspace)
+e2e/                Playwright browser tests
 docker/             compose file for local PostgreSQL
 ```
 

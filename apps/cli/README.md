@@ -14,7 +14,7 @@ banglaclaw init
 banglaclaw chat
 ```
 
-Requires Node.js 22+. Live model runs need `OPENAI_API_KEY`, or `BANGLACLAW_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`, or `BANGLACLAW_BASE_URL` pointing at a local OpenAI-compatible server such as Ollama.
+Requires Node.js 22+. `banglaclaw init` sets up OpenAI, Anthropic Claude, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, Together AI or a local OpenAI-compatible server such as Ollama. Without any key, `banglaclaw serve` still starts, so you can add a provider in the admin dashboard at `/admin/providers` (set `BANGLACLAW_SECRET_KEY` to store its key).
 
 ## Common commands
 
@@ -24,7 +24,7 @@ Requires Node.js 22+. Live model runs need `OPENAI_API_KEY`, or `BANGLACLAW_PROV
 | `banglaclaw agent run "২৫ * ৪ কত?"` | One message, streamed reply |
 | `banglaclaw serve` | HTTP gateway with `/v1` API, web chat at `/chat` and channels |
 | `banglaclaw doctor` | Check configuration, keys, storage and integrations |
-| `banglaclaw mcp serve` | Expose BanglaClaw as an MCP server over stdio |
+| `banglaclaw mcp serve` | Expose BanglaClaw as an MCP server over stdio (tools, resources, skill prompts) |
 
 Run `banglaclaw --help` for everything, and see the [CLI docs](https://github.com/Entrogic/banglaclaw/blob/master/docs/17-cli.md) and [configuration reference](https://github.com/Entrogic/banglaclaw/blob/master/docs/16-configuration.md).
 

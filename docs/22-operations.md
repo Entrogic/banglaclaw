@@ -71,3 +71,6 @@ DELETE FROM audit_logs WHERE at < now() - interval '180 days';
 | `Qdrant collection … dimensions` | The embedding model changed; use a new `collection` name |
 | MCP server `failed` in `doctor` | The command isn't on PATH in the container, or an env `${VAR}` is missing |
 | Streaming stalls behind a proxy | Disable proxy buffering (docs/21) |
+| Every run fails with "No model provider is configured" | No key in the environment and no provider in use: add one at `/admin/providers` and press **Use**, or set `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` |
+| A dashboard provider stopped working after a restart | `BANGLACLAW_SECRET_KEY` changed or is missing, so its key cannot be decrypted (BanglaClaw falls back to the config provider and logs a warning); restore the old value or enter the key again |
+| "An eval is already running" (409) | One dashboard eval runs at a time; wait for it or cancel it on the Evals page |

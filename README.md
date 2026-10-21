@@ -38,15 +38,16 @@ $ banglaclaw agent run "২৫ * ৪ কত?"
 | Area | What you get |
 |---|---|
 | **Agent runtime** | A LangGraph agent loop with streaming, iteration, tool-call and timeout limits, per-run checkpoints, and a record of every run, including failed ones |
-| **Models** | OpenAI-compatible APIs (OpenAI, Ollama, vLLM and others) and Anthropic, behind a provider interface. Providers can also be added and switched from the dashboard, with API keys encrypted at rest |
-| **Tools & MCP** | Zod-validated tools with risk levels, a deny-by-default allowlist and audit logging. An MCP client (stdio and Streamable HTTP), and BanglaClaw itself exposed as an MCP server |
+| **Models** | OpenAI, Anthropic Claude, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, Together AI and any OpenAI-compatible server (Ollama, vLLM), behind a provider interface. Add, test and switch providers from the dashboard without a restart, with API keys encrypted at rest |
+| **Tools & MCP** | Zod-validated tools with risk levels, a deny-by-default allowlist and audit logging. An MCP client (stdio and Streamable HTTP), and BanglaClaw itself exposed as an MCP server with tools, resources and skill prompts |
 | **Workspace** | Sandboxed per-user files the agent can create, edit and update. Every change can be undone (history and trash), with quotas, and it's off by default |
 | **Skills** | `SKILL.md` instruction packs selected by deterministic Bangla and Latin triggers |
 | **Memory & knowledge** | Sessions in memory or PostgreSQL, RAG over txt, md, html, pdf, docx and URLs (Qdrant or in-memory vectors), and owner-scoped long-term memory |
 | **Multi-agent** | A supervisor that routes to `AGENT.md` specialists with scoped tools, plus human handoff with an operator queue |
 | **Channels** | Telegram, WhatsApp Cloud API and Facebook Messenger, including voice-note transcription, a built-in web chat, and an embeddable **website widget** for anonymous visitors |
-| **Gateway** | A stable `/v1` HTTP API with REST, SSE and WebSocket, API keys with scopes and roles, rate limits, an OpenAPI spec and a typed TypeScript client, and an optional A2A (Agent2Agent) server; remote A2A agents can be called as tools |
-| **Interfaces** | A full-screen terminal chat, the web chat at `/chat`, and an admin dashboard at `/admin` (analytics, sessions, handoffs, model providers, keys, audit) |
+| **Gateway** | A stable `/v1` HTTP API with REST, SSE and WebSocket, API keys with scopes and roles, rate limits, an OpenAPI spec and a typed TypeScript client, and an optional A2A (Agent2Agent) server; remote A2A agents can be called as tools, including follow-up questions and streamed replies |
+| **Interfaces** | A full-screen terminal chat, the web chat at `/chat`, and an admin dashboard at `/admin` (analytics, sessions, handoffs, model providers, evals, keys, audit) |
+| **Evaluations** | Bangla-aware answer scoring: a DeepEval harness for CI, or stored datasets run from the dashboard with Bangla judge prompts and a multi-turn metric |
 | **Production** | An audit log, OpenTelemetry tracing, Prometheus metrics, token and cost tracking, plugins, and a non-root Docker image |
 
 ## Quickstart
@@ -71,11 +72,24 @@ Requires **Node.js 22+** and **pnpm**.
 ```bash
 git clone https://github.com/Entrogic/banglaclaw.git && cd banglaclaw
 pnpm install
-pnpm banglaclaw init        # guided setup: provider, key check, storage, features
+pnpm banglaclaw init        # guided setup: provider (OpenAI, Claude, Gemini, OpenRouter, Groq…), key check, storage, features
 pnpm banglaclaw chat        # full-screen chat
 ```
 
 To configure by hand instead, copy `.env.example` to `.env`, set `OPENAI_API_KEY` (or `BANGLACLAW_PROVIDER=anthropic` with `ANTHROPIC_API_KEY`), then run `pnpm banglaclaw doctor`. The CLI loads `./.env` automatically, and exported shell variables take precedence.
+
+<details>
+<summary><b>No API key yet? Start anyway and add a provider in the dashboard</b></summary>
+
+```bash
+echo "BANGLACLAW_SECRET_KEY=$(openssl rand -base64 32)" >> .env   # encrypts keys you add in the dashboard
+pnpm banglaclaw serve       # starts without a provider and prints an admin key (memory storage)
+# open http://127.0.0.1:3000/admin/providers, pick a preset (Gemini, OpenRouter, Groq…), paste the key, press Test, then Use
+```
+
+Until a provider is added, runs fail with a message that explains how to set one up. With memory storage, providers you add are lost on restart; use PostgreSQL to keep them ([Model Providers](docs/12-model-providers.md)).
+
+</details>
 
 <details>
 <summary><b>Run a local model with Ollama (no API key)</b></summary>
@@ -90,7 +104,7 @@ pnpm banglaclaw chat
 ### With Docker
 
 ```bash
-cp .env.example .env        # set OPENAI_API_KEY and POSTGRES_PASSWORD
+cp .env.example .env        # set POSTGRES_PASSWORD, plus OPENAI_API_KEY or BANGLACLAW_SECRET_KEY (to add providers in the dashboard)
 docker compose -f docker/compose.prod.yaml up -d --build
 docker compose -f docker/compose.prod.yaml run --rm banglaclaw db migrate
 docker compose -f docker/compose.prod.yaml run --rm banglaclaw key create --user my-app
@@ -136,14 +150,14 @@ flowchart LR
     S --> A["Agent Runtime<br/>(LangGraph)"]
     A --> T["Skills · Tools · MCP"]
     A --> K["Knowledge & Memory"]
-    A --> P["Model Providers<br/>OpenAI-compatible · Anthropic"]
+    A --> P["Model Providers<br/>OpenAI · Claude · Gemini · OpenRouter · Groq · Ollama…"]
 ```
 
 The gateway, channels, agent runtime and tools stay independently replaceable ([ADR-0005](docs/adr/)). The runtime never touches channel APIs or provider specifics. The codebase is a pnpm + Turborepo monorepo:
 
 | Path | Contents |
 |---|---|
-| `packages/` | The runtime libraries: `agent`, `agents`, `gateway`, `channels`, `providers`, `tools`, `mcp`, `a2a`, `skills`, `session`, `storage`, `knowledge`, `workspace`, `auth`, `observability`, `client`, `plugin-sdk`, `shared` |
+| `packages/` | The runtime libraries: `agent`, `agents`, `gateway`, `channels`, `providers`, `tools`, `mcp`, `a2a`, `skills`, `session`, `storage`, `knowledge`, `workspace`, `evals`, `auth`, `observability`, `client`, `plugin-sdk`, `shared` |
 | `apps/cli` | The `banglaclaw` command-line interface and terminal chat |
 | `apps/dashboard` | The admin dashboard (Vite + React) |
 | `mcp-servers/bangladesh` | A reference MCP server with Bangladeshi divisions and districts |
@@ -232,6 +246,7 @@ pnpm banglaclaw agent run "কুমিল্লা কোন বিভাগে
 
 # Use BanglaClaw from Claude Desktop, Cursor or Claude Code:
 claude mcp add banglaclaw -- npx -y banglaclaw mcp serve
+# tools: ask, search_knowledge · resources: banglaclaw://agent, skills/…, knowledge/…, conversations/… · every skill as a prompt
 
 # The Bangladesh reference-data server on its own, for any MCP client:
 claude mcp add bangladesh -- npx -y @entrogic-net/mcp-server-bangladesh
@@ -275,7 +290,7 @@ pnpm banglaclaw a2a list
 </details>
 
 <details>
-<summary><b>Evaluations: score answers with DeepEval, track them in the dashboard</b> · <a href="docs/26-evals.md">docs</a></summary>
+<summary><b>Evaluations: score answers with DeepEval or from the dashboard</b> · <a href="docs/26-evals.md">docs</a></summary>
 
 ```bash
 cd evals/deepeval && pip install -e .
@@ -372,7 +387,7 @@ Design decisions are recorded as [Architecture Decision Records](docs/adr/). Ban
 | v1.2 npm release | Published to npm, admin dashboard, Messenger, voice notes, DOCX and URL sources, BanglaClaw as an MCP server, live operator replies, OpenClaw-style chat UIs |
 | v1.3 Website widget | Embeddable chat widget for anonymous visitors, built-in skills in the npm CLI, `@prometheus-io/client` |
 | v1.4 Workspace | Sandboxed per-user workspace with file tools and undo ([docs/24](docs/24-workspace.md)), live Telegram replies, admin stats timezone fix |
-| Unreleased | Session titles in the API, dashboard, web chat and terminal session picker |
+| Unreleased | Model providers added and switched from the dashboard (keys encrypted, start without a key), more providers in `init` (Gemini, OpenRouter, Groq, DeepSeek, Mistral, Together AI), dashboard evals with Bangla judge prompts, MCP resources and prompts, A2A follow-up questions and streamed replies, A2A server and client, DeepEval harness, web chat files and uploads, session titles |
 
 See the [CHANGELOG](CHANGELOG.md) for details and the [roadmap](docs/20-roadmap.md) for what comes next.
 

@@ -1,6 +1,6 @@
 # @entrogic-net/providers
 
-Model providers for BanglaClaw: OpenAI-compatible (OpenAI, Ollama, vLLM) and Anthropic.
+Model providers for BanglaClaw: OpenAI-compatible (OpenAI, Gemini, OpenRouter, Groq, DeepSeek, Mistral, Ollama, vLLM…) and Anthropic, plus `ProviderManager`, which switches between providers added at runtime with encrypted keys.
 
 Part of [BanglaClaw](https://github.com/Entrogic/banglaclaw), a Bangla-first, open-source AI agent runtime built with TypeScript, LangGraph and MCP.
 

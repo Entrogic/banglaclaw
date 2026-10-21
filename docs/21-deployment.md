@@ -5,7 +5,7 @@
 The repository `Dockerfile` builds a production image with a multi-stage build, a production-only install (`pnpm deploy`), the non-root `node` user and a healthcheck. The image contains the CLI, gateway and channels, the admin dashboard, the bundled skills, examples, and the Bangladesh MCP server.
 
 ```bash
-cp .env.example .env            # set OPENAI_API_KEY (or ANTHROPIC_API_KEY), POSTGRES_PASSWORD, channel tokens…
+cp .env.example .env            # set POSTGRES_PASSWORD, BANGLACLAW_SECRET_KEY, OPENAI_API_KEY (or ANTHROPIC_API_KEY, or add a provider in the dashboard later), channel tokens…
 docker compose -f docker/compose.prod.yaml up -d --build
 docker compose -f docker/compose.prod.yaml run --rm banglaclaw db migrate
 docker compose -f docker/compose.prod.yaml run --rm banglaclaw key create --user my-app
@@ -74,6 +74,7 @@ Run it under systemd or PM2 with `Restart=always`. `serve` shuts down gracefully
 
 - [ ] `storage.provider: postgres`, migrations applied (`banglaclaw db status`)
 - [ ] Secrets only in the environment: `OPENAI_API_KEY`/`ANTHROPIC_API_KEY`, `DATABASE_URL`, channel tokens, `METRICS_TOKEN`
+- [ ] `BANGLACLAW_SECRET_KEY` set (32+ characters) and backed up if admins add providers in the dashboard: without it their stored API keys cannot be read (docs/12)
 - [ ] Gateway reachable only through TLS; `trustProxy` set correctly
 - [ ] `tools.allow` reviewed; channel access lists set (`access: allowlist`)
 - [ ] An admin key for the audit log and the dashboard at `/admin`; an operator key if handoff is enabled
