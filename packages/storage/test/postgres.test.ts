@@ -5,7 +5,7 @@ import { AgentRuntime } from "@entrogic-net/agent";
 import { FakeProvider } from "@entrogic-net/providers";
 import { ApiKeyAuthenticator } from "@entrogic-net/auth";
 import { SessionManager, type RunRecord } from "@entrogic-net/session";
-import { createLogger } from "@entrogic-net/shared";
+import { DuplicateProviderNameError, createLogger, newProviderId } from "@entrogic-net/shared";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { PostgresStorage } from "../src/index.js";
 
@@ -27,7 +27,7 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
 
   beforeEach(async () => {
     await storage.pool.query(
-      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, audit_logs, eval_runs, eval_cases, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
+      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, audit_logs, eval_runs, eval_cases, model_providers, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
     );
   });
 
@@ -169,6 +169,32 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await storage.evals.delete(saved.id)).toBe(true);
     expect(await storage.evals.get(saved.id)).toBeUndefined();
     expect((await storage.pool.query("SELECT count(*)::int AS n FROM eval_cases")).rows[0]).toEqual({ n: 0 });
+  });
+
+  it("stores provider profiles with one active at a time", async () => {
+    const { providers } = storage;
+    const a = await providers.create({ id: newProviderId(), name: "Claude", provider: "anthropic", model: "claude-sonnet-5", apiKeyCiphertext: "v1:x:y:z", apiKeyHint: "sk-…abcd", temperature: 0.7, createdBy: "u1" });
+    const b = await providers.create({ id: newProviderId(), name: "Ollama", provider: "openai-compatible", model: "qwen3", baseUrl: "http://localhost:11434/v1" });
+    expect(a).toMatchObject({ name: "Claude", temperature: 0.7, apiKeyHint: "sk-…abcd", active: false });
+    await expect(providers.create({ id: newProviderId(), name: "Claude", provider: "anthropic", model: "x" })).rejects.toThrow(DuplicateProviderNameError);
+
+    expect(await providers.setActive(a.id)).toBe(true);
+    expect(await providers.setActive(b.id)).toBe(true);
+    expect((await providers.active())?.id).toBe(b.id);
+    expect((await providers.list()).map((p) => [p.name, p.active])).toEqual([["Claude", false], ["Ollama", true]]);
+    expect(await providers.setActive("not-a-uuid")).toBe(false);
+    expect(await providers.setActive(newProviderId())).toBe(false);
+
+    const updated = await providers.update(a.id, { model: "claude-opus-5-5", temperature: null, apiKeyCiphertext: null, apiKeyHint: null });
+    expect(updated).toMatchObject({ model: "claude-opus-5-5" });
+    expect(updated).not.toHaveProperty("temperature");
+    expect(updated).not.toHaveProperty("apiKeyCiphertext");
+    await expect(providers.update(a.id, { name: "Ollama" })).rejects.toThrow(DuplicateProviderNameError);
+
+    expect(await providers.setActive(undefined)).toBe(true);
+    expect(await providers.active()).toBeUndefined();
+    expect(await providers.delete(a.id)).toBe(true);
+    expect(await providers.get(a.id)).toBeUndefined();
   });
 
   it("round-trips messages including tool calls, oldest first", async () => {

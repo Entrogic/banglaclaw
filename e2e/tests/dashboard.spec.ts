@@ -66,4 +66,37 @@ test.describe("admin dashboard (/admin)", () => {
     await page.getByRole("button", { name: "System theme" }).click();
     await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
   });
+
+  test("adds a provider with a key it never shows again, tests it and switches to it", async ({ page }) => {
+    const { adminKey } = e2eState();
+    const name = `Claude e2e ${Date.now()}`;
+    await page.goto("/admin/");
+    await page.getByLabel("API key").fill(adminKey);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("link", { name: "Providers" }).click();
+    await expect(page.locator(".stat").filter({ hasText: "API key encryption" })).toContainText("On");
+
+    const form = page.getByRole("form", { name: "Add a provider" });
+    await form.getByLabel("Start from").selectOption("Anthropic");
+    await form.getByLabel("Name").fill(name);
+    await form.getByLabel("API key").fill("sk-ant-api03-e2e-very-secret-9876");
+    await form.getByRole("button", { name: "Add provider" }).click();
+
+    const row = page.locator("tbody tr").filter({ hasText: name });
+    await expect(row).toContainText("sk-…9876");
+    await expect(page.locator("body")).not.toContainText("very-secret");
+    await expect(form.getByLabel("API key")).toHaveValue("");
+
+    await row.getByRole("button", { name: "Test" }).click();
+    await expect(page.getByText(/Answered in \d+ ms/)).toBeVisible();
+    await row.getByRole("button", { name: "Use" }).click();
+    await expect(row).toContainText("In use");
+    await expect(page.locator(".stat").filter({ hasText: "New runs use" })).toContainText(name);
+
+    await page.locator("tbody tr").filter({ hasText: "Config provider" }).getByRole("button", { name: "Use" }).click();
+    await expect(page.locator(".stat").filter({ hasText: "New runs use" })).toContainText("Config provider");
+    await row.getByRole("button", { name: "Delete" }).click();
+    await row.getByRole("button", { name: "Confirm delete" }).click();
+    await expect(page.locator("tbody tr").filter({ hasText: name })).toHaveCount(0);
+  });
 });

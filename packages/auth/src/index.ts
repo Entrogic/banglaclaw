@@ -2,3 +2,4 @@ export { ALL_SCOPES, type ApiKeyRecord, type ApiKeyScope, type AuthStore, type U
 export { API_KEY_PREFIX, generateApiKey, hashSecret, parseApiKey, verifySecret, type GeneratedKey } from "./keys.js";
 export { InMemoryAuthStore } from "./memory.js";
 export { ApiKeyAuthenticator, hasRole, type IssuedKey, type Principal } from "./authenticator.js";
+export { MIN_SECRET_KEY_LENGTH, SecretBox } from "./secret-box.js";

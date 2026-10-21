@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { bigint, boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { StoredMessage } from "@langchain/core/messages";
-import type { EvalMetricResult, EvalMetricSummary } from "@entrogic-net/shared";
+import type { EvalMetricResult, EvalMetricSummary, ProviderId } from "@entrogic-net/shared";
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
@@ -179,4 +179,27 @@ export const evalCases = pgTable(
     metrics: jsonb("metrics").$type<EvalMetricResult[]>().notNull(),
   },
   (t) => [primaryKey({ columns: [t.evalId, t.seq] })],
+);
+
+/**
+ * Model providers added from the dashboard (ADR-0019). The API key is stored only encrypted
+ * (AES-256-GCM, bound to the row id); the partial unique index allows one active profile.
+ */
+export const modelProviders = pgTable(
+  "model_providers",
+  {
+    id: uuid("id").primaryKey(),
+    name: text("name").notNull().unique(),
+    provider: text("provider").$type<ProviderId>().notNull(),
+    model: text("model").notNull(),
+    baseUrl: text("base_url"),
+    temperature: doublePrecision("temperature"),
+    apiKeyCiphertext: text("api_key_ciphertext"),
+    apiKeyHint: text("api_key_hint"),
+    active: boolean("active").notNull().default(false),
+    createdBy: text("created_by"),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("model_providers_one_active_idx").on(t.active).where(sql`${t.active}`)],
 );

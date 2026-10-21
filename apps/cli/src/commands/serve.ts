@@ -52,7 +52,13 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       registry: bundle.registry,
       policy: bundle.policy,
       skills: bundle.skills,
-      agent: { name: config.agent.name, model: bundle.providerId },
+      // A getter: the model changes when an admin switches providers in the dashboard.
+      agent: {
+        name: config.agent.name,
+        get model() {
+          return bundle.providers.current().id;
+        },
+      },
       config: gatewayConfig,
       version: VERSION,
       logger,
@@ -66,6 +72,7 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       deliver: createDeliver(services.loaded, logger),
       audit: services.audit,
       evals: services.evals,
+      providers: bundle.providers,
       pricing: config.pricing,
       timezone: config.timezone,
       ...(dashboardDir !== undefined && { dashboardDir }),

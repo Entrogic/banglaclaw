@@ -3,7 +3,7 @@ import type { AgentRuntime } from "@entrogic-net/agent";
 import type { KnowledgeBase, LongTermMemory } from "@entrogic-net/knowledge";
 import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
 import type { Deliver, RunStore, Session, SessionStore } from "@entrogic-net/session";
-import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type EvalStore, type Logger, type Transcriber } from "@entrogic-net/shared";
+import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type EvalStore, type Logger, type ProviderAdmin, type Transcriber } from "@entrogic-net/shared";
 import type { SkillSet } from "@entrogic-net/skills";
 import type { PermissionPolicy, ToolRegistry } from "@entrogic-net/tools";
 import { HttpError } from "./errors.js";
@@ -71,6 +71,8 @@ export interface GatewayDeps {
   audit?: AuditStore;
   /** Evaluation results (DeepEval harness, docs/26) at /v1/admin/evals; absent = those routes answer 404. */
   evals?: EvalStore;
+  /** Model providers managed from the dashboard (ADR-0019) at /v1/admin/providers; absent = those routes answer 404. */
+  providers?: ProviderAdmin;
   /** Prometheus metrics served at GET /metrics (bearer `token` required when set). */
   metrics?: GatewayMetrics;
   /** Built dashboard (apps/dashboard/dist) served at /admin. */

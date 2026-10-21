@@ -10,11 +10,11 @@ import { fileURLToPath } from "node:url";
 import type { AIMessage, AIMessageChunk, BaseMessage } from "@langchain/core/messages";
 import { Hono } from "hono";
 import { AgentRuntime } from "@entrogic-net/agent";
-import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
+import { ApiKeyAuthenticator, InMemoryAuthStore, SecretBox } from "@entrogic-net/auth";
 import { startGateway } from "@entrogic-net/gateway";
-import { FakeProvider, type ModelCallOptions, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
+import { FakeProvider, ProviderManager, type ModelCallOptions, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
+import { InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { Workspace, createWorkspaceTools } from "@entrogic-net/workspace";
@@ -81,6 +81,12 @@ const gateway = await startGateway({
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 4_000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 10_000, maxConcurrentRuns: 10 } },
   version: "e2e", logger, timezone: "Asia/Dhaka",
   evals: new InMemoryEvalStore(),
+  // Profiles only drive the dashboard here: runs stay on the deterministic provider, and tests never reach a model.
+  providers: await ProviderManager.open({
+    store: new InMemoryProviderStore(), cipher: new SecretBox("e2e-secret-key-that-is-long-enough-000"), persistent: false,
+    config: { provider: "openai-compatible", model: "e2e-rules" }, secrets: { openaiApiKey: "sk-e2e" },
+    build: (model) => Object.assign(new FakeProvider([{ content: "OK" }]), { id: `${model.provider}:${model.model ?? ""}` }),
+  }),
   webChat: true,
   workspace,
   uploads: {

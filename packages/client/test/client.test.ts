@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { AgentRuntime } from "@entrogic-net/agent";
 import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
 import { createGatewayApp } from "@entrogic-net/gateway";
-import { FakeProvider } from "@entrogic-net/providers";
+import { FakeProvider, ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
+import { InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { BanglaClawApiError, BanglaClawClient, parseSSE, type StreamEvent } from "../src/index.js";
@@ -21,6 +21,10 @@ async function setup() {
     { content: "It is 42", usage: { input: 50, output: 5 } },
     { content: "Second reply" },
   ]);
+  const providers = await ProviderManager.open({
+    store: new InMemoryProviderStore(), persistent: false, logger: silent, config: { provider: "openai-compatible", model: "gpt-4o-mini" }, secrets: {},
+    build: (model) => (model.model === "gpt-4o-mini" ? provider : Object.assign(new FakeProvider([{ content: "OK" }]), { id: `${model.provider}:${model.model ?? ""}` })),
+  });
   const runtime = new AgentRuntime({ provider, registry, policy, sessions, runs, limits: { maxIterations: 4, maxToolCalls: 4 }, timeoutMs: 5_000, timezone: "Asia/Dhaka", logger: silent });
   const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
   const { token } = await auth.issueKey("sdk-user");
@@ -28,7 +32,7 @@ async function setup() {
   const app = createGatewayApp({
     runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: true, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
-    version: "1.0.0", logger: silent, evals: new InMemoryEvalStore(),
+    version: "1.0.0", logger: silent, evals: new InMemoryEvalStore(), providers,
   });
   const fetchViaApp = async (url: string, init?: RequestInit) => app.request(url.replace("http://gateway.test", ""), init);
   return {
@@ -81,6 +85,16 @@ describe("BanglaClawClient", () => {
     await admin.admin.deleteEval(run.id);
     expect((await admin.admin.evals()).evals).toEqual([]);
     await expect(client.admin.stats()).rejects.toMatchObject({ status: 403 });
+
+    const { provider } = await admin.admin.createProvider({ name: "Ollama", provider: "openai-compatible", model: "qwen3", baseUrl: "http://localhost:11434/v1" });
+    expect(provider).toMatchObject({ name: "Ollama", hasApiKey: false, active: false });
+    expect((await admin.admin.testProvider(provider.id)).result).toMatchObject({ ok: true, reply: "OK" });
+    expect((await admin.admin.activateProvider(provider.id)).active).toMatchObject({ source: "stored", providerId: "openai-compatible:qwen3" });
+    expect((await admin.admin.updateProvider(provider.id, { temperature: 0.2 })).provider.temperature).toBe(0.2);
+    expect((await admin.admin.providers()).providers.map((p) => [p.name, p.active])).toEqual([["Ollama", true]]);
+    expect((await admin.admin.activateProvider(null)).active.source).toBe("config");
+    await admin.admin.deleteProvider(provider.id);
+    await expect(admin.admin.createProvider({ name: "Claude", provider: "anthropic", model: "claude-sonnet-5", apiKey: "sk-ant-xxxxxxxxxxxxxxxx" })).rejects.toMatchObject({ status: 400, code: "invalid_provider" });
   });
 
   it("renames, searches and deletes sessions, and reports features", async () => {

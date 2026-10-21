@@ -1,6 +1,7 @@
 import { accessSync, constants, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { MessengerApi, TelegramApi } from "@entrogic-net/channels";
+import { MIN_SECRET_KEY_LENGTH } from "@entrogic-net/auth";
 import { requiredApiKeyEnv } from "@entrogic-net/providers";
 import { InMemorySessionStore } from "@entrogic-net/session";
 import { createLogger, type LoadedConfig } from "@entrogic-net/shared";
@@ -51,6 +52,9 @@ export async function collectChecks(options: GlobalOptions): Promise<Check[]> {
   const hasKey = keyEnv === "ANTHROPIC_API_KEY" ? secrets.anthropicApiKey !== undefined : secrets.openaiApiKey !== undefined;
   if (keyEnv === undefined) add("Model", "ok", "No API key needed for this base URL");
   else add("Model", hasKey ? "ok" : "fail", hasKey ? `${keyEnv} is set` : `${keyEnv} is not set — run \`banglaclaw init\` or add it to .env`);
+  if (secrets.secretKey === undefined) add("Model", "ok", "BANGLACLAW_SECRET_KEY not set — providers added in the dashboard cannot hold an API key");
+  else if (secrets.secretKey.length < MIN_SECRET_KEY_LENGTH) add("Model", "fail", `BANGLACLAW_SECRET_KEY is shorter than ${MIN_SECRET_KEY_LENGTH} characters`);
+  else add("Model", "ok", "BANGLACLAW_SECRET_KEY is set (dashboard providers can store API keys)");
   add("Model", "ok", `Limits: ${config.runtime.maxIterations} iterations, ${config.runtime.maxToolCalls} tool calls, ${config.runtime.timeoutMs / 1000}s timeout`);
 
   const policy = new AllowlistPolicy(config.tools.allow);

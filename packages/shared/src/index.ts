@@ -7,3 +7,4 @@ export * from "./audit.js";
 export * from "./transcription.js";
 export * from "./interpolate.js";
 export * from "./evals.js";
+export * from "./providers.js";

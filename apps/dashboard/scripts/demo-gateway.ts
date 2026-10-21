@@ -7,12 +7,12 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { AgentRuntime } from "@entrogic-net/agent";
-import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
+import { ApiKeyAuthenticator, InMemoryAuthStore, SecretBox } from "@entrogic-net/auth";
 import { startGateway } from "@entrogic-net/gateway";
 import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@entrogic-net/knowledge";
-import { FakeProvider } from "@entrogic-net/providers";
+import { FakeProvider, ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@entrogic-net/session";
-import { InMemoryAuditStore, InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
+import { InMemoryAuditStore, InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet, loadSkillsFromDirs } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 
@@ -135,6 +135,12 @@ const gateway = await startGateway({
   runtime, sessions, runs, auth, registry, policy, skills: new SkillSet(loadSkillsFromDirs(["skills"], fileURLToPath(new URL("../../..", import.meta.url)))), agent: { name: "banglaclaw", model: provider.id },
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 8000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 600, maxConcurrentRuns: 2 } },
   version: "demo", logger, timezone: "Asia/Dhaka", audit, evals,
+  // Demo profiles answer "OK" when tested; runs keep the scripted provider.
+  providers: await ProviderManager.open({
+    store: new InMemoryProviderStore(), cipher: new SecretBox("demo-secret-key-that-is-long-enough-00"), persistent: false, logger,
+    config: { provider: "openai-compatible", model: "demo" }, secrets: { openaiApiKey: "sk-demo" },
+    build: (model) => Object.assign(new FakeProvider([{ content: "OK" }]), { id: `${model.provider}:${model.model ?? ""}` }),
+  }),
   knowledge: { kb, searchLimit: 5, minScore: 0 },
   pricing: { "openai-compatible:gpt-4o-mini": { input: 0.15, output: 0.6 }, "anthropic:claude-sonnet-5": { input: 3, output: 15 } },
   ...(existsSync(`${dist}/index.html`) && { dashboardDir: dist }),

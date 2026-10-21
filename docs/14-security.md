@@ -34,6 +34,7 @@ Security is a core architecture requirement, not a later feature.
 - Input and output validation, per-call timeouts and a run timeout, and iteration / tool-call limits
 - An audit record for every tool call, persisted with postgres storage
 - API keys and `DATABASE_URL` accepted from the environment only (the strict config schema rejects them in YAML); logs redact secret-looking keys
+- Provider API keys added from the dashboard (ADR-0019) are the one secret stored in the database: AES-256-GCM with a key derived from `BANGLACLAW_SECRET_KEY` (environment only), bound to the row id, never returned by the API (only a masked hint), never logged or audited, and redacted from provider test errors. Managing them needs the admin role
 - MCP trust boundary: untrusted servers, minimal subprocess environment, `${VAR}` secret references, risk that can only be raised — see docs/10
 - Gateway:
   - API keys (hashed, revocable) and tenant isolation (other users' sessions and runs return 404, `externalId` namespaced per user)
@@ -50,7 +51,7 @@ Security is a core architecture requirement, not a later feature.
   - memories are owner-scoped on the server side; secrets are refused by `remember`
   - retrieved passages and memories are framed as data, not instructions
   - the knowledge base is readable by every bot user, so don't ingest per-user private data — see docs/07
-- Audit log (`audit_logs`): failed and forbidden requests, rate limiting, key creation and revocation, tool denials, handoff request/reply/release, memory deletion, session deletion, eval runs recorded and deleted. Includes actor, target, IP, request id and metadata, but never message content or secrets. Writes never fail requests, and flood-prone events are throttled per source.
+- Audit log (`audit_logs`): failed and forbidden requests, rate limiting, key creation and revocation, tool denials, handoff request/reply/release, memory deletion, session deletion, eval runs recorded and deleted, provider profiles created, updated, deleted and activated. Includes actor, target, IP, request id and metadata, but never message content or secrets. Writes never fail requests, and flood-prone events are throttled per source.
 - API keys have scopes (`read`, `run`); users have roles (`user`, `operator`, `admin`).
 - Gateway response headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Cache-Control: no-store` on `/v1`. Client IPs come from `X-Forwarded-For` only with `gateway.trustProxy`.
 - Supply chain: `pnpm audit --audit-level high` runs in CI (`.github/workflows/ci.yml`); the lockfile is frozen in CI and Docker builds; the container runs as a non-root user.

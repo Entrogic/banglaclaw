@@ -4,6 +4,12 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Model providers from the dashboard** (docs/12, ADR-0019): a new Providers page adds OpenAI-compatible or Anthropic profiles, with presets for OpenAI, Anthropic, Gemini, Groq, OpenRouter, DeepSeek and Ollama. Each profile can be tested with a one-line prompt and chosen as the provider for new runs, with no config edit and no restart. API keys are encrypted at rest (AES-256-GCM, new `BANGLACLAW_SECRET_KEY`, at least 32 characters), never returned (only a masked hint) and never logged. The active profile survives restarts; if it cannot be used, BanglaClaw falls back to the config provider with a warning.
+  - **New additive API:** `GET`/`POST /v1/admin/providers`, `PATCH`/`DELETE /v1/admin/providers/:id`, `PUT /v1/admin/providers/active`, `POST /v1/admin/providers/:id/test` (admin role; audited as `provider.created` / `updated` / `deleted` / `activated`), in the OpenAPI document and the typed client.
+  - **Storage:** `model_providers` (migration `0007_providers`; run `banglaclaw db migrate`).
+  - **Library:** `ProviderManager` (providers), `SecretBox` (auth), `ProviderStore` / `ProviderAdmin` (shared). `AgentRuntimeOptions.provider` also accepts a function, called once per run.
+  - `banglaclaw doctor` reports whether `BANGLACLAW_SECRET_KEY` is set.
+
 - **A2A client: questions and streaming** (docs/25, ADR-0018): when a remote agent's task ends `input-required`, the `a2a__<name>` tool now returns its question with `state: "input-required"` instead of an error, and the session's next call continues that task. `newTask: true` starts over instead. Agents that advertise streaming are called with `SendStreamingMessage`, and their partial reply is shown while it arrives.
   - **New run event `tool_progress`** (`{ toolCallId, tool, text }`, the tool's output so far) on `/v1` SSE and WebSocket streams and in the typed client. This is an additive change; the widget does not forward it. The web chat shows it in the tool card and the TUI in its status line.
   - **`ToolContext.progress(text)`** lets any tool report partial output (docs/09).

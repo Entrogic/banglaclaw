@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { createGatewayApp } from "../src/index.js";
-import { GatedProvider, makeDeps, parseSSE } from "./helpers.js";
+import { GatedProvider, makeDeps, parseSSE, silent } from "./helpers.js";
 
 const json = (token: string, body: unknown, extra: Record<string, string> = {}) => ({
   method: "POST",
@@ -409,6 +409,62 @@ describe("admin API and dashboard", () => {
     const disabled = createGatewayApp(plain);
     const plainAdmin = (await plain.auth.issueKey("root", "ci", "admin")).token;
     expect(((await (await disabled.request("/v1/admin/evals", get(plainAdmin))).json()) as { error: { code: string } }).error.code).toBe("evals_disabled");
+  });
+
+  it("lets admins add, test and switch model providers without leaking keys", async () => {
+    const { ConfigError, InMemoryAuditStore, InMemoryProviderStore } = await import("@entrogic-net/shared");
+    const { SecretBox } = await import("@entrogic-net/auth");
+    const { ProviderManager, FakeProvider: Fake } = await import("@entrogic-net/providers");
+    const store = new InMemoryProviderStore();
+    const manager = await ProviderManager.open({
+      store, cipher: new SecretBox("s".repeat(32)), persistent: false, logger: silent,
+      config: { provider: "openai-compatible", model: "gpt-4o-mini" }, secrets: { openaiApiKey: "sk-env-000000000000" },
+      build: (model, secrets) => {
+        if (model.provider === "anthropic" && secrets.anthropicApiKey === undefined) throw new ConfigError("ANTHROPIC_API_KEY is not set");
+        return Object.assign(new Fake([{ content: `answer from ${model.model ?? ""}` }, { content: "again" }]), { id: `${model.provider}:${model.model ?? ""}` });
+      },
+    });
+    const { deps, alice } = await makeDeps({ provider: () => manager.current() });
+    const audit = new InMemoryAuditStore();
+    const app = createGatewayApp({ ...deps, audit, providers: manager });
+    const admin = (await deps.auth.issueKey("root", "console", "admin")).token;
+    const send = (method: string, path: string, body?: unknown) => app.request(path, { method, headers: { Authorization: `Bearer ${admin}`, "Content-Type": "application/json" }, ...(body !== undefined && { body: JSON.stringify(body) }) });
+
+    expect((await app.request("/v1/admin/providers", get(alice))).status).toBe(403);
+    const initial = (await (await app.request("/v1/admin/providers", get(admin))).json()) as { active: { source: string }; encryption: boolean; providers: unknown[] };
+    expect(initial).toEqual({ active: { source: "config", providerId: "openai-compatible:gpt-4o-mini" }, persistent: false, encryption: true, providers: [] });
+
+    expect((await send("POST", "/v1/admin/providers", { name: "Claude", provider: "anthropic", model: "claude-sonnet-5" })).status).toBe(400); // no key
+    expect((await send("POST", "/v1/admin/providers", { name: "Bad", provider: "openai-compatible", model: "x", baseUrl: "file:///etc/passwd" })).status).toBe(400);
+    const created = await send("POST", "/v1/admin/providers", { name: "Claude", provider: "anthropic", model: "claude-sonnet-5", apiKey: "sk-ant-api03-verysecretkey1234" });
+    expect(created.status).toBe(201);
+    const text = await created.text();
+    expect(text).not.toContain("verysecretkey");
+    const { provider } = JSON.parse(text) as { provider: { id: string; apiKeyHint: string; hasApiKey: boolean } };
+    expect(provider).toMatchObject({ hasApiKey: true, apiKeyHint: "sk-…1234" });
+    expect((await send("POST", "/v1/admin/providers", { name: "Claude", provider: "anthropic", model: "x", apiKey: "sk-ant-zzzzzzzzzzzz" })).status).toBe(409);
+
+    expect(await (await send("POST", `/v1/admin/providers/${provider.id}/test`)).json()).toMatchObject({ result: { ok: true, reply: "answer from claude-sonnet-5" } });
+
+    expect(await (await send("PUT", "/v1/admin/providers/active", { id: provider.id })).json()).toEqual({ active: { source: "stored", providerId: "anthropic:claude-sonnet-5", profileId: provider.id, name: "Claude" } });
+    const run = (await (await app.request("/v1/agents/run", json(alice, { text: "hello" }))).json()) as { run: { provider: string } };
+    expect(run.run.provider).toBe("anthropic:claude-sonnet-5");
+
+    const patched = await send("PATCH", `/v1/admin/providers/${provider.id}`, { model: "claude-opus-5-5" });
+    expect(((await patched.json()) as { provider: { model: string } }).provider.model).toBe("claude-opus-5-5");
+    expect((await send("PATCH", `/v1/admin/providers/${provider.id}`, {})).status).toBe(400);
+    expect((await send("PATCH", "/v1/admin/providers/00000000-0000-4000-8000-000000000000", { model: "x" })).status).toBe(404);
+
+    expect((await send("DELETE", `/v1/admin/providers/${provider.id}`)).status).toBe(204);
+    expect(((await (await app.request("/v1/admin/providers", get(admin))).json()) as { active: { source: string } }).active.source).toBe("config");
+
+    const events = await audit.list();
+    expect(events.map((e) => e.action).filter((a) => a.startsWith("provider."))).toEqual(["provider.deleted", "provider.updated", "provider.activated", "provider.created"]);
+    expect(JSON.stringify(events)).not.toContain("verysecretkey");
+
+    const { deps: plain } = await makeDeps();
+    const plainAdmin = (await plain.auth.issueKey("root", "ci", "admin")).token;
+    expect(((await (await createGatewayApp(plain).request("/v1/admin/providers", get(plainAdmin))).json()) as { error: { code: string } }).error.code).toBe("providers_disabled");
   });
 
   it("serves the dashboard with SPA fallback, caching and CSP, and blocks path traversal", async () => {

@@ -353,6 +353,8 @@ export interface Secrets {
   anthropicApiKey?: string;
   /** Contains credentials, so it is treated as a secret. */
   databaseUrl?: string;
+  /** BANGLACLAW_SECRET_KEY: encrypts provider API keys added from the dashboard (ADR-0019). */
+  secretKey?: string;
   telegramBotToken?: string;
   /** Verifies Telegram webhook requests (X-Telegram-Bot-Api-Secret-Token). */
   telegramWebhookSecret?: string;
@@ -441,6 +443,8 @@ export function loadConfig(options: LoadConfigOptions = {}): LoadedConfig {
   if (anthropicApiKey !== undefined) secrets.anthropicApiKey = anthropicApiKey;
   const databaseUrl = nonEmpty(env.DATABASE_URL);
   if (databaseUrl !== undefined) secrets.databaseUrl = databaseUrl;
+  const secretKey = nonEmpty(env.BANGLACLAW_SECRET_KEY);
+  if (secretKey !== undefined) secrets.secretKey = secretKey;
   const secretEnv: [keyof Secrets, string][] = [
     ["telegramBotToken", "TELEGRAM_BOT_TOKEN"],
     ["telegramWebhookSecret", "TELEGRAM_WEBHOOK_SECRET"],

@@ -3,11 +3,11 @@ import type { BaseCheckpointSaver } from "@langchain/langgraph";
 import { A2aManager } from "@entrogic-net/a2a";
 import { AgentRuntime, type AgentRuntimeOptions } from "@entrogic-net/agent";
 import { loadAgentProfiles, type AgentProfile } from "@entrogic-net/agents";
-import { InMemoryAuthStore, type AuthStore } from "@entrogic-net/auth";
+import { InMemoryAuthStore, SecretBox, type AuthStore } from "@entrogic-net/auth";
 import { McpManager } from "@entrogic-net/mcp";
-import { createProvider } from "@entrogic-net/providers";
+import { ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunStore, type SessionStore } from "@entrogic-net/session";
-import { ConfigError, InMemoryAuditStore, InMemoryEvalStore, auditRecorder, createLogger, loadConfig, parseLogLevel, type AuditStore, type EvalStore, type LoadedConfig } from "@entrogic-net/shared";
+import { ConfigError, InMemoryAuditStore, InMemoryEvalStore, InMemoryProviderStore, auditRecorder, createLogger, loadConfig, parseLogLevel, type AuditStore, type EvalStore, type LoadedConfig, type ProviderStore } from "@entrogic-net/shared";
 import { SkillSet, loadSkillsFromDirs } from "@entrogic-net/skills";
 import type { PermissionPolicy } from "@entrogic-net/tools";
 import { PostgresStorage } from "@entrogic-net/storage";
@@ -90,6 +90,8 @@ export interface Services {
   audit: AuditStore;
   /** Eval results recorded through /v1/admin/evals (docs/26). */
   evals: EvalStore;
+  /** Model provider profiles added from the dashboard (ADR-0019). */
+  providers: ProviderStore;
   /** Set when storage.provider is postgres. */
   postgres?: PostgresStorage;
   checkpointer?: BaseCheckpointSaver;
@@ -118,6 +120,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
       auth: new InMemoryAuthStore(),
       audit: new InMemoryAuditStore(),
       evals: new InMemoryEvalStore(),
+      providers: new InMemoryProviderStore(),
       persistent: false,
       close: async () => {},
     };
@@ -140,6 +143,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
     auth: postgres.auth,
     audit: postgres.audit,
     evals: postgres.evals,
+    providers: postgres.providers,
     postgres,
     ...(loaded.config.storage.checkpoints && { checkpointer: postgres.checkpointer }),
     persistent: true,
@@ -156,6 +160,9 @@ export interface RuntimeBundle {
   registry: ToolRegistry;
   policy: PermissionPolicy;
   skills: SkillSet;
+  /** The provider new runs use (config/env, or a profile chosen in the dashboard). */
+  providers: ProviderManager;
+  /** Provider id at startup, for banners. */
   providerId: string;
   knowledge: KnowledgeSetup;
   profiles: AgentProfile[];
@@ -168,7 +175,15 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
   let a2a: A2aManager | undefined;
   try {
     const { config, secrets } = services.loaded;
-    const provider = createProvider(config.models.default, secrets);
+    const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
+    const providers = await ProviderManager.open({
+      store: services.providers,
+      ...(secrets.secretKey !== undefined && { cipher: new SecretBox(secrets.secretKey) }),
+      config: config.models.default,
+      secrets,
+      persistent: services.persistent,
+      logger,
+    });
     [mcp, a2a] = await Promise.all([connectMcp(services.loaded), connectA2a(services.loaded)]);
     const connected = mcp;
     const closeStorage = services.close;
@@ -176,7 +191,6 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
       await connected.close();
       await closeStorage();
     };
-    const logger = createLogger({ level: parseLogLevel(process.env.BANGLACLAW_LOG_LEVEL) });
     const knowledge = setupKnowledge(services.loaded, services.sessions, logger);
     const plugins = await loadPlugins(services.loaded);
     const registry = buildRegistry(mcp, [...knowledge.tools, ...workspaceTools(services.loaded, services.sessions, logger), ...plugins.flatMap((p) => p.plugin.tools ?? []), ...a2a.tools()]);
@@ -185,7 +199,7 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
     const profiles = loadAgents(services.loaded, plugins);
     const notify = handoffNotifier(services.loaded);
     const runtime = new AgentRuntime({
-      provider,
+      provider: () => providers.current(),
       registry,
       policy,
       sessions: services.sessions,
@@ -207,7 +221,7 @@ export async function createRuntime(options: GlobalOptions, hooks: { onRunComple
       ...(hooks.onRunComplete !== undefined && { onRunComplete: hooks.onRunComplete }),
       logger,
     });
-    return { runtime, services, mcp, a2a, registry, policy, skills, providerId: provider.id, knowledge, profiles, plugins };
+    return { runtime, services, mcp, a2a, registry, policy, skills, providers, providerId: providers.current().id, knowledge, profiles, plugins };
   } catch (error) {
     await services.close();
     await mcp?.close();

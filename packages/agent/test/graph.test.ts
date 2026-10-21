@@ -2,7 +2,7 @@ import { ToolMessage } from "@langchain/core/messages";
 import { MemorySaver } from "@langchain/langgraph";
 import { describe, expect, it } from "vitest";
 import { createLogger, type RunEvent } from "@entrogic-net/shared";
-import { FakeProvider, type ScriptedTurn } from "@entrogic-net/providers";
+import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
 import { SkillSet, parseSkill } from "@entrogic-net/skills";
 import { z } from "zod";
@@ -124,6 +124,41 @@ describe("AgentRuntime", () => {
     const progress = events.filter((e) => e.type === "tool_progress");
     expect(progress.map((e) => e.text)).toEqual(["ঢাকা", "ঢাকায় বৃষ্টি"]);
     expect(progress[0]).toMatchObject({ tool: "slow_reply", toolCallId: start?.type === "tool_start" ? start.toolCallId : "" });
+  });
+
+  it("resolves a provider function once per run, so a switch applies to the next run", async () => {
+    const sessions = new InMemorySessionStore();
+    const scripted = new FakeProvider([{ toolCalls: [{ name: "calculator", args: { expression: "1+1" } }] }, { content: "two" }]);
+    const second = Object.assign(new FakeProvider([{ content: "from second" }]), { id: "fake:second" });
+    let current: ModelProvider;
+    // The first provider switches to the second on its first model call, i.e. in the middle of run one.
+    const first: ModelProvider = {
+      id: "fake:first",
+      chat: (messages, options) => scripted.chat(messages, options),
+      stream: (messages, options) => {
+        current = second;
+        return scripted.stream(messages, options);
+      },
+    };
+    current = first;
+    let resolved = 0;
+    const registry = new ToolRegistry();
+    for (const tool of builtinTools) registry.register(tool);
+    const runtime = new AgentRuntime({
+      provider: () => {
+        resolved += 1;
+        return current;
+      },
+      registry, policy: new AllowlistPolicy(["calculator"]), limits: { maxIterations: 4, maxToolCalls: 4 }, timeoutMs: 5_000, timezone: "Asia/Dhaka",
+      sessions, runs: new InMemoryRunStore(), logger: silent,
+    });
+    const { id } = await sessions.create({ channel: "test", agentId: "banglaclaw" });
+    const one = await runtime.run("1+1?", { sessionId: id });
+    expect(one).toMatchObject({ provider: "fake:first", output: "two" });
+    expect(scripted.calls).toHaveLength(2);
+    const two = await runtime.run("again", { sessionId: id });
+    expect(two).toMatchObject({ provider: "fake:second", output: "from second" });
+    expect(resolved).toBe(2);
   });
 
   it("does not advertise or run tools outside the allowlist", async () => {

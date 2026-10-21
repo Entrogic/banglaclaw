@@ -49,6 +49,12 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | POST | `/v1/admin/evals` | Admins: record an evaluation run with its cases, e.g. from the DeepEval harness (201; up to 10 MB, audited as `eval.recorded`) |
 | GET | `/v1/admin/evals/:id` | Admins: one evaluation run with every case and metric |
 | DELETE | `/v1/admin/evals/:id` | Admins: delete an evaluation run (204, audited as `eval.deleted`) |
+| GET | `/v1/admin/providers` | Admins: `{ active, persistent, encryption, providers[] }`: which provider new runs use (`source: config | stored`) and the profiles added from the dashboard, with masked key hints (docs/12, ADR-0019) |
+| POST | `/v1/admin/providers` | Admins: add a profile `{ name, provider, model, baseUrl?, temperature?, apiKey? }` (201). The key is encrypted with `BANGLACLAW_SECRET_KEY` and never returned. `400 invalid_provider` when it could not run, `409 provider_exists` for a taken name. Audited as `provider.created` |
+| PATCH | `/v1/admin/providers/:id` | Admins: change name, model, baseUrl, temperature or apiKey (`null` clears the last three). Editing the active profile applies from the next run. Audited as `provider.updated` |
+| DELETE | `/v1/admin/providers/:id` | Admins: delete a profile (204). Deleting the active one switches to the config provider. Audited as `provider.deleted` |
+| PUT | `/v1/admin/providers/active` | Admins: `{ id }` makes a profile the provider for new runs; `{ id: null }` goes back to the config provider. Audited as `provider.activated` |
+| POST | `/v1/admin/providers/:id/test` | Admins: send a one-line prompt with the profile → `{ result: { ok, latencyMs, reply?, error? } }` |
 | GET | `/v1/openapi.json` | OpenAPI 3.1 spec (no auth) |
 | GET | `/metrics` | Prometheus metrics (no API key; `METRICS_TOKEN` if set) |
 | GET | `/admin/` | Admin dashboard static files when `gateway.dashboardDir` is set (no API key; the page calls `/v1/admin` with an admin key) |

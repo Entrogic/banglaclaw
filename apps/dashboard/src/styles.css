@@ -442,6 +442,20 @@ fieldset.field legend {
 .create-key p {
   margin: 8px 0 0;
 }
+.create-key .form-row + .form-row {
+  margin-top: 12px;
+}
+.field.grow {
+  flex: 1 1 220px;
+}
+.field.grow input {
+  width: 100%;
+}
+/* Detail row under a table row (provider test result, edit form). */
+.table tr.subrow td {
+  background: var(--surface-2);
+  border-top: 0;
+}
 
 /* Stat tiles */
 
@@ -927,6 +941,19 @@ dd {
   .grid-2,
   .grid-detail {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Nine sections: tighten the bar before it has to scroll. */
+@media (max-width: 1360px) {
+  .topbar {
+    gap: 12px;
+  }
+  .topbar nav a {
+    padding: 0 9px;
+  }
+  .who {
+    display: none;
   }
 }
 

@@ -13,7 +13,11 @@ export type AuditAction =
   | "memory.forgotten"
   | "session.deleted"
   | "eval.recorded"
-  | "eval.deleted";
+  | "eval.deleted"
+  | "provider.created"
+  | "provider.updated"
+  | "provider.deleted"
+  | "provider.activated";
 
 export type AuditOutcome = "success" | "failure" | "denied";
 

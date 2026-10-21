@@ -34,7 +34,7 @@ export class GatedProvider implements ModelProvider {
   }
 }
 
-export async function makeDeps(options: { script?: ScriptedTurn[]; provider?: ModelProvider; config?: Partial<GatewayConfig> } = {}) {
+export async function makeDeps(options: { script?: ScriptedTurn[]; provider?: ModelProvider | (() => ModelProvider); config?: Partial<GatewayConfig> } = {}) {
   const sessions = new InMemorySessionStore();
   const runs = new InMemoryRunStore(sessions);
   const registry = new ToolRegistry();
@@ -51,7 +51,7 @@ export async function makeDeps(options: { script?: ScriptedTurn[]; provider?: Mo
   const bob = await auth.issueKey("bob");
   const deps: GatewayDeps = {
     runtime, sessions, runs, auth, registry, policy, skills,
-    agent: { name: "banglaclaw", model: provider.id },
+    agent: { name: "banglaclaw", model: typeof provider === "function" ? provider().id : provider.id },
     config: {
       host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 100, trustProxy: false, metrics: true,
       ...options.config,

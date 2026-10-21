@@ -26,7 +26,8 @@ export interface RunContext {
 export type ContextProvider = (ctx: RunContext) => Promise<string | undefined>;
 
 export interface AgentRuntimeOptions {
-  provider: ModelProvider;
+  /** A function is called once at the start of each run, so a provider switch (ADR-0019) never changes a run midway. */
+  provider: ModelProvider | (() => ModelProvider);
   registry: ToolRegistry;
   policy: PermissionPolicy;
   sessions: SessionStore;
@@ -142,7 +143,8 @@ export class AgentRuntime {
     const text = input.trim();
     if (text.length === 0) throw new BanglaClawError("EMPTY_INPUT", "Input message is empty");
 
-    const { provider, registry, policy, limits, timeoutMs, timezone, sessions, runs } = this.#options;
+    const { registry, policy, limits, timeoutMs, timezone, sessions, runs } = this.#options;
+    const provider = typeof this.#options.provider === "function" ? this.#options.provider() : this.#options.provider;
     const session = await sessions.get(options.sessionId);
     if (session === undefined) throw new BanglaClawError("SESSION_NOT_FOUND", `Session not found: ${options.sessionId}`);
 

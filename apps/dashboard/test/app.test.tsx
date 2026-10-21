@@ -4,9 +4,9 @@ import { AgentRuntime } from "@entrogic-net/agent";
 import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
 import { BanglaClawClient } from "@entrogic-net/client";
 import { createGatewayApp } from "@entrogic-net/gateway";
-import { FakeProvider } from "@entrogic-net/providers";
+import { FakeProvider, ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryAuditStore, InMemoryEvalStore, createLogger } from "@entrogic-net/shared";
+import { InMemoryAuditStore, InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { App } from "../src/App";
@@ -26,8 +26,12 @@ async function setup() {
   const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
   const user = await auth.issueKey("shop-bot");
   const admin = await auth.issueKey("ops", "laptop", "admin");
+  const providers = await ProviderManager.open({
+    store: new InMemoryProviderStore(), persistent: false, logger: silent, config: { provider: "openai-compatible", model: "gpt-4o-mini" }, secrets: { openaiApiKey: "sk-test-000000000000" },
+    build: (model) => Object.assign(new FakeProvider([{ content: "OK" }]), { id: `${model.provider}:${model.model ?? ""}` }),
+  });
   const app = createGatewayApp({
-    runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
+    runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id }, providers,
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
     version: "test", logger: silent, timezone: "Asia/Dhaka", audit, evals, pricing: { [provider.id]: { input: 1, output: 2 } },
   });
@@ -221,6 +225,35 @@ describe("dashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
     await waitFor(() => expect(window.location.pathname).toBe("/admin/evals"));
     expect(await evals.get(run.id)).toBeUndefined();
+  });
+
+  it("adds a provider from a preset, tests it, switches to it and back", async () => {
+    const { fetchViaApp, adminToken } = await setup();
+    sessionStorage.setItem("banglaclaw.adminKey", adminToken);
+    window.history.replaceState(null, "", "/admin/providers");
+    render(<App fetch={fetchViaApp} />);
+
+    await screen.findByRole("heading", { name: "Providers" });
+    expect((await screen.findByText("New runs use")).closest(".stat")?.textContent).toContain("openai-compatible:gpt-4o-mini");
+    expect(screen.getByText("API key encryption").closest(".stat")?.textContent).toContain("Set BANGLACLAW_SECRET_KEY");
+
+    const form = screen.getByRole("form", { name: "Add a provider" });
+    fireEvent.change(within(form).getByLabelText("Start from"), { target: { value: "Ollama (local)" } });
+    expect((within(form).getByLabelText("Base URL (optional)") as HTMLInputElement).value).toBe("http://localhost:11434/v1");
+    fireEvent.click(within(form).getByRole("button", { name: "Add provider" }));
+
+    const row = (await screen.findByText("Ollama (local)", { selector: "td" })).closest("tr");
+    if (row === null) throw new Error("no row");
+    expect(row.textContent).toContain("qwen3");
+    fireEvent.click(within(row).getByRole("button", { name: "Test" }));
+    expect((await screen.findByText(/Answered in/)).textContent).toContain("OK");
+
+    fireEvent.click(within(row).getByRole("button", { name: "Use" }));
+    await waitFor(() => expect(screen.getByText("New runs use").closest(".stat")?.textContent).toContain("openai-compatible:qwen3"));
+    expect(row.textContent).toContain("In use");
+
+    fireEvent.click(screen.getByRole("button", { name: "Use" })); // the config row
+    await waitFor(() => expect(screen.getByText("New runs use").closest(".stat")?.textContent).toContain("Config provider"));
   });
 
   it("switches and remembers the colour theme", () => {

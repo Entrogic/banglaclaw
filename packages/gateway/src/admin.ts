@@ -5,10 +5,10 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
 import { windowStart, type RunStats } from "@entrogic-net/session";
-import type { EvalRun, EvalStore, NewAuditEvent } from "@entrogic-net/shared";
+import type { EvalRun, EvalStore, NewAuditEvent, ProviderAdmin } from "@entrogic-net/shared";
 import type { GatewayDeps } from "./context.js";
 import { HttpError } from "./errors.js";
-import { evalRunBody, limitQuery } from "./schemas.js";
+import { activeProviderBody, createProviderBody, evalRunBody, limitQuery, updateProviderBody } from "./schemas.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
 
 export type Pricing = Record<string, { input: number; output: number }>;
@@ -167,6 +167,57 @@ export function adminRoutes(
     const principal = c.get("principal");
     helpers.audit(c, { action: "eval.deleted", outcome: "success", actorId: principal.user.id, actorName: principal.user.name, target: c.req.param("id") });
     return c.body(null, 204);
+  });
+
+  const providers = (): ProviderAdmin => {
+    if (deps.providers === undefined) throw new HttpError(404, "providers_disabled", "Provider management is not available on this gateway");
+    return deps.providers;
+  };
+  const audited = (c: Context, action: "provider.created" | "provider.updated" | "provider.deleted" | "provider.activated", target: string, metadata: Record<string, unknown>) => {
+    const principal = c.get("principal");
+    helpers.audit(c, { action, outcome: "success", actorId: principal.user.id, actorName: principal.user.name, target, metadata });
+  };
+
+  app.get("/providers", async (c) => {
+    const admin = providers();
+    return c.json({ ...admin.status(), providers: await admin.list() });
+  });
+
+  app.post("/providers", async (c) => {
+    const body = await helpers.parseJson(c, createProviderBody);
+    const provider = await providers().create({ ...body, createdBy: c.get("principal").user.id });
+    // Never the key itself: only whether one was given.
+    audited(c, "provider.created", provider.id, { name: provider.name, provider: provider.provider, model: provider.model, apiKey: provider.hasApiKey });
+    return c.json({ provider }, 201);
+  });
+
+  app.put("/providers/active", async (c) => {
+    const { id } = await helpers.parseJson(c, activeProviderBody);
+    const active = await providers().activate(id ?? undefined);
+    if (active === undefined) throw new HttpError(404, "provider_not_found", "Provider not found");
+    audited(c, "provider.activated", active.profileId ?? "config", { source: active.source, provider: active.providerId });
+    return c.json({ active });
+  });
+
+  app.patch("/providers/:id", async (c) => {
+    const body = await helpers.parseJson(c, updateProviderBody);
+    const provider = await providers().update(c.req.param("id"), body);
+    if (provider === undefined) throw new HttpError(404, "provider_not_found", "Provider not found");
+    audited(c, "provider.updated", provider.id, { name: provider.name, fields: Object.keys(body) });
+    return c.json({ provider });
+  });
+
+  app.delete("/providers/:id", async (c) => {
+    if (!(await providers().delete(c.req.param("id")))) throw new HttpError(404, "provider_not_found", "Provider not found");
+    audited(c, "provider.deleted", c.req.param("id"), {});
+    return c.body(null, 204);
+  });
+
+  /** Sends a one-line prompt with the profile and reports whether the model answered. */
+  app.post("/providers/:id/test", async (c) => {
+    const result = await providers().test(c.req.param("id"));
+    if (result === undefined) throw new HttpError(404, "provider_not_found", "Provider not found");
+    return c.json({ result });
   });
 
   return app;

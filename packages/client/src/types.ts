@@ -213,3 +213,62 @@ export interface NewEvalRun {
   metadata?: Record<string, string | number | boolean>;
   cases: Omit<EvalCase, "success">[];
 }
+
+/** A model provider added from the dashboard (ADR-0019). The API key itself is never returned. */
+export interface ProviderProfile {
+  id: string;
+  name: string;
+  provider: "openai-compatible" | "anthropic";
+  model: string;
+  baseUrl?: string;
+  temperature?: number;
+  hasApiKey: boolean;
+  /** Masked, e.g. "sk-…a1b2". */
+  apiKeyHint?: string;
+  active: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Which provider new runs use. */
+export interface ActiveProvider {
+  source: "config" | "stored";
+  providerId: string;
+  profileId?: string;
+  name?: string;
+}
+
+export interface ProviderList {
+  active: ActiveProvider;
+  /** False with memory storage: profiles are lost on restart. */
+  persistent: boolean;
+  /** BANGLACLAW_SECRET_KEY is set, so profiles can hold an API key. */
+  encryption: boolean;
+  providers: ProviderProfile[];
+}
+
+export interface NewProvider {
+  name: string;
+  provider: ProviderProfile["provider"];
+  model: string;
+  baseUrl?: string;
+  temperature?: number;
+  apiKey?: string;
+}
+
+/** `null` clears baseUrl, temperature or apiKey. */
+export interface ProviderPatch {
+  name?: string;
+  model?: string;
+  baseUrl?: string | null;
+  temperature?: number | null;
+  apiKey?: string | null;
+}
+
+export interface ProviderTestResult {
+  ok: boolean;
+  latencyMs: number;
+  reply?: string;
+  error?: string;
+}

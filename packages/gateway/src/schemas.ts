@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ProviderIdSchema } from "@entrogic-net/shared";
 
 export function runBody(maxInputChars: number) {
   return z.strictObject({
@@ -62,3 +63,34 @@ export const evalRunBody = z.strictObject({
   ),
   cases: z.array(evalCase).min(1).max(1000),
 });
+
+const providerName = z.string().trim().min(1).max(100);
+const providerModel = z.string().trim().min(1).max(200);
+/** http(s) only; admins are trusted with where model calls go (docs/12). */
+const providerBaseUrl = z.url({ protocol: /^https?$/ }).max(500);
+const providerTemperature = z.number().min(0).max(2);
+const providerApiKey = z.string().trim().min(1).max(1_000);
+
+/** POST /v1/admin/providers. The API key is encrypted at rest and never returned (ADR-0019). */
+export const createProviderBody = z.strictObject({
+  name: providerName,
+  provider: ProviderIdSchema,
+  model: providerModel,
+  baseUrl: providerBaseUrl.optional(),
+  temperature: providerTemperature.optional(),
+  apiKey: providerApiKey.optional(),
+});
+
+/** PATCH /v1/admin/providers/:id. `null` clears baseUrl, temperature or apiKey; the provider type cannot change. */
+export const updateProviderBody = z
+  .strictObject({
+    name: providerName.optional(),
+    model: providerModel.optional(),
+    baseUrl: providerBaseUrl.nullable().optional(),
+    temperature: providerTemperature.nullable().optional(),
+    apiKey: providerApiKey.nullable().optional(),
+  })
+  .refine((b) => Object.keys(b).length > 0, "Nothing to update");
+
+/** PUT /v1/admin/providers/active: a profile id, or null for the config provider. */
+export const activeProviderBody = z.strictObject({ id: z.uuid().nullable() });

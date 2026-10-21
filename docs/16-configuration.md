@@ -204,6 +204,7 @@ The CLI loads `./.env` (see `.env.example`) at startup. Variables already export
 | `HANDOFF_WEBHOOK_URL` | Receives `POST {event: "handoff", sessionId, channel, reason, at}` |
 | `DATABASE_URL` | PostgreSQL connection string (treated as a secret, environment only) |
 | `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Provider secrets (environment only) |
+| `BANGLACLAW_SECRET_KEY` | At least 32 characters. Encrypts API keys of providers added from the dashboard (docs/12, ADR-0019). Changing it makes stored keys unreadable, so they must be entered again |
 | `BANGLACLAW_LOG_LEVEL` | `debug` \| `info` \| `warn` (default) \| `error`; JSON logs go to stderr |
 
 

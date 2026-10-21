@@ -38,7 +38,7 @@ $ banglaclaw agent run "২৫ * ৪ কত?"
 | Area | What you get |
 |---|---|
 | **Agent runtime** | A LangGraph agent loop with streaming, iteration, tool-call and timeout limits, per-run checkpoints, and a record of every run, including failed ones |
-| **Models** | OpenAI-compatible APIs (OpenAI, Ollama, vLLM and others) and Anthropic, behind a provider interface |
+| **Models** | OpenAI-compatible APIs (OpenAI, Ollama, vLLM and others) and Anthropic, behind a provider interface. Providers can also be added and switched from the dashboard, with API keys encrypted at rest |
 | **Tools & MCP** | Zod-validated tools with risk levels, a deny-by-default allowlist and audit logging. An MCP client (stdio and Streamable HTTP), and BanglaClaw itself exposed as an MCP server |
 | **Workspace** | Sandboxed per-user files the agent can create, edit and update. Every change can be undone (history and trash), with quotas, and it's off by default |
 | **Skills** | `SKILL.md` instruction packs selected by deterministic Bangla and Latin triggers |
@@ -46,7 +46,7 @@ $ banglaclaw agent run "২৫ * ৪ কত?"
 | **Multi-agent** | A supervisor that routes to `AGENT.md` specialists with scoped tools, plus human handoff with an operator queue |
 | **Channels** | Telegram, WhatsApp Cloud API and Facebook Messenger, including voice-note transcription, a built-in web chat, and an embeddable **website widget** for anonymous visitors |
 | **Gateway** | A stable `/v1` HTTP API with REST, SSE and WebSocket, API keys with scopes and roles, rate limits, an OpenAPI spec and a typed TypeScript client, and an optional A2A (Agent2Agent) server; remote A2A agents can be called as tools |
-| **Interfaces** | A full-screen terminal chat, the web chat at `/chat`, and an admin dashboard at `/admin` (analytics, sessions, handoffs, keys, audit) |
+| **Interfaces** | A full-screen terminal chat, the web chat at `/chat`, and an admin dashboard at `/admin` (analytics, sessions, handoffs, model providers, keys, audit) |
 | **Production** | An audit log, OpenTelemetry tracing, Prometheus metrics, token and cost tracking, plugins, and a non-root Docker image |
 
 ## Quickstart

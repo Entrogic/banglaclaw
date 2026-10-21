@@ -1,4 +1,4 @@
-import type { AdminKey, AdminSession, AdminStats, AuditEvent, EvalCase, EvalRun, Features, KnowledgeHit, Me, Memory, Message, NewEvalRun, Run, RunResponse, Session, SessionEvent, StreamEvent, WorkspaceEntry } from "./types.js";
+import type { ActiveProvider, AdminKey, AdminSession, AdminStats, AuditEvent, EvalCase, EvalRun, Features, KnowledgeHit, Me, Memory, Message, NewEvalRun, NewProvider, ProviderList, ProviderPatch, ProviderProfile, ProviderTestResult, Run, RunResponse, Session, SessionEvent, StreamEvent, WorkspaceEntry } from "./types.js";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -241,6 +241,14 @@ export class BanglaClawClient {
     eval: (id: string): Promise<{ eval: EvalRun; cases: EvalCase[] }> => this.#json("GET", `/v1/admin/evals/${enc(id)}`),
     recordEval: (body: NewEvalRun): Promise<{ eval: EvalRun }> => this.#json("POST", "/v1/admin/evals", body),
     deleteEval: (id: string): Promise<void> => this.#json("DELETE", `/v1/admin/evals/${enc(id)}`),
+    /** Model providers added from the dashboard, and which one new runs use (ADR-0019). */
+    providers: (): Promise<ProviderList> => this.#json("GET", "/v1/admin/providers"),
+    createProvider: (body: NewProvider): Promise<{ provider: ProviderProfile }> => this.#json("POST", "/v1/admin/providers", body),
+    updateProvider: (id: string, patch: ProviderPatch): Promise<{ provider: ProviderProfile }> => this.#json("PATCH", `/v1/admin/providers/${enc(id)}`, patch),
+    deleteProvider: (id: string): Promise<void> => this.#json("DELETE", `/v1/admin/providers/${enc(id)}`),
+    /** `null` switches back to the provider from config/env. */
+    activateProvider: (id: string | null): Promise<{ active: ActiveProvider }> => this.#json("PUT", "/v1/admin/providers/active", { id }),
+    testProvider: (id: string): Promise<{ result: ProviderTestResult }> => this.#json("POST", `/v1/admin/providers/${enc(id)}/test`, {}),
   };
 
   /** Admin role required. */

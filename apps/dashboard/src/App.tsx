@@ -11,6 +11,7 @@ import { Keys } from "./pages/Keys";
 import { Knowledge } from "./pages/Knowledge";
 import { Login } from "./pages/Login";
 import { Overview } from "./pages/Overview";
+import { Providers } from "./pages/Providers";
 import { SessionDetail } from "./pages/SessionDetail";
 import { Sessions } from "./pages/Sessions";
 import { Link, usePath } from "./router";
@@ -23,6 +24,7 @@ const NAV = [
   { to: "/sessions", label: "Sessions" },
   { to: "/handoffs", label: "Handoffs" },
   { to: "/agent", label: "Agent" },
+  { to: "/providers", label: "Providers" },
   { to: "/knowledge", label: "Knowledge" },
   { to: "/evals", label: "Evals" },
   { to: "/keys", label: "API keys" },
@@ -99,6 +101,7 @@ function Shell() {
   else if (section === "/") page = <Overview />;
   else if (section === "/sessions") page = <Sessions />;
   else if (section === "/agent") page = <Agent />;
+  else if (section === "/providers") page = <Providers />;
   else if (section === "/knowledge") page = <Knowledge />;
   else if (section === "/keys") page = <Keys />;
   else if (section === "/audit") page = <Audit />;

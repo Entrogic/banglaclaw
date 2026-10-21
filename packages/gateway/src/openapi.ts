@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createSessionBody, evalRunBody, messageBody, renameSessionBody, runBody } from "./schemas.js";
+import { activeProviderBody, createProviderBody, createSessionBody, evalRunBody, messageBody, renameSessionBody, runBody, updateProviderBody } from "./schemas.js";
 
 type Schema = Record<string, unknown>;
 const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` });
@@ -143,6 +143,31 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
         get: { tags: ["admin"], summary: "An evaluation run with every case and metric (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { eval: ref("EvalRun"), cases: { type: "array", items: ref("EvalCase") } } }), ...errors(401, 403, 404) } },
         delete: { tags: ["admin"], summary: "Delete an evaluation run (admin role)", parameters: [idParam("id")], responses: { "204": { description: "Deleted" }, ...errors(401, 403, 404) } },
       },
+      "/v1/admin/providers": {
+        get: {
+          tags: ["admin"], summary: "Model providers added from the dashboard, and which one new runs use (admin role, ADR-0019)",
+          responses: { "200": json({ type: "object", properties: { active: ref("ActiveProvider"), persistent: { type: "boolean" }, encryption: { type: "boolean", description: "BANGLACLAW_SECRET_KEY is set, so API keys can be stored" }, providers: { type: "array", items: ref("ProviderProfile") } } }), ...errors(401, 403, 404) },
+        },
+        post: {
+          tags: ["admin"], summary: "Add a provider profile; the API key is encrypted at rest and never returned (admin role)",
+          requestBody: body(createProviderBody),
+          responses: { "201": json({ type: "object", properties: { provider: ref("ProviderProfile") } }, "Created"), ...errors(400, 401, 403, 404, 409) },
+        },
+      },
+      "/v1/admin/providers/active": {
+        put: {
+          tags: ["admin"], summary: "Choose the provider for new runs: a profile id, or null for the config provider (admin role)",
+          requestBody: body(activeProviderBody),
+          responses: { "200": json({ type: "object", properties: { active: ref("ActiveProvider") } }), ...errors(400, 401, 403, 404) },
+        },
+      },
+      "/v1/admin/providers/{id}": {
+        patch: { tags: ["admin"], summary: "Change a provider profile; null clears baseUrl, temperature or apiKey (admin role)", parameters: [idParam("id")], requestBody: body(updateProviderBody), responses: { "200": json({ type: "object", properties: { provider: ref("ProviderProfile") } }), ...errors(400, 401, 403, 404, 409) } },
+        delete: { tags: ["admin"], summary: "Delete a provider profile; deleting the active one switches to the config provider (admin role)", parameters: [idParam("id")], responses: { "204": { description: "Deleted" }, ...errors(400, 401, 403, 404) } },
+      },
+      "/v1/admin/providers/{id}/test": {
+        post: { tags: ["admin"], summary: "Send a one-line prompt with the profile and report the result (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { result: ref("ProviderTestResult") } }), ...errors(401, 403, 404) } },
+      },
       "/admin/{path}": { get: { tags: ["system"], security: [], summary: "Admin dashboard (static web app, when built)", parameters: [idParam("path")], responses: { "200": { description: "HTML/JS/CSS" } } } },
       "/v1/ws": { get: { tags: ["agent"], security: [], summary: "WebSocket upgrade; authenticate with a first {type:\"auth\"} message, run with {type:\"run\"}, follow sessions with {type:\"subscribe\"} (see docs/18)", responses: { "101": { description: "Switching protocols" } } } },
     },
@@ -209,6 +234,13 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
             success: { type: "boolean", description: "Every metric passed" }, metrics: { type: "array", items: ref("EvalMetric") },
           },
         },
+        ProviderProfile: {
+          type: "object",
+          required: ["id", "name", "provider", "model", "hasApiKey", "active", "createdAt", "updatedAt"],
+          properties: { id: str, name: str, provider: { enum: ["openai-compatible", "anthropic"] }, model: str, baseUrl: str, temperature: { type: "number" }, hasApiKey: { type: "boolean" }, apiKeyHint: { type: "string", description: "Masked, e.g. sk-…a1b2" }, active: { type: "boolean" }, createdBy: str, createdAt: time, updatedAt: time },
+        },
+        ActiveProvider: { type: "object", required: ["source", "providerId"], properties: { source: { enum: ["config", "stored"] }, providerId: str, profileId: str, name: str } },
+        ProviderTestResult: { type: "object", required: ["ok", "latencyMs"], properties: { ok: { type: "boolean" }, latencyMs: { type: "integer" }, reply: str, error: str } },
         EvalRun: {
           type: "object",
           required: ["id", "name", "framework", "createdAt", "caseCount", "passedCount", "metrics"],

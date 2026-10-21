@@ -36,6 +36,10 @@ export function toHttpError(error: unknown): HttpError {
         return new HttpError(404, "session_not_found", "Session not found");
       case "EMPTY_INPUT":
         return new HttpError(400, "invalid_request", error.message);
+      case "PROVIDER_SETUP":
+        return new HttpError(400, "invalid_provider", error.message);
+      case "DUPLICATE_PROVIDER_NAME":
+        return new HttpError(409, "provider_exists", error.message);
       default:
         break;
     }
