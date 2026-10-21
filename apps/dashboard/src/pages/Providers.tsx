@@ -5,7 +5,7 @@ import { fmtRelative } from "../format";
 
 type Kind = ProviderProfile["provider"];
 
-/** Common endpoints; any OpenAI-compatible server works with its own base URL. */
+/** Common endpoints (the same as PROVIDER_PRESETS in @entrogic-net/shared, which `banglaclaw init` uses); any OpenAI-compatible server works with its own base URL. */
 const PRESETS: { label: string; provider: Kind; baseUrl?: string; model: string; key: boolean }[] = [
   { label: "OpenAI", provider: "openai-compatible", model: "gpt-4o-mini", key: true },
   { label: "Anthropic", provider: "anthropic", model: "claude-sonnet-5", key: true },
@@ -13,6 +13,8 @@ const PRESETS: { label: string; provider: Kind; baseUrl?: string; model: string;
   { label: "Groq", provider: "openai-compatible", baseUrl: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile", key: true },
   { label: "OpenRouter", provider: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini", key: true },
   { label: "DeepSeek", provider: "openai-compatible", baseUrl: "https://api.deepseek.com/v1", model: "deepseek-chat", key: true },
+  { label: "Mistral", provider: "openai-compatible", baseUrl: "https://api.mistral.ai/v1", model: "mistral-small-latest", key: true },
+  { label: "Together AI", provider: "openai-compatible", baseUrl: "https://api.together.xyz/v1", model: "meta-llama/Llama-3.3-70B-Instruct-Turbo", key: true },
   { label: "Ollama (local)", provider: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3", key: false },
 ];
 

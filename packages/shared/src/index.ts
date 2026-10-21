@@ -9,3 +9,4 @@ export * from "./interpolate.js";
 export * from "./evals.js";
 export * from "./providers.js";
 export * from "./eval-datasets.js";
+export * from "./provider-presets.js";

@@ -80,8 +80,8 @@ printf 'hi\n/session\n/exit\n' | banglaclaw chat
 
 `banglaclaw init` asks for:
 
-1. the provider (OpenAI, Anthropic, or a local/OpenAI-compatible server) and the model;
-2. the API key (hidden input), with an optional one-request connection test;
+1. the provider and the model: OpenAI, Anthropic Claude, Google Gemini, OpenRouter, Groq, DeepSeek, Mistral, Together AI (presets with their endpoint and a default model, `PROVIDER_PRESETS` in `@entrogic-net/shared`), or a local / other OpenAI-compatible server with its base URL;
+2. the API key (hidden input, with a link to where to create one), with an optional one-request connection test. Every OpenAI-compatible service reads its key from `OPENAI_API_KEY`; when one is already set for another service, the wizard asks before replacing it. With the knowledge base on, Gemini and Mistral also get their own embeddings model; other services fall back to OpenAI embeddings (`EMBEDDINGS_API_KEY`);
 3. storage (memory, or PostgreSQL with a connection check and migrations);
 4. optional extras: knowledge base, long-term memory, Telegram, example agents, human handoff.
 

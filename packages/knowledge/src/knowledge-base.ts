@@ -149,6 +149,20 @@ export class KnowledgeBase {
       .sort((a, b) => a.source.localeCompare(b.source));
   }
 
+  /**
+   * A document's text, rebuilt from its stored chunks (the overlap between neighbours is removed).
+   * Undefined when no document has that id or source.
+   */
+  async getDocument(sourceOrId: string): Promise<(KnowledgeDocument & { text: string }) | undefined> {
+    const doc = (await this.listDocuments()).find((d) => d.source === sourceOrId || d.documentId === sourceOrId);
+    if (doc === undefined) return undefined;
+    const points = await this.#o.store.scroll(this.#o.collection, { filter: { documentId: doc.documentId }, limit: 10_000 });
+    const chunks = points.map((p) => ({ index: Number(p.payload.chunkIndex ?? 0), text: String(p.payload.text ?? "") })).sort((a, b) => a.index - b.index);
+    let text = "";
+    for (const chunk of chunks) text = joinOverlapping(text, chunk.text);
+    return { ...doc, text };
+  }
+
   /** Removes a document by source path or document id. Returns false if it wasn't found. */
   async deleteDocument(sourceOrId: string): Promise<boolean> {
     await this.init();
@@ -158,4 +172,17 @@ export class KnowledgeBase {
     await this.#o.store.delete(this.#o.collection, { filter: { documentId: doc.documentId } });
     return true;
   }
+}
+
+/**
+ * Appends `next` to `text`. The chunker starts a chunk with a tail of the previous one followed by
+ * a space (chunking.ts), so the longest such suffix (at least 8 characters, ending at a word
+ * boundary of `next`) is dropped; chunks without overlap are joined with a space.
+ */
+export function joinOverlapping(text: string, next: string): string {
+  if (text === "") return next;
+  for (let n = Math.min(text.length, next.length - 1); n >= 8; n -= 1) {
+    if (next[n] === " " && text.endsWith(next.slice(0, n))) return text + next.slice(n);
+  }
+  return `${text} ${next}`;
 }

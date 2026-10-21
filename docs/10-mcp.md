@@ -75,6 +75,19 @@ mcp:
 | `ask` | `{ message, conversation?, new_conversation? }` → the agent's reply (text) plus `{ reply, conversation, sessionId, status, language, skills, tools }`. Each `conversation` name (default `default`) is a session on channel `mcp` with its own history; `new_conversation: true` starts it over. Failed runs return `isError`. |
 | `search_knowledge` | `{ query, limit? }` → matching passages from the knowledge base. Read-only; only listed when `knowledge.enabled` is true. |
 
+Resources (read-only context the client can attach, e.g. with `@` in Claude Code):
+
+| URI | Content |
+|---|---|
+| `banglaclaw://agent` | JSON: agent name, version, the model new runs use, the tools `tools.allow` permits, skills with their triggers, whether a knowledge base is on |
+| `banglaclaw://skills/{name}` | A skill's instructions as the agent receives them (markdown, with description, triggers and tools); one per loaded skill |
+| `banglaclaw://knowledge/{documentId}` | A knowledge-base document's text, rebuilt from its chunks with the overlap removed; listed only when `knowledge.enabled` is true |
+| `banglaclaw://conversations/{conversation}` | The transcript of an `ask` conversation (user, BanglaClaw and operator turns, last 200 messages; tool traffic left out) |
+
+Prompts: every skill is also an MCP **prompt** with the skill's name and an optional `request` argument. It returns one user message holding the skill's instructions and the request, so the *client's* model can follow a BanglaClaw skill (for example `/vat` in a client that shows prompts as commands). Use `ask` instead when BanglaClaw itself should answer with its tools and knowledge.
+
+- **Only MCP conversations.** Conversation resources cover sessions on the `mcp` channel, that is the `ask` tool's own conversations. Telegram, WhatsApp, Messenger, widget and API sessions are never listed or readable here, even though the server shares their storage.
+
 - **Same agent, same rules.** Runs go through the normal runtime: skills, `tools.allow`, limits, timeouts, audit and storage all apply, and handoff works (the reply says a human operator has taken over). Cancelling the MCP request cancels the run.
 - **Trust.** The server runs with the configuration and keys of the user who starts it, like the CLI, and has no API-key layer of its own. Only register it with clients you trust to use your model quota and data.
 - **stdout is the protocol.** Logs, knowledge ingestion notes and MCP warnings go to stderr.
@@ -104,5 +117,4 @@ The CLI loads `./.env` from its working directory, so with `pnpm --dir` the chec
 ## Planned
 
 - Reconnect on dropped connections and handle `tools/list_changed` notifications
-- MCP resources and prompts
 - Per-server tool filtering and OAuth for remote servers

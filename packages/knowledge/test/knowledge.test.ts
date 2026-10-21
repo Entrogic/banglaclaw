@@ -90,9 +90,19 @@ describe("KnowledgeBase", () => {
     expect((await base.ingestText({ source: "faq.md", text: long })).chunks).toBeGreaterThan(1);
     const docs = await base.listDocuments();
     expect(docs.map((d) => [d.source, d.chunkCount > 1])).toEqual([["about.md", false], ["faq.md", true]]);
+    // The chunks put back together without the overlap between them.
+    expect((await base.getDocument("faq.md"))?.text).toBe(long);
+    expect(await base.getDocument("missing.md")).toBeUndefined();
     expect(await base.deleteDocument("faq.md")).toBe(true);
     expect(await base.deleteDocument("faq.md")).toBe(false);
     expect((await base.listDocuments()).map((d) => d.source)).toEqual(["about.md"]);
+  });
+
+  it("joins overlapping chunks only at a real overlap", async () => {
+    const { joinOverlapping } = await import("../src/knowledge-base.js");
+    expect(joinOverlapping("আমি ভাত খাই। তুমি কী খাও?", "তুমি কী খাও? আমি রুটি খাই।")).toBe("আমি ভাত খাই। তুমি কী খাও? আমি রুটি খাই।");
+    expect(joinOverlapping("Ends with a dot.", ".Starts with one")).toBe("Ends with a dot. .Starts with one");
+    expect(joinOverlapping("", "first")).toBe("first");
   });
 
   it("ingests paths and reports per-file errors", async () => {

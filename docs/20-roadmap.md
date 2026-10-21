@@ -80,6 +80,5 @@
 - Router/planner/verifier graph nodes (live Telegram replies shipped in 1.4)
 - Discord channel (Facebook Messenger shipped after 1.1, the website widget in 1.3)
 - Images, sitemap crawling, spoken replies (voice notes, DOCX and URL loaders shipped after 1.1)
-- MCP resources and prompts for the BanglaClaw MCP server (publishing `@entrogic-net/*` to npm shipped in 1.2)
 - Eval follow-ups: scheduled dashboard evals, faithfulness and retrieval metrics in the built-in runner (DeepEval evaluations with results in the dashboard shipped after the A2A client, then running stored datasets from the dashboard with Bangla judge prompts and a multi-turn conversation metric; docs/26)
 - A2A client follow-ups: OAuth and other non-header auth, resubscribing to dropped streams (the A2A server shipped after 1.6, the client with remote agents as `a2a__*` tools after it, then continuing `input-required` tasks and streamed partial replies; docs/25)

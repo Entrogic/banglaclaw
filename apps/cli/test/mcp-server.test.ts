@@ -6,6 +6,7 @@ import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@entrogic-net/
 import { FakeProvider, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
 import { createLogger } from "@entrogic-net/shared";
+import { SkillSet, parseSkill } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { MCP_CHANNEL, createBanglaClawMcpServer } from "../src/mcp-server.js";
 
@@ -34,13 +35,62 @@ async function connect(script: ScriptedTurn[] | ModelProvider, withKnowledge = f
     await kb.ingestText({ source: "returns.md", title: "Returns", text: "পণ্য হাতে পাওয়ার ৭ দিনের মধ্যে ফেরত দেওয়া যায়।" });
     knowledge = { kb, searchLimit: 3, minScore: 0 };
   }
-  const server = createBanglaClawMcpServer({ runtime, agentName: "banglaclaw", version: "test", maxInputChars: 200, ...(knowledge !== undefined && { knowledge }) });
+  const skills = new SkillSet([parseSkill("---\nname: vat\ndescription: VAT on taka amounts\ntools: [calculator]\ntriggers: [ভ্যাট, vat]\n---\nAlways show the VAT rate and the total in taka (৳).\n")]);
+  const server = createBanglaClawMcpServer({
+    runtime, agentName: "banglaclaw", version: "test", maxInputChars: 200, skills, allowedTools: ["calculator"], model: () => provider.id,
+    ...(knowledge !== undefined && { knowledge }),
+  });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: "test", version: "1.0.0" });
   await client.connect(clientTransport);
   return { client, sessions, provider: provider instanceof FakeProvider ? provider : undefined };
 }
+
+const textOf = (result: { contents: ({ text: string } | { blob: string })[] }) => {
+  const first = result.contents[0];
+  return first !== undefined && "text" in first ? first.text : "";
+};
+
+describe("BanglaClaw MCP server resources and prompts", () => {
+  it("describes the agent and serves skills as resources and prompts", async () => {
+    const { client } = await connect([{ content: "unused" }]);
+    const { resources } = await client.listResources();
+    expect(resources.map((r) => r.uri)).toEqual(["banglaclaw://agent", "banglaclaw://skills/vat"]);
+    const { resourceTemplates } = await client.listResourceTemplates();
+    expect(resourceTemplates.map((t) => t.uriTemplate)).toEqual(["banglaclaw://skills/{name}", "banglaclaw://conversations/{conversation}"]);
+
+    const agent = JSON.parse(textOf(await client.readResource({ uri: "banglaclaw://agent" }))) as Record<string, unknown>;
+    expect(agent).toMatchObject({ name: "banglaclaw", model: "fake:scripted", tools: ["calculator"], skills: [{ name: "vat", triggers: ["ভ্যাট", "vat"] }], knowledge: false });
+
+    const skill = textOf(await client.readResource({ uri: "banglaclaw://skills/vat" }));
+    expect(skill).toContain("# vat");
+    expect(skill).toContain("Always show the VAT rate");
+    await expect(client.readResource({ uri: "banglaclaw://skills/missing" })).rejects.toThrow(/not found/);
+
+    const { prompts } = await client.listPrompts();
+    expect(prompts).toEqual([expect.objectContaining({ name: "vat", description: "BanglaClaw skill: VAT on taka amounts" })]);
+    const prompt = await client.getPrompt({ name: "vat", arguments: { request: "১৫০০ টাকার ভ্যাট কত?" } });
+    const message = prompt.messages[0]?.content;
+    expect(message?.type === "text" && message.text).toMatch(/Always show the VAT rate[\s\S]*---\n\n১৫০০ টাকার ভ্যাট কত\?$/);
+  });
+
+  it("serves knowledge documents and MCP conversation transcripts, but no other channel", async () => {
+    const { client, sessions } = await connect([{ content: "ফেরত ৭ দিনের মধ্যে।" }], true);
+    await client.callTool({ name: "ask", arguments: { message: "ফেরত নীতি?", conversation: "shop-1" } });
+    await sessions.create({ channel: "telegram", agentId: "banglaclaw", externalId: "12345" });
+
+    const { resources } = await client.listResources();
+    const docUri = resources.find((r) => r.uri.startsWith("banglaclaw://knowledge/"))?.uri ?? "";
+    expect(resources.find((r) => r.uri === docUri)).toMatchObject({ name: "Returns" });
+    expect(textOf(await client.readResource({ uri: docUri }))).toBe("পণ্য হাতে পাওয়ার ৭ দিনের মধ্যে ফেরত দেওয়া যায়।");
+
+    expect(resources.filter((r) => r.uri.startsWith("banglaclaw://conversations/")).map((r) => r.uri)).toEqual(["banglaclaw://conversations/shop-1"]);
+    const transcript = textOf(await client.readResource({ uri: "banglaclaw://conversations/shop-1" }));
+    expect(transcript).toBe("# Conversation shop-1\n\n**User:** ফেরত নীতি?\n\n**BanglaClaw:** ফেরত ৭ দিনের মধ্যে।\n");
+    await expect(client.readResource({ uri: "banglaclaw://conversations/12345" })).rejects.toThrow(/not found/);
+  });
+});
 
 describe("BanglaClaw MCP server", () => {
   it("answers with the agent, runs its tools and keeps history per conversation", async () => {

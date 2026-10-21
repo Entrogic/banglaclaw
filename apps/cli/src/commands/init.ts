@@ -4,9 +4,9 @@ import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
 import { HumanMessage } from "@langchain/core/messages";
 import { createProvider } from "@entrogic-net/providers";
-import { BanglaClawError } from "@entrogic-net/shared";
+import { BanglaClawError, PROVIDER_PRESETS } from "@entrogic-net/shared";
 import { PostgresStorage } from "@entrogic-net/storage";
-import { DEFAULT_MODELS, buildConfigYaml, envKeys, mergeEnv, type InitAnswers, type ProviderChoice } from "../init/config.js";
+import { buildConfigYaml, defaultModel, envKeys, mergeEnv, presetFor, type InitAnswers, type ProviderChoice } from "../init/config.js";
 import { CONFIG_TEMPLATE } from "../init/template.js";
 import { EXIT, CliError, describe } from "../ui/errors.js";
 import { emit, success } from "../ui/output.js";
@@ -37,11 +37,9 @@ function writeTemplate(force: boolean): void {
 }
 
 async function testModel(a: InitAnswers, key: string | undefined): Promise<string | undefined> {
-  const secrets = a.provider === "anthropic" ? { ...(key !== undefined && { anthropicApiKey: key }) } : { ...(key !== undefined && { openaiApiKey: key }) };
-  const provider = createProvider(
-    { provider: a.provider === "anthropic" ? "anthropic" : "openai-compatible", model: a.model, ...(a.baseUrl !== undefined && { baseUrl: a.baseUrl }) },
-    secrets,
-  );
+  const kind = presetFor(a.provider)?.provider ?? "openai-compatible";
+  const secrets = kind === "anthropic" ? { ...(key !== undefined && { anthropicApiKey: key }) } : { ...(key !== undefined && { openaiApiKey: key }) };
+  const provider = createProvider({ provider: kind, model: a.model, ...(a.baseUrl !== undefined && { baseUrl: a.baseUrl }) }, secrets);
   const reply = await provider.chat([new HumanMessage("Reply with exactly: OK")], { signal: AbortSignal.timeout(30_000) });
   return reply.text.slice(0, 40);
 }
@@ -68,13 +66,13 @@ export async function init(options: { force?: boolean; yes?: boolean }): Promise
     await p.select<ProviderChoice>({
       message: "Which model provider?",
       options: [
-        { value: "openai", label: "OpenAI", hint: "gpt-4o-mini — good Bangla, low cost" },
-        { value: "anthropic", label: "Anthropic Claude" },
-        { value: "local", label: "Local / OpenAI-compatible", hint: "Ollama, vLLM, DeepSeek, OpenRouter…" },
+        ...PROVIDER_PRESETS.map((preset) => ({ value: preset.id, label: preset.label, hint: preset.hint })),
+        { value: "local", label: "Local / other OpenAI-compatible", hint: "Ollama, vLLM, LM Studio, any /v1 endpoint" },
       ],
     }),
   );
-  let baseUrl: string | undefined;
+  const preset = presetFor(provider);
+  let baseUrl: string | undefined = preset?.baseUrl;
   if (provider === "local") {
     baseUrl = bail(
       await p.text({
@@ -85,18 +83,26 @@ export async function init(options: { force?: boolean; yes?: boolean }): Promise
       }),
     );
   }
-  const model = bail(await p.text({ message: "Model", placeholder: DEFAULT_MODELS[provider], defaultValue: DEFAULT_MODELS[provider] }));
+  const model = bail(await p.text({ message: "Model", placeholder: defaultModel(provider), defaultValue: defaultModel(provider) }));
 
-  const keyName = provider === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
+  // Every OpenAI-compatible service (Gemini, OpenRouter, Groq…) reads its key from OPENAI_API_KEY.
+  const keyName = preset?.provider === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
   const env: Record<string, string> = {};
-  let key: string | undefined = provider === "anthropic" ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY;
+  const overwrite = new Set<string>();
+  let key: string | undefined = keyName === "ANTHROPIC_API_KEY" ? process.env.ANTHROPIC_API_KEY : process.env.OPENAI_API_KEY;
   const keyOptional = provider === "local";
+  const hosted = preset?.baseUrl !== undefined;
+  let askKey = true;
   if (haveKeys.has(keyName) || (key !== undefined && key !== "")) {
-    p.log.info(`${keyName} is already set — keeping it.`);
-  } else {
+    askKey = hosted && bail(await p.confirm({ message: `${keyName} is already set. Replace it with your ${preset?.label ?? ""} key? (BanglaClaw uses ${keyName} for every OpenAI-compatible service)`, initialValue: false }));
+    if (!askKey) p.log.info(`${keyName} is already set — keeping it.`);
+    else overwrite.add(keyName);
+  }
+  if (askKey) {
+    const where = preset?.keyUrl !== undefined ? ` (get one at ${preset.keyUrl})` : "";
     const entered = bail(
       await p.password({
-        message: keyOptional ? `API key for the server (optional, Enter to skip)` : `${keyName}`,
+        message: keyOptional ? `API key for the server (optional, Enter to skip)` : `${preset?.label ?? "API"} key${where}`,
         validate: (v) => (keyOptional || (v !== undefined && v.trim().length > 10) ? undefined : "Paste your API key"),
       }),
     ).trim();
@@ -192,6 +198,9 @@ export async function init(options: { force?: boolean; yes?: boolean }): Promise
     answers.knowledge = { sources, vectorStore, ...(vectorStore === "qdrant" && { qdrantUrl: "http://localhost:56333" }) };
     if (!features.includes("knowledge")) answers.knowledge.sources = [];
     answers.longTermMemory = features.includes("memory");
+    if (provider !== "local" && preset?.embeddingModel === undefined) {
+      p.log.warn(`${preset?.label ?? "This provider"} has no embeddings endpoint, so the knowledge base uses OpenAI embeddings: add EMBEDDINGS_API_KEY (an OpenAI key) to .env, or set embeddings.baseUrl in banglaclaw.yaml.`);
+    }
   }
   if (features.includes("telegram")) {
     if (!haveKeys.has("TELEGRAM_BOT_TOKEN")) env.TELEGRAM_BOT_TOKEN = bail(await p.password({ message: "TELEGRAM_BOT_TOKEN (from @BotFather)", validate: (v) => (/^\d+:[\w-]{20,}$/.test(v ?? "") ? undefined : "Looks like 123456:ABC…") }));
@@ -205,7 +214,7 @@ export async function init(options: { force?: boolean; yes?: boolean }): Promise
   writeFileSync(configPath, buildConfigYaml(answers));
   const written = [configPath];
   if (Object.keys(env).length > 0) {
-    const merged = mergeEnv(envText, env);
+    const merged = mergeEnv(envText, env, overwrite);
     writeFileSync(envPath, merged.text, { mode: 0o600 });
     chmodSync(envPath, 0o600);
     written.push(envPath);

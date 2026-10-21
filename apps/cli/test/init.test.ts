@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { ConfigSchema } from "@entrogic-net/shared";
-import { buildConfigYaml, envKeys, mergeEnv } from "../src/init/config.js";
+import { ConfigSchema, PROVIDER_PRESETS } from "@entrogic-net/shared";
+import { buildConfigYaml, defaultModel, envKeys, mergeEnv, presetFor } from "../src/init/config.js";
 
 describe("buildConfigYaml", () => {
   it("produces a valid config without secrets", () => {
@@ -19,6 +19,22 @@ describe("buildConfigYaml", () => {
     expect(config.channels.telegram).toMatchObject({ enabled: true, allowedUserIds: ["12345"] });
     expect(config.handoff.enabled).toBe(true);
     expect(yaml).not.toMatch(/sk-|api_?key:/i);
+  });
+
+  it("points hosted presets at their endpoint, with embeddings there when it has them", () => {
+    const knowledge = { sources: ["docs"], vectorStore: "memory" as const };
+    const gemini = ConfigSchema.parse(parse(buildConfigYaml({ provider: "gemini", model: "gemini-2.5-flash", baseUrl: presetFor("gemini")?.baseUrl, storage: "memory", knowledge })));
+    expect(gemini.models.default).toEqual({ provider: "openai-compatible", model: "gemini-2.5-flash", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/" });
+    expect(gemini.embeddings).toMatchObject({ model: "gemini-embedding-001", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/" });
+
+    const groq = ConfigSchema.parse(parse(buildConfigYaml({ provider: "groq", model: defaultModel("groq"), baseUrl: presetFor("groq")?.baseUrl, storage: "memory", knowledge })));
+    expect(groq.models.default).toMatchObject({ model: "llama-3.3-70b-versatile", baseUrl: "https://api.groq.com/openai/v1" });
+    // No embeddings endpoint: the default OpenAI embeddings stay.
+    expect(groq.embeddings.baseUrl).toBeUndefined();
+
+    expect(PROVIDER_PRESETS.map((p) => p.id)).toEqual(["openai", "anthropic", "gemini", "openrouter", "groq", "deepseek", "mistral", "together"]);
+    expect(PROVIDER_PRESETS.every((p) => p.provider === "anthropic" || p.id === "openai" || p.baseUrl?.startsWith("https://") === true)).toBe(true);
+    expect(defaultModel("local")).toBe("qwen2.5");
   });
 
   it("keeps a minimal config minimal", () => {

@@ -42,6 +42,8 @@ Streaming yields message chunks (not plain strings) so tool calls can be streame
 
 `FakeProvider` replays scripted turns for deterministic tests.
 
+`PROVIDER_PRESETS` (`@entrogic-net/shared`) lists popular services with their endpoint and default model, for `banglaclaw init` and the dashboard: OpenAI, Anthropic, Google Gemini (`https://generativelanguage.googleapis.com/v1beta/openai/`), OpenRouter (`https://openrouter.ai/api/v1`), Groq, DeepSeek, Mistral and Together AI. Everything except Anthropic runs on `openai-compatible` with that `baseUrl` and the key in `OPENAI_API_KEY`.
+
 ## Adding providers from the dashboard
 
 Admins can add model providers at runtime on the dashboard's **Providers** page (or with `/v1/admin/providers`, docs/18) and choose which one new runs use, without editing `banglaclaw.yaml` or restarting ([ADR-0019](adr/0019-runtime-providers.md)).

@@ -21,6 +21,9 @@ export async function mcpServe(options: GlobalOptions): Promise<void> {
       agentName: config.agent.name,
       version: VERSION,
       maxInputChars: config.gateway.maxInputChars,
+      skills: bundle.skills,
+      allowedTools: bundle.registry.list().filter((t) => bundle.policy.check(t).allowed).map((t) => t.name),
+      model: () => bundle.providers.current().id,
       ...(bundle.knowledge.kb !== undefined && { knowledge: { kb: bundle.knowledge.kb, searchLimit: config.knowledge.searchLimit, minScore: config.knowledge.minScore } }),
     });
     const transport = new StdioServerTransport();

@@ -1,6 +1,8 @@
 import { stringify } from "yaml";
+import { PROVIDER_PRESETS, type ProviderPreset } from "@entrogic-net/shared";
 
-export type ProviderChoice = "openai" | "anthropic" | "local";
+/** A preset id from PROVIDER_PRESETS (OpenAI, Gemini, OpenRouter…), or "local" for any OpenAI-compatible server. */
+export type ProviderChoice = string;
 
 export interface InitAnswers {
   provider: ProviderChoice;
@@ -15,11 +17,24 @@ export interface InitAnswers {
   timezone?: string;
 }
 
-export const DEFAULT_MODELS: Record<ProviderChoice, string> = {
-  openai: "gpt-4o-mini",
-  anthropic: "claude-sonnet-5",
-  local: "qwen2.5",
-};
+export const LOCAL_DEFAULT_MODEL = "qwen2.5";
+
+export function presetFor(choice: ProviderChoice): ProviderPreset | undefined {
+  return PROVIDER_PRESETS.find((p) => p.id === choice);
+}
+
+export function defaultModel(choice: ProviderChoice): string {
+  return presetFor(choice)?.model ?? LOCAL_DEFAULT_MODEL;
+}
+
+/** Embeddings for the knowledge base: on the same endpoint when it has an embeddings model. */
+function embeddingsFor(a: InitAnswers): Record<string, string> | undefined {
+  if (a.knowledge === undefined) return undefined;
+  if (a.provider === "local") return a.baseUrl !== undefined ? { model: "bge-m3", baseUrl: a.baseUrl } : undefined;
+  const preset = presetFor(a.provider);
+  if (preset?.embeddingModel === undefined || preset.baseUrl === undefined) return undefined;
+  return { model: preset.embeddingModel, baseUrl: preset.baseUrl };
+}
 
 /** Builds banglaclaw.yaml from wizard answers (secrets are never written here). */
 export function buildConfigYaml(a: InitAnswers): string {
@@ -27,9 +42,9 @@ export function buildConfigYaml(a: InitAnswers): string {
     agent: { name: "banglaclaw" },
     models: {
       default: {
-        provider: a.provider === "anthropic" ? "anthropic" : "openai-compatible",
+        provider: presetFor(a.provider)?.provider ?? "openai-compatible",
         model: a.model,
-        ...(a.provider === "local" && a.baseUrl !== undefined && { baseUrl: a.baseUrl }),
+        ...(a.baseUrl !== undefined && { baseUrl: a.baseUrl }),
       },
     },
     tools: { allow: ["calculator", "current_datetime", "search_knowledge", "remember", "recall", "forget"] },
@@ -43,7 +58,7 @@ export function buildConfigYaml(a: InitAnswers): string {
         sources: a.knowledge.sources,
       },
     }),
-    ...(a.provider === "local" && a.knowledge !== undefined && a.baseUrl !== undefined && { embeddings: { model: "bge-m3", baseUrl: a.baseUrl } }),
+    ...(embeddingsFor(a) !== undefined && { embeddings: embeddingsFor(a) }),
     ...(a.agents === true && { agents: { dirs: ["agents"] } }),
     ...(a.handoff === true && { handoff: { enabled: true } }),
     ...(a.telegram !== undefined && {
