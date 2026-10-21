@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { bigint, boolean, doublePrecision, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import type { StoredMessage } from "@langchain/core/messages";
-import type { EvalMetricResult, EvalMetricSummary, ProviderId } from "@entrogic-net/shared";
+import type { EvalMetricResult, EvalMetricSummary, Golden, ProviderId } from "@entrogic-net/shared";
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
@@ -203,3 +203,14 @@ export const modelProviders = pgTable(
   },
   (t) => [uniqueIndex("model_providers_one_active_idx").on(t.active).where(sql`${t.active}`)],
 );
+
+/** Eval datasets stored on the gateway so admins can run them from the dashboard (ADR-0020). */
+export const evalDatasets = pgTable("eval_datasets", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  goldens: jsonb("goldens").$type<Golden[]>().notNull(),
+  createdBy: text("created_by"),
+  createdAt: createdAt(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

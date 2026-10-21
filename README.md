@@ -284,7 +284,7 @@ python -m banglaclaw_evals run datasets/sample.yaml --judge-model gpt-4.1-mini -
 # sample: 6/7 cases passed (86%) — open /admin/evals to compare runs and read each case
 ```
 
-Goldens in Bangla, Banglish and English run through the live agent; DeepEval scores answer relevancy, Bangla-aware correctness, tool use and reply language.
+Goldens in Bangla, Banglish and English run through the live agent; DeepEval scores answer relevancy, Bangla-aware correctness, tool use and reply language. No Python at hand? Save the dataset on the Evals page and press **Start eval**: the gateway runs it with Bangla judge prompts and the providers you already set up.
 
 </details>
 

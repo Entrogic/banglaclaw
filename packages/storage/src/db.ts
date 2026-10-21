@@ -11,6 +11,7 @@ import { PostgresRunStore } from "./runs.js";
 import { PostgresSessionStore } from "./sessions.js";
 import { PostgresEvalStore } from "./evals.js";
 import { PostgresProviderStore } from "./providers.js";
+import { PostgresEvalDatasetStore } from "./eval-datasets.js";
 
 export type Database = NodePgDatabase<typeof schema>;
 
@@ -35,6 +36,7 @@ export class PostgresStorage {
   readonly audit: PostgresAuditStore;
   readonly evals: PostgresEvalStore;
   readonly providers: PostgresProviderStore;
+  readonly evalDatasets: PostgresEvalDatasetStore;
   #checkpointer: PostgresSaver | undefined;
 
   constructor(databaseUrl: string, options: PostgresStorageOptions = {}) {
@@ -49,6 +51,7 @@ export class PostgresStorage {
     this.audit = new PostgresAuditStore(this.db);
     this.evals = new PostgresEvalStore(this.db);
     this.providers = new PostgresProviderStore(this.db);
+    this.evalDatasets = new PostgresEvalDatasetStore(this.db);
   }
 
   get checkpointer(): PostgresSaver {

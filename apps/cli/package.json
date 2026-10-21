@@ -58,6 +58,7 @@
     "@entrogic-net/agents": "workspace:*",
     "@entrogic-net/auth": "workspace:*",
     "@entrogic-net/channels": "workspace:*",
+    "@entrogic-net/evals": "workspace:*",
     "@entrogic-net/gateway": "workspace:*",
     "@entrogic-net/knowledge": "workspace:*",
     "@entrogic-net/mcp": "workspace:*",

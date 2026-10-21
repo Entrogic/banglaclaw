@@ -5,6 +5,7 @@ import { ColumnChart } from "../charts/ColumnChart";
 import { StatTile } from "../charts/StatTile";
 import { fmtDateTime, fmtInt, fmtPct, fmtRelative } from "../format";
 import { Link, navigate } from "../router";
+import { EvalRunner } from "./EvalRunner";
 
 const fmtScore = (n: number | undefined) => (n === undefined ? "—" : n.toFixed(2));
 
@@ -19,7 +20,7 @@ function ResultBadge({ passed, total }: { passed: number; total: number }) {
   );
 }
 
-/** Evaluation runs recorded by the DeepEval harness (docs/26): a list, or one run's cases. */
+/** Evaluation runs, from the dashboard's runner or the DeepEval harness (docs/26): a list, or one run's cases. */
 export function Evals({ id }: { id?: string }) {
   return id === undefined ? <EvalList /> : <EvalDetail key={id} id={id} />;
 }
@@ -44,6 +45,7 @@ function EvalList() {
 
   return (
     <>
+      <EvalRunner onRecorded={reload} />
       <div className="toolbar">
         <select value={name} onChange={(e) => setName(e.target.value)} aria-label="Eval name">
           <option value="">All evals</option>
@@ -84,7 +86,7 @@ function EvalList() {
           !error && <p className="muted pad">Loading…</p>
         ) : runs.length === 0 ? (
           <p className="muted pad">
-            No eval runs yet. Run the DeepEval harness in <span className="mono">evals/deepeval</span> with an admin key to record one (docs/26).
+            No eval runs yet. Start one above, or run the DeepEval harness in <span className="mono">evals/deepeval</span> with an admin key (docs/26).
           </p>
         ) : (
           <div className="scroll-x">

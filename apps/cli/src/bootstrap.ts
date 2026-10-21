@@ -7,7 +7,7 @@ import { InMemoryAuthStore, SecretBox, type AuthStore } from "@entrogic-net/auth
 import { McpManager } from "@entrogic-net/mcp";
 import { ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunStore, type SessionStore } from "@entrogic-net/session";
-import { ConfigError, InMemoryAuditStore, InMemoryEvalStore, InMemoryProviderStore, auditRecorder, createLogger, loadConfig, parseLogLevel, type AuditStore, type EvalStore, type LoadedConfig, type ProviderStore } from "@entrogic-net/shared";
+import { ConfigError, InMemoryAuditStore, InMemoryEvalDatasetStore, InMemoryEvalStore, InMemoryProviderStore, auditRecorder, createLogger, loadConfig, parseLogLevel, type AuditStore, type EvalDatasetStore, type EvalStore, type LoadedConfig, type ProviderStore } from "@entrogic-net/shared";
 import { SkillSet, loadSkillsFromDirs } from "@entrogic-net/skills";
 import type { PermissionPolicy } from "@entrogic-net/tools";
 import { PostgresStorage } from "@entrogic-net/storage";
@@ -90,6 +90,8 @@ export interface Services {
   audit: AuditStore;
   /** Eval results recorded through /v1/admin/evals (docs/26). */
   evals: EvalStore;
+  /** Datasets admins run from the dashboard (ADR-0020). */
+  evalDatasets: EvalDatasetStore;
   /** Model provider profiles added from the dashboard (ADR-0019). */
   providers: ProviderStore;
   /** Set when storage.provider is postgres. */
@@ -120,6 +122,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
       auth: new InMemoryAuthStore(),
       audit: new InMemoryAuditStore(),
       evals: new InMemoryEvalStore(),
+      evalDatasets: new InMemoryEvalDatasetStore(),
       providers: new InMemoryProviderStore(),
       persistent: false,
       close: async () => {},
@@ -143,6 +146,7 @@ export async function openServices(options: GlobalOptions): Promise<Services> {
     auth: postgres.auth,
     audit: postgres.audit,
     evals: postgres.evals,
+    evalDatasets: postgres.evalDatasets,
     providers: postgres.providers,
     postgres,
     ...(loaded.config.storage.checkpoints && { checkpointer: postgres.checkpointer }),

@@ -19,6 +19,7 @@ PostgreSQL is the initial recommended relational database.
 | `runs` | status (incl. `handoff`), stop_reason, language, skills[], agent, agent_path[], handoff_reason, input_tokens, output_tokens, input/output/error, provider, prompt_version, timings |
 | `audit_logs` | at, action, outcome, actor_id/name, target, ip, request_id, metadata (v1.0) |
 | `tool_calls` | run_id + seq, tool, input/output jsonb, status, error, duration |
+| `eval_datasets` | Datasets run from the dashboard (ADR-0020): name (unique), description, goldens jsonb (harness format), created_by. Migration `0008_eval_datasets` |
 | `model_providers` | Providers added from the dashboard (ADR-0019): name (unique), type, model, base URL, temperature, `api_key_ciphertext` (AES-256-GCM) and masked `api_key_hint`, `active` (a partial unique index allows one), created_by. Migration `0007_providers` |
 | `eval_runs` | name, dataset, framework (+ version), judge and agent model, metadata jsonb, created_by, case/passed counts, per-metric summary jsonb (docs/26) |
 | `eval_cases` | eval_id + seq, input, actual/expected output, language, session_id, run_id (not foreign keys), tools called/expected, success, metrics jsonb |

@@ -97,9 +97,33 @@ The gateway computes each case's `success` and the run summary itself (`summariz
 
 Any framework can record results through the same endpoint (`framework` is free text); the harness here is the supported one.
 
+## Running evals from the dashboard
+
+For a quick check without Python, admins can also run an eval inside the gateway, from the **Evals** page ([ADR-0020](adr/0020-dashboard-evals.md)):
+
+1. **Datasets.** Under **Datasets**, save one: paste YAML or JSON in the harness format above, pick a `.yaml`/`.json` file, or press **Use the sample** (`datasets/sample.yaml`). Datasets are stored on the gateway (`eval_datasets` with postgres storage) and validated exactly like the harness does it: unique names, unknown keys rejected, at most 500 goldens.
+2. **Run an eval.** Pick the dataset, the metrics, a **judge model** and the **judge prompts** language, then press **Start eval**. The judge is either the agent's current provider or any profile from the Providers page (docs/12). The progress bar is updated every second. When the run is done it is recorded like a harness run, with `framework: banglaclaw` and the labels `source=dashboard`, `judgeLanguage` and `metrics`, and **Open the run** shows its cases. **Cancel** stops it, and a cancelled run is not recorded.
+
+The built-in runner (`@entrogic-net/evals`) sends each golden's `turns` and then its `input` in a new `eval` session owned by the admin who started it, two goldens at a time. It calls the runtime directly, so the run limits and tools are the agent's own, while API-key rate limits do not apply. Only one eval runs at a time per gateway, so one click cannot multiply model costs. Jobs live in memory: a restart ends a running eval without recording it.
+
+| Metric | Kind | Uses | Default threshold |
+|---|---|---|---|
+| `correctness` | judge | input, answer, `expected_output` (skipped without it) | 0.6 |
+| `answer_relevancy` | judge | input, answer | 0.7 |
+| `fluency` | judge: natural Bangla / Banglish / English | input, answer | 0.6 |
+| `conversation` | judge, **multi-turn**: is the last reply consistent with the earlier turns (names, numbers and facts the user gave)? | the whole transcript; only goldens with `turns` | 0.6 |
+| `tool_correctness` | deterministic: share of `expected_tools` called; `[]` passes only when no tool ran | tools called | 1.0 |
+| `language_match` | deterministic, the agent's own `detectLanguage` | input, answer, `reply_language` | 1.0 |
+
+- **Bangla judge prompts.** Each judge metric has a rubric in Bangla and one in English, with the same rules as the harness's G-Eval criteria: meaning over wording or script, ৪২ = 42, and ৳ / Tk / taka the same currency. **Judge prompts: বাংলা** (the default) sends the Bangla rubric and asks for the reason in Bangla; **English** suits judges that are weaker in Bangla. The judge answers `{"score": 0–10, "reason": "…"}`, which is parsed with Zod and scaled to 0–1. An answer that is not a valid verdict is asked once more and then recorded as a metric error.
+- **Cost.** Every golden is at least one agent run, and each judge metric is one more model call, all billed to the configured providers. The page says so next to the button.
+- **Versus the harness.** The DeepEval harness has more metrics (faithfulness, contextual relevancy), runs from CI with `--min-pass-rate`, and keeps judge calls out of the gateway. The dashboard runner needs no Python and uses providers you have already set up. Both record into the same history.
+
+API (admin role; docs/18): `GET`/`POST /v1/admin/eval-datasets`, `GET`/`PUT`/`DELETE /v1/admin/eval-datasets/:id`, `GET`/`POST /v1/admin/eval-jobs`, `GET /v1/admin/eval-jobs/:id` and `POST /v1/admin/eval-jobs/:id/cancel`. In the typed client these are `admin.evalDatasets()`, `createEvalDataset`, `updateEvalDataset`, `deleteEvalDataset`, `startEval`, `evalJobs`, `evalJob` and `cancelEval`. Audited as `eval.dataset_saved`, `eval.dataset_deleted`, `eval.started` and `eval.cancelled`.
+
 ## Dashboard
 
-**Evals** (`/admin/evals`) lists runs with their pass rate and mean metric scores, filters by name, and charts passed and failed cases for the last 30 runs. A run's page shows its labels, judge and agent model, a tile per metric, and every case with input, expected and actual answer, tools called versus expected, and each metric's score, threshold and reason, with a link to the conversation. **Failed only** narrows the list.
+**Evals** (`/admin/evals`) has the runner and datasets described above, then lists runs with their pass rate and mean metric scores, filters by name, and charts passed and failed cases for the last 30 runs. A run's page shows its labels, judge and agent model, a tile per metric, and every case with input, expected and actual answer, tools called versus expected, and each metric's score, threshold and reason, with a link to the conversation. **Failed only** narrows the list.
 
 ## In CI
 
@@ -116,6 +140,7 @@ Evals call a real model and cost money, so run them on a schedule or before a re
 
 ## Security
 
+- Starting an eval from the dashboard spends model tokens on the agent's and the judge's providers; only admins can, one at a time, and each start is audited.
 - Recording and reading results needs an admin key; the harness refuses to start with another role unless `--no-record` is set.
 - Eval cases contain the questions and the agent's answers. Use synthetic or consented data, never real customer conversations with personal data, because every admin can read them.
 - The eval key's runs are ordinary runs: they count in analytics and token usage under that user. A dedicated `ci` user keeps them easy to tell apart.

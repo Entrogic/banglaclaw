@@ -40,6 +40,16 @@ export function toHttpError(error: unknown): HttpError {
         return new HttpError(400, "invalid_provider", error.message);
       case "DUPLICATE_PROVIDER_NAME":
         return new HttpError(409, "provider_exists", error.message);
+      case "INVALID_DATASET":
+        return new HttpError(400, "invalid_dataset", error.message);
+      case "DUPLICATE_DATASET_NAME":
+        return new HttpError(409, "dataset_exists", error.message);
+      case "DATASET_NOT_FOUND":
+        return new HttpError(404, "dataset_not_found", error.message);
+      case "PROVIDER_NOT_FOUND":
+        return new HttpError(404, "provider_not_found", error.message);
+      case "EVAL_JOB_RUNNING":
+        return new HttpError(409, "eval_running", error.message);
       default:
         break;
     }

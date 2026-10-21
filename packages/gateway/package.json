@@ -65,6 +65,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@entrogic-net/evals": "workspace:*",
     "@entrogic-net/observability": "workspace:*",
     "@entrogic-net/providers": "workspace:*",
     "@entrogic-net/workspace": "workspace:*",

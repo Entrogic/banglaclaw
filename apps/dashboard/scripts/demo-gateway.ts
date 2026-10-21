@@ -12,7 +12,8 @@ import { startGateway } from "@entrogic-net/gateway";
 import { HashEmbedder, InMemoryVectorStore, KnowledgeBase } from "@entrogic-net/knowledge";
 import { FakeProvider, ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore, type RunRecord } from "@entrogic-net/session";
-import { InMemoryAuditStore, InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
+import { EvalJobRunner } from "@entrogic-net/evals";
+import { InMemoryAuditStore, InMemoryEvalDatasetStore, InMemoryEvalStore, InMemoryProviderStore, createLogger, parseGoldens } from "@entrogic-net/shared";
 import { SkillSet, loadSkillsFromDirs } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 
@@ -128,13 +129,19 @@ const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
 const admin = await auth.issueKey("demo-admin", "laptop", "admin");
 await auth.issueKey("shop-bot", "production", "user");
 await auth.issueKey("support-desk", "default", "operator");
+// A stored dataset so "Run an eval" works without a model key (the demo judge always answers 9/10).
+const evalDatasets = new InMemoryEvalDatasetStore();
+await evalDatasets.create({ name: "demo", description: "Two questions for the scripted agent", goldens: parseGoldens([{ name: "capital-bn", input: "বাংলাদেশের রাজধানীর নাম কী?", expected_output: "ঢাকা" }, { name: "greeting-en", input: "Hello there!" }]) });
+const demoJudge = { id: "demo:judge", chat: () => new FakeProvider([{ content: '{"score": 9, "reason": "ডেমো বিচারক"}' }]).chat([]), stream: () => new FakeProvider([]).stream([]) };
+const evalRunner = new EvalJobRunner({ runtime, sessions, evals, datasets: evalDatasets, agentName: "banglaclaw", agentModel: () => provider.id, judge: async () => demoJudge, logger });
+
 const dist = fileURLToPath(new URL("../dist", import.meta.url));
 const port = Number(process.env.PORT ?? 3000);
 
 const gateway = await startGateway({
   runtime, sessions, runs, auth, registry, policy, skills: new SkillSet(loadSkillsFromDirs(["skills"], fileURLToPath(new URL("../../..", import.meta.url)))), agent: { name: "banglaclaw", model: provider.id },
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 8000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 600, maxConcurrentRuns: 2 } },
-  version: "demo", logger, timezone: "Asia/Dhaka", audit, evals,
+  version: "demo", logger, timezone: "Asia/Dhaka", audit, evals, evalDatasets, evalRunner,
   // Demo profiles answer "OK" when tested; runs keep the scripted provider.
   providers: await ProviderManager.open({
     store: new InMemoryProviderStore(), cipher: new SecretBox("demo-secret-key-that-is-long-enough-00"), persistent: false, logger,

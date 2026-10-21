@@ -49,6 +49,12 @@ The v0.4 gateway (`packages/gateway`, started with `banglaclaw serve`) exposes a
 | POST | `/v1/admin/evals` | Admins: record an evaluation run with its cases, e.g. from the DeepEval harness (201; up to 10 MB, audited as `eval.recorded`) |
 | GET | `/v1/admin/evals/:id` | Admins: one evaluation run with every case and metric |
 | DELETE | `/v1/admin/evals/:id` | Admins: delete an evaluation run (204, audited as `eval.deleted`) |
+| GET | `/v1/admin/eval-datasets` | Admins: stored eval datasets with `goldenCount` (docs/26, ADR-0020) |
+| POST | `/v1/admin/eval-datasets` | Admins: store a dataset `{ name, description?, goldens }` or `{ name, description?, source }` (YAML/JSON text in the harness format) → 201 `{ dataset }`. `400 invalid_dataset` names the first bad golden; `409 dataset_exists`. Audited as `eval.dataset_saved` |
+| GET / PUT / DELETE | `/v1/admin/eval-datasets/:id` | Admins: one dataset with its goldens; rename or replace the goldens; delete it (recorded runs stay) |
+| POST | `/v1/admin/eval-jobs` | Admins: `{ datasetId, name?, metrics?, judgeProviderId?, judgeLanguage?, thresholds? }` runs the dataset through the agent in the gateway → 202 `{ job }`. `409 eval_running` while another eval runs. Audited as `eval.started` |
+| GET | `/v1/admin/eval-jobs`, `/v1/admin/eval-jobs/:id` | Admins: jobs on this gateway (in memory) with `status`, `done`/`total`, `passed` and, when completed, `evalId` |
+| POST | `/v1/admin/eval-jobs/:id/cancel` | Admins: cancel a running eval; nothing is recorded (`409 eval_not_running` otherwise). Audited as `eval.cancelled` |
 | GET | `/v1/admin/providers` | Admins: `{ active, persistent, encryption, providers[] }`: which provider new runs use (`source: config | stored`) and the profiles added from the dashboard, with masked key hints (docs/12, ADR-0019) |
 | POST | `/v1/admin/providers` | Admins: add a profile `{ name, provider, model, baseUrl?, temperature?, apiKey? }` (201). The key is encrypted with `BANGLACLAW_SECRET_KEY` and never returned. `400 invalid_provider` when it could not run, `409 provider_exists` for a taken name. Audited as `provider.created` |
 | PATCH | `/v1/admin/providers/:id` | Admins: change name, model, baseUrl, temperature or apiKey (`null` clears the last three). Editing the active profile applies from the next run. Audited as `provider.updated` |

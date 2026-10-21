@@ -1,0 +1,21 @@
+# @entrogic-net/evals
+
+Built-in evaluations for BanglaClaw: runs stored datasets through the agent and scores the answers with deterministic and Bangla-aware LLM-judge metrics.
+
+Part of [BanglaClaw](https://github.com/Entrogic/banglaclaw), a Bangla-first, open-source AI agent runtime built with TypeScript, LangGraph and MCP.
+
+```bash
+npm install @entrogic-net/evals
+```
+
+Requires Node.js 22+. The package is ESM-only and ships TypeScript types.
+
+- Documentation: [Evaluations](https://github.com/Entrogic/banglaclaw/blob/master/docs/26-evals.md)
+- Changelog: [CHANGELOG.md](./CHANGELOG.md)
+- Issues: https://github.com/Entrogic/banglaclaw/issues
+
+Most applications don't need to install this package directly. The [`@entrogic-net/cli`](https://www.npmjs.com/package/@entrogic-net/cli) package runs the full stack, and [`@entrogic-net/client`](https://www.npmjs.com/package/@entrogic-net/client) talks to a running gateway.
+
+## License
+
+[Apache-2.0](https://github.com/Entrogic/banglaclaw/blob/master/LICENSE)

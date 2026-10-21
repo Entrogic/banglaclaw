@@ -22,6 +22,7 @@
   "devDependencies": {
     "@entrogic-net/agent": "workspace:*",
     "@entrogic-net/auth": "workspace:*",
+    "@entrogic-net/evals": "workspace:*",
     "@entrogic-net/gateway": "workspace:*",
     "@entrogic-net/knowledge": "workspace:*",
     "@entrogic-net/providers": "workspace:*",

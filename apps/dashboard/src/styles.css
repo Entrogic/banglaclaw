@@ -451,6 +451,45 @@ fieldset.field legend {
 .field.grow input {
   width: 100%;
 }
+/* Eval runner (ADR-0020) */
+.metrics-pick {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  height: auto;
+  margin: 12px 0;
+}
+.job-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+.progress {
+  flex: 0 0 200px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--series-1);
+  transition: width 0.3s;
+}
+.dataset-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.dataset-form textarea {
+  width: 100%;
+  font-size: 13px;
+  resize: vertical;
+}
+
 /* Detail row under a table row (provider test result, edit form). */
 .table tr.subrow td {
   background: var(--surface-2);

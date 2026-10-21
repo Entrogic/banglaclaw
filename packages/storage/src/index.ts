@@ -5,4 +5,5 @@ export { PostgresAuthStore } from "./auth.js";
 export { PostgresAuditStore } from "./audit.js";
 export { PostgresEvalStore } from "./evals.js";
 export { PostgresProviderStore } from "./providers.js";
+export { PostgresEvalDatasetStore } from "./eval-datasets.js";
 export * as schema from "./schema.js";

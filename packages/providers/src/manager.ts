@@ -87,6 +87,16 @@ export class ProviderManager implements ProviderAdmin {
     return this.#current.provider;
   }
 
+  /**
+   * A provider for other work than agent runs (an eval judge): the profile `id`, or the current
+   * provider when absent. Undefined for an unknown id; ProviderSetupError when it cannot be built.
+   */
+  async providerFor(id?: string): Promise<ModelProvider | undefined> {
+    if (id === undefined) return this.current();
+    const profile = await this.#options.store.get(id);
+    return profile === undefined ? undefined : this.#fromProfile(profile);
+  }
+
   status(): { active: ActiveProvider; persistent: boolean; encryption: boolean } {
     if (this.#current === undefined) throw new Error("ProviderManager used before open()");
     return { active: { ...this.#current.info }, persistent: this.#options.persistent, encryption: this.#options.cipher !== undefined };

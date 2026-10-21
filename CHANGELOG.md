@@ -4,6 +4,14 @@ All notable changes to BanglaClaw. The project follows [Semantic Versioning](htt
 
 ## Unreleased
 
+- **Run evals from the dashboard** (docs/26, ADR-0020): the Evals page stores datasets (paste YAML/JSON in the harness format, pick a file, or use the sample) and runs them through the live agent inside the gateway, with progress and cancel. Results are recorded like harness runs (`framework: banglaclaw`). The new `@entrogic-net/evals` package holds `EvalJobRunner`:
+  - **Bangla judge prompts:** correctness, answer relevancy and fluency rubrics in Bangla (the default) or English, with the harness's script- and digit-aware rules. The judge is the agent's provider or any profile from the Providers page.
+  - **Multi-turn metric:** `conversation` judges whether the last reply stays consistent with earlier turns (goldens with `turns`).
+  - Deterministic `tool_correctness` and `language_match` (the agent's own `detectLanguage`).
+  - **New additive API:** `/v1/admin/eval-datasets` (CRUD) and `/v1/admin/eval-jobs` (start, list, get, cancel), in the OpenAPI document and the typed client. Audited as `eval.dataset_saved` / `dataset_deleted` / `started` / `cancelled`.
+  - **Storage:** `eval_datasets` (migration `0008_eval_datasets`; run `banglaclaw db migrate`).
+  - `ProviderManager.providerFor(id?)` builds a provider profile for work other than agent runs.
+
 - **Model providers from the dashboard** (docs/12, ADR-0019): a new Providers page adds OpenAI-compatible or Anthropic profiles, with presets for OpenAI, Anthropic, Gemini, Groq, OpenRouter, DeepSeek and Ollama. Each profile can be tested with a one-line prompt and chosen as the provider for new runs, with no config edit and no restart. API keys are encrypted at rest (AES-256-GCM, new `BANGLACLAW_SECRET_KEY`, at least 32 characters), never returned (only a masked hint) and never logged. The active profile survives restarts; if it cannot be used, BanglaClaw falls back to the config provider with a warning.
   - **New additive API:** `GET`/`POST /v1/admin/providers`, `PATCH`/`DELETE /v1/admin/providers/:id`, `PUT /v1/admin/providers/active`, `POST /v1/admin/providers/:id/test` (admin role; audited as `provider.created` / `updated` / `deleted` / `activated`), in the OpenAPI document and the typed client.
   - **Storage:** `model_providers` (migration `0007_providers`; run `banglaclaw db migrate`).

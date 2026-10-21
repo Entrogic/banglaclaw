@@ -272,3 +272,62 @@ export interface ProviderTestResult {
   reply?: string;
   error?: string;
 }
+
+/** One test input, as in the DeepEval harness's dataset files (docs/26). */
+export interface Golden {
+  name: string;
+  input: string;
+  expected_output?: string;
+  expected_tools?: string[];
+  context?: string[];
+  turns?: string[];
+  reply_language?: "bn" | "bn-en" | "en";
+  tags?: string[];
+}
+
+/** A dataset stored on the gateway (ADR-0020); `goldens` only on single-dataset responses. */
+export interface EvalDataset {
+  id: string;
+  name: string;
+  description?: string;
+  goldenCount: number;
+  goldens?: Golden[];
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Goldens as a list, or `source` as YAML/JSON text (exactly one). */
+export type NewEvalDataset = { name: string; description?: string } & ({ goldens: Golden[]; source?: never } | { source: string; goldens?: never });
+
+export type EvalMetricName = "correctness" | "answer_relevancy" | "fluency" | "conversation" | "tool_correctness" | "language_match";
+
+export interface EvalJob {
+  id: string;
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+  name: string;
+  datasetId: string;
+  datasetName: string;
+  metrics: EvalMetricName[];
+  judgeModel?: string;
+  judgeLanguage: "bn" | "en";
+  total: number;
+  done: number;
+  passed: number;
+  startedBy?: string;
+  startedAt: string;
+  finishedAt?: string;
+  /** The recorded eval run, once completed. */
+  evalId?: string;
+  error?: string;
+}
+
+export interface StartEvalJob {
+  datasetId: string;
+  name?: string;
+  metrics?: EvalMetricName[];
+  /** A provider profile for the judge; absent = the agent's current provider. */
+  judgeProviderId?: string;
+  judgeLanguage?: "bn" | "en";
+  thresholds?: Partial<Record<EvalMetricName, number>>;
+}

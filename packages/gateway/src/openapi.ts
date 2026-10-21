@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { activeProviderBody, createProviderBody, createSessionBody, evalRunBody, messageBody, renameSessionBody, runBody, updateProviderBody } from "./schemas.js";
+import { activeProviderBody, createDatasetBody, createProviderBody, createSessionBody, evalRunBody, messageBody, renameSessionBody, runBody, startEvalJobBody, updateDatasetBody, updateProviderBody } from "./schemas.js";
 
 type Schema = Record<string, unknown>;
 const ref = (name: string): Schema => ({ $ref: `#/components/schemas/${name}` });
@@ -143,6 +143,25 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
         get: { tags: ["admin"], summary: "An evaluation run with every case and metric (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { eval: ref("EvalRun"), cases: { type: "array", items: ref("EvalCase") } } }), ...errors(401, 403, 404) } },
         delete: { tags: ["admin"], summary: "Delete an evaluation run (admin role)", parameters: [idParam("id")], responses: { "204": { description: "Deleted" }, ...errors(401, 403, 404) } },
       },
+      "/v1/admin/eval-datasets": {
+        get: { tags: ["admin"], summary: "Stored eval datasets, without their goldens (admin role, ADR-0020)", responses: { "200": json({ type: "object", properties: { datasets: { type: "array", items: ref("EvalDataset") } } }), ...errors(401, 403, 404) } },
+        post: { tags: ["admin"], summary: "Store a dataset: goldens as a list, or `source` as YAML/JSON text in the harness format (admin role, up to 10 MB)", requestBody: body(createDatasetBody), responses: { "201": json({ type: "object", properties: { dataset: ref("EvalDataset") } }, "Stored"), ...errors(400, 401, 403, 404, 409, 413) } },
+      },
+      "/v1/admin/eval-datasets/{id}": {
+        get: { tags: ["admin"], summary: "A dataset with its goldens (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { dataset: ref("EvalDataset") } }), ...errors(401, 403, 404) } },
+        put: { tags: ["admin"], summary: "Rename a dataset or replace its goldens (admin role)", parameters: [idParam("id")], requestBody: body(updateDatasetBody), responses: { "200": json({ type: "object", properties: { dataset: ref("EvalDataset") } }), ...errors(400, 401, 403, 404, 409, 413) } },
+        delete: { tags: ["admin"], summary: "Delete a dataset; recorded runs stay (admin role)", parameters: [idParam("id")], responses: { "204": { description: "Deleted" }, ...errors(401, 403, 404) } },
+      },
+      "/v1/admin/eval-jobs": {
+        get: { tags: ["admin"], summary: "Evals started on this gateway, newest first (kept in memory; admin role)", responses: { "200": json({ type: "object", properties: { jobs: { type: "array", items: ref("EvalJob") } } }), ...errors(401, 403, 404) } },
+        post: { tags: ["admin"], summary: "Run a stored dataset through the agent and record the scores; one eval at a time (admin role)", requestBody: body(startEvalJobBody), responses: { "202": json({ type: "object", properties: { job: ref("EvalJob") } }, "Started"), ...errors(400, 401, 403, 404, 409) } },
+      },
+      "/v1/admin/eval-jobs/{id}": {
+        get: { tags: ["admin"], summary: "Progress of an eval job (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { job: ref("EvalJob") } }), ...errors(401, 403, 404) } },
+      },
+      "/v1/admin/eval-jobs/{id}/cancel": {
+        post: { tags: ["admin"], summary: "Cancel a running eval; nothing is recorded (admin role)", parameters: [idParam("id")], responses: { "200": json({ type: "object", properties: { job: ref("EvalJob") } }), ...errors(401, 403, 404, 409) } },
+      },
       "/v1/admin/providers": {
         get: {
           tags: ["admin"], summary: "Model providers added from the dashboard, and which one new runs use (admin role, ADR-0019)",
@@ -232,6 +251,21 @@ export function openApiSpec(options: { version: string; maxInputChars: number })
             name: str, input: str, actualOutput: str, expectedOutput: str, language: str, sessionId: str, runId: str,
             toolsCalled: { type: "array", items: str }, expectedTools: { type: "array", items: str },
             success: { type: "boolean", description: "Every metric passed" }, metrics: { type: "array", items: ref("EvalMetric") },
+          },
+        },
+        EvalDataset: {
+          type: "object",
+          required: ["id", "name", "goldenCount", "createdAt", "updatedAt"],
+          properties: { id: str, name: str, description: str, goldenCount: { type: "integer" }, goldens: { type: "array", description: "Only on single-dataset responses", items: { type: "object" } }, createdBy: str, createdAt: time, updatedAt: time },
+        },
+        EvalJob: {
+          type: "object",
+          required: ["id", "status", "name", "datasetId", "datasetName", "metrics", "judgeLanguage", "total", "done", "passed", "startedAt"],
+          properties: {
+            id: str, status: { enum: ["queued", "running", "completed", "failed", "cancelled"] }, name: str, datasetId: str, datasetName: str,
+            metrics: { type: "array", items: { enum: ["correctness", "answer_relevancy", "fluency", "conversation", "tool_correctness", "language_match"] } },
+            judgeModel: str, judgeLanguage: { enum: ["bn", "en"] }, total: { type: "integer" }, done: { type: "integer" }, passed: { type: "integer" },
+            startedBy: str, startedAt: time, finishedAt: time, evalId: { type: "string", description: "The recorded eval run, once completed" }, error: str,
           },
         },
         ProviderProfile: {

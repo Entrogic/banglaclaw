@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { ApiKeyAuthenticator } from "@entrogic-net/auth";
 import { startGateway, type A2aOptions, type RunningGateway } from "@entrogic-net/gateway";
+import { EvalJobRunner } from "@entrogic-net/evals";
 import { Metrics } from "@entrogic-net/observability";
 import { BanglaClawError, ConfigError, createLogger, parseLogLevel, type BanglaClawConfig } from "@entrogic-net/shared";
 import { createRuntime, type GlobalOptions } from "../bootstrap.js";
@@ -72,6 +73,18 @@ export async function serve(options: GlobalOptions & { port?: string; host?: str
       deliver: createDeliver(services.loaded, logger),
       audit: services.audit,
       evals: services.evals,
+      evalDatasets: services.evalDatasets,
+      evalRunner: new EvalJobRunner({
+        runtime: bundle.runtime,
+        sessions: services.sessions,
+        evals: services.evals,
+        datasets: services.evalDatasets,
+        agentName: config.agent.name,
+        agentModel: () => bundle.providers.current().id,
+        judge: (id) => bundle.providers.providerFor(id),
+        version: VERSION,
+        logger,
+      }),
       providers: bundle.providers,
       pricing: config.pricing,
       timezone: config.timezone,

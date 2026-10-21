@@ -3,7 +3,7 @@ import type { AgentRuntime } from "@entrogic-net/agent";
 import type { KnowledgeBase, LongTermMemory } from "@entrogic-net/knowledge";
 import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
 import type { Deliver, RunStore, Session, SessionStore } from "@entrogic-net/session";
-import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type EvalStore, type Logger, type ProviderAdmin, type Transcriber } from "@entrogic-net/shared";
+import { ConcurrencyLimiter, RateLimiter, type AuditStore, type BanglaClawConfig, type EvalDatasetStore, type EvalRunner, type EvalStore, type Logger, type ProviderAdmin, type Transcriber } from "@entrogic-net/shared";
 import type { SkillSet } from "@entrogic-net/skills";
 import type { PermissionPolicy, ToolRegistry } from "@entrogic-net/tools";
 import { HttpError } from "./errors.js";
@@ -71,6 +71,9 @@ export interface GatewayDeps {
   audit?: AuditStore;
   /** Evaluation results (DeepEval harness, docs/26) at /v1/admin/evals; absent = those routes answer 404. */
   evals?: EvalStore;
+  /** Stored eval datasets (/v1/admin/eval-datasets) and the runner that runs them from the dashboard (/v1/admin/eval-jobs, ADR-0020). */
+  evalDatasets?: EvalDatasetStore;
+  evalRunner?: EvalRunner;
   /** Model providers managed from the dashboard (ADR-0019) at /v1/admin/providers; absent = those routes answer 404. */
   providers?: ProviderAdmin;
   /** Prometheus metrics served at GET /metrics (bearer `token` required when set). */

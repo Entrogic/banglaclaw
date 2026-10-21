@@ -411,6 +411,60 @@ describe("admin API and dashboard", () => {
     expect(((await (await disabled.request("/v1/admin/evals", get(plainAdmin))).json()) as { error: { code: string } }).error.code).toBe("evals_disabled");
   });
 
+  it("stores datasets and runs them as eval jobs from the API", async () => {
+    const { InMemoryAuditStore, InMemoryEvalDatasetStore, InMemoryEvalStore } = await import("@entrogic-net/shared");
+    const { EvalJobRunner } = await import("@entrogic-net/evals");
+    const { FakeProvider: Fake } = await import("@entrogic-net/providers");
+    const { deps, alice } = await makeDeps({ script: [{ content: "বাংলাদেশের রাজধানী ঢাকা।" }] });
+    const evals = new InMemoryEvalStore();
+    const evalDatasets = new InMemoryEvalDatasetStore();
+    const judge = Object.assign(new Fake([{ content: '{"score": 8, "reason": "ঠিক"}' }, { content: '{"score": 9}' }]), { id: "judge:fake" });
+    const evalRunner = new EvalJobRunner({ runtime: deps.runtime, sessions: deps.sessions, evals, datasets: evalDatasets, agentName: "banglaclaw", agentModel: () => "fake:scripted", judge: async (id) => (id === undefined ? judge : undefined), logger: silent });
+    const audit = new InMemoryAuditStore();
+    const app = createGatewayApp({ ...deps, audit, evals, evalDatasets, evalRunner });
+    const admin = (await deps.auth.issueKey("root", "console", "admin")).token;
+    const send = (method: string, path: string, body?: unknown) => app.request(path, { method, headers: { Authorization: `Bearer ${admin}`, "Content-Type": "application/json" }, ...(body !== undefined && { body: JSON.stringify(body) }) });
+
+    const source = "goldens:\n  - name: capital-bn\n    input: বাংলাদেশের রাজধানীর নাম কী?\n    expected_output: ঢাকা\n    expected_tools: []\n";
+    expect((await app.request("/v1/admin/eval-datasets", json(alice, { name: "x", source }))).status).toBe(403);
+    expect((await send("POST", "/v1/admin/eval-datasets", { name: "x", source, goldens: [{ input: "a" }] })).status).toBe(400);
+    const bad = await send("POST", "/v1/admin/eval-datasets", { name: "x", source: "goldens:\n  - input: ''\n" });
+    expect(((await bad.json()) as { error: { code: string; message: string } }).error).toMatchObject({ code: "invalid_dataset", message: expect.stringContaining("goldens[0].input") });
+
+    const created = await send("POST", "/v1/admin/eval-datasets", { name: "smoke", description: "ছোট", source });
+    expect(created.status).toBe(201);
+    const { dataset } = (await created.json()) as { dataset: { id: string; goldenCount: number; goldens: { name: string }[] } };
+    expect(dataset).toMatchObject({ goldenCount: 1, goldens: [{ name: "capital-bn" }] });
+    expect((await send("POST", "/v1/admin/eval-datasets", { name: "smoke", goldens: [{ input: "a" }] })).status).toBe(409);
+    const list = (await (await send("GET", "/v1/admin/eval-datasets")).json()) as { datasets: Record<string, unknown>[] };
+    expect(list.datasets).toEqual([expect.objectContaining({ name: "smoke", goldenCount: 1 })]);
+    expect(list.datasets[0]).not.toHaveProperty("goldens");
+
+    expect((await send("POST", "/v1/admin/eval-jobs", { datasetId: dataset.id, judgeProviderId: "00000000-0000-4000-8000-000000000000" })).status).toBe(404);
+    const started = await send("POST", "/v1/admin/eval-jobs", { datasetId: dataset.id, metrics: ["correctness", "tool_correctness", "language_match"], judgeLanguage: "en" });
+    expect(started.status).toBe(202);
+    const { job } = (await started.json()) as { job: { id: string; status: string; total: number } };
+    expect(job).toMatchObject({ status: "running", total: 1 });
+    expect((await send("POST", "/v1/admin/eval-jobs", { datasetId: dataset.id })).status).toBe(409);
+
+    const finished = await evalRunner.wait(job.id);
+    expect(finished).toMatchObject({ status: "completed", passed: 1 });
+    const polled = (await (await send("GET", `/v1/admin/eval-jobs/${job.id}`)).json()) as { job: { evalId: string } };
+    const detail = (await (await send("GET", `/v1/admin/evals/${polled.job.evalId}`)).json()) as { eval: { framework: string; judgeModel: string }; cases: { metrics: { name: string; score?: number }[] }[] };
+    expect(detail.eval).toMatchObject({ framework: "banglaclaw", judgeModel: "judge:fake" });
+    expect(detail.cases[0]?.metrics).toEqual([expect.objectContaining({ name: "Correctness", score: 0.8 }), expect.objectContaining({ name: "Tool Correctness", score: 1 }), expect.objectContaining({ name: "Language Match", score: 1 })]);
+    expect((await send("POST", `/v1/admin/eval-jobs/${job.id}/cancel`)).status).toBe(409);
+    expect(((await (await send("GET", "/v1/admin/eval-jobs")).json()) as { jobs: unknown[] }).jobs).toHaveLength(1);
+
+    const renamed = await send("PUT", `/v1/admin/eval-datasets/${dataset.id}`, { name: "smoke-2", description: null });
+    expect(((await renamed.json()) as { dataset: { name: string } }).dataset.name).toBe("smoke-2");
+    expect((await send("DELETE", `/v1/admin/eval-datasets/${dataset.id}`)).status).toBe(204);
+    expect((await audit.list()).map((e) => e.action).filter((a) => a.startsWith("eval."))).toEqual(["eval.dataset_deleted", "eval.dataset_saved", "eval.started", "eval.dataset_saved"]);
+
+    const plainAdmin = (await deps.auth.issueKey("root2", "ci", "admin")).token;
+    expect(((await (await createGatewayApp(deps).request("/v1/admin/eval-jobs", get(plainAdmin))).json()) as { error: { code: string } }).error.code).toBe("evals_disabled");
+  });
+
   it("lets admins add, test and switch model providers without leaking keys", async () => {
     const { ConfigError, InMemoryAuditStore, InMemoryProviderStore } = await import("@entrogic-net/shared");
     const { SecretBox } = await import("@entrogic-net/auth");

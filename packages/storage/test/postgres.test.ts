@@ -5,7 +5,7 @@ import { AgentRuntime } from "@entrogic-net/agent";
 import { FakeProvider } from "@entrogic-net/providers";
 import { ApiKeyAuthenticator } from "@entrogic-net/auth";
 import { SessionManager, type RunRecord } from "@entrogic-net/session";
-import { DuplicateProviderNameError, createLogger, newProviderId } from "@entrogic-net/shared";
+import { DuplicateDatasetNameError, DuplicateProviderNameError, createLogger, newProviderId } from "@entrogic-net/shared";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { PostgresStorage } from "../src/index.js";
 
@@ -27,7 +27,7 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
 
   beforeEach(async () => {
     await storage.pool.query(
-      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, audit_logs, eval_runs, eval_cases, model_providers, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
+      "TRUNCATE users, api_keys, sessions, runs, messages, tool_calls, audit_logs, eval_runs, eval_cases, eval_datasets, model_providers, checkpoints, checkpoint_blobs, checkpoint_writes CASCADE",
     );
   });
 
@@ -195,6 +195,21 @@ describe.skipIf(url === undefined)("PostgresStorage", () => {
     expect(await providers.active()).toBeUndefined();
     expect(await providers.delete(a.id)).toBe(true);
     expect(await providers.get(a.id)).toBeUndefined();
+  });
+
+  it("stores eval datasets with unique names", async () => {
+    const { evalDatasets } = storage;
+    const goldens = [{ name: "multiply-bn", input: "৬ গুণ ৭ কত?", expected_tools: ["calculator"], turns: ["হ্যালো"] }];
+    const created = await evalDatasets.create({ name: "smoke", description: "ছোট সেট", goldens, createdBy: "u1" });
+    expect(created).toMatchObject({ name: "smoke", description: "ছোট সেট", goldens, createdBy: "u1" });
+    await expect(evalDatasets.create({ name: "smoke", goldens })).rejects.toThrow(DuplicateDatasetNameError);
+    const updated = await evalDatasets.update(created.id, { description: null, goldens: [{ name: "a", input: "b" }] });
+    expect(updated).not.toHaveProperty("description");
+    expect(updated?.goldens).toEqual([{ name: "a", input: "b" }]);
+    expect((await evalDatasets.list()).map((d) => d.name)).toEqual(["smoke"]);
+    expect(await evalDatasets.get("nope")).toBeUndefined();
+    expect(await evalDatasets.delete(created.id)).toBe(true);
+    expect(await evalDatasets.get(created.id)).toBeUndefined();
   });
 
   it("round-trips messages including tool calls, oldest first", async () => {

@@ -1,0 +1,60 @@
+{
+  "name": "@entrogic-net/evals",
+  "version": "1.6.0",
+  "description": "Built-in evaluations for BanglaClaw: run datasets through the agent and score answers with Bangla-aware judge prompts",
+  "keywords": [
+    "banglaclaw",
+    "bangla",
+    "bengali",
+    "banglish",
+    "ai-agent",
+    "evals",
+    "llm-as-a-judge"
+  ],
+  "license": "Apache-2.0",
+  "author": "Entrogic",
+  "homepage": "https://github.com/Entrogic/banglaclaw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Entrogic/banglaclaw.git",
+    "directory": "packages/evals"
+  },
+  "bugs": {
+    "url": "https://github.com/Entrogic/banglaclaw/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "@banglaclaw/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@entrogic-net/agent": "workspace:*",
+    "@entrogic-net/providers": "workspace:*",
+    "@entrogic-net/session": "workspace:*",
+    "@entrogic-net/shared": "workspace:*",
+    "@langchain/core": "^1.2.12",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@entrogic-net/tools": "workspace:*"
+  }
+}

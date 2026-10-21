@@ -14,7 +14,8 @@ import { ApiKeyAuthenticator, InMemoryAuthStore, SecretBox } from "@entrogic-net
 import { startGateway } from "@entrogic-net/gateway";
 import { FakeProvider, ProviderManager, type ModelCallOptions, type ModelProvider, type ScriptedTurn } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
+import { EvalJobRunner } from "@entrogic-net/evals";
+import { InMemoryEvalDatasetStore, InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { Workspace, createWorkspaceTools } from "@entrogic-net/workspace";
@@ -75,12 +76,20 @@ host.get("/e2e/host.html", (c) =>
   c.html(`<!doctype html><html lang="bn"><head><meta charset="utf-8"><title>Dokan</title></head><body><h1>Dokan</h1><script src="http://127.0.0.1:${port}/widget.js" async></script></body></html>`),
 );
 
+const evals = new InMemoryEvalStore();
+const evalDatasets = new InMemoryEvalDatasetStore();
+// Dashboard evals use the deterministic agent and a judge that always answers 9/10.
+const judge = { id: "judge:e2e", chat: () => new FakeProvider([{ content: '{"score": 9, "reason": "সঠিক"}' }]).chat([]), stream: () => new FakeProvider([]).stream([]) };
+const evalRunner = new EvalJobRunner({ runtime, sessions, evals, datasets: evalDatasets, agentName: "banglaclaw", agentModel: () => provider.id, judge: async () => judge, logger });
+
 const gateway = await startGateway({
   runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]),
   agent: { name: "banglaclaw", model: provider.id },
   config: { host: "127.0.0.1", port, corsOrigins: [], maxInputChars: 4_000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 10_000, maxConcurrentRuns: 10 } },
   version: "e2e", logger, timezone: "Asia/Dhaka",
-  evals: new InMemoryEvalStore(),
+  evals,
+  evalDatasets,
+  evalRunner,
   // Profiles only drive the dashboard here: runs stay on the deterministic provider, and tests never reach a model.
   providers: await ProviderManager.open({
     store: new InMemoryProviderStore(), cipher: new SecretBox("e2e-secret-key-that-is-long-enough-000"), persistent: false,

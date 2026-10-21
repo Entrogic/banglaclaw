@@ -50,6 +50,7 @@
   "devDependencies": {
     "@entrogic-net/agent": "workspace:*",
     "@entrogic-net/auth": "workspace:*",
+    "@entrogic-net/evals": "workspace:*",
     "@entrogic-net/gateway": "workspace:*",
     "@entrogic-net/providers": "workspace:*",
     "@entrogic-net/session": "workspace:*",

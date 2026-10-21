@@ -6,7 +6,8 @@ import { BanglaClawClient } from "@entrogic-net/client";
 import { createGatewayApp } from "@entrogic-net/gateway";
 import { FakeProvider, ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryAuditStore, InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
+import { EvalJobRunner } from "@entrogic-net/evals";
+import { InMemoryAuditStore, InMemoryEvalDatasetStore, InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { App } from "../src/App";
@@ -30,8 +31,12 @@ async function setup() {
     store: new InMemoryProviderStore(), persistent: false, logger: silent, config: { provider: "openai-compatible", model: "gpt-4o-mini" }, secrets: { openaiApiKey: "sk-test-000000000000" },
     build: (model) => Object.assign(new FakeProvider([{ content: "OK" }]), { id: `${model.provider}:${model.model ?? ""}` }),
   });
+  // The eval runner gets its own agent so it never competes with the scripted turns above.
+  const evalDatasets = new InMemoryEvalDatasetStore();
+  const evalAgent = new AgentRuntime({ provider: new FakeProvider(Array.from({ length: 10 }, () => ({ content: "উত্তর ৪২" }))), registry, policy, sessions, runs, limits: { maxIterations: 4, maxToolCalls: 4 }, timeoutMs: 5_000, timezone: "Asia/Dhaka", logger: silent });
+  const evalRunner = new EvalJobRunner({ runtime: evalAgent, sessions, evals, datasets: evalDatasets, agentName: "banglaclaw", agentModel: () => provider.id, judge: async () => Object.assign(new FakeProvider(Array.from({ length: 10 }, () => ({ content: '{"score": 9, "reason": "সঠিক"}' }))), { id: "judge:fake" }), logger: silent });
   const app = createGatewayApp({
-    runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id }, providers,
+    runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id }, providers, evalDatasets, evalRunner,
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: false, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
     version: "test", logger: silent, timezone: "Asia/Dhaka", audit, evals, pricing: { [provider.id]: { input: 1, output: 2 } },
   });
@@ -225,6 +230,32 @@ describe("dashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirm delete" }));
     await waitFor(() => expect(window.location.pathname).toBe("/admin/evals"));
     expect(await evals.get(run.id)).toBeUndefined();
+  });
+
+  it("saves a dataset and runs an eval from the Evals page", async () => {
+    const { fetchViaApp, adminToken } = await setup();
+    sessionStorage.setItem("banglaclaw.adminKey", adminToken);
+    window.history.replaceState(null, "", "/admin/evals");
+    render(<App fetch={fetchViaApp} />);
+
+    const datasetForm = await screen.findByRole("form", { name: "Add a dataset" });
+    fireEvent.click(within(datasetForm).getByRole("button", { name: "Use the sample" }));
+    expect((within(datasetForm).getByLabelText(/Goldens/) as HTMLTextAreaElement).value).toContain("multiply-bn");
+    fireEvent.change(within(datasetForm).getByLabelText(/Goldens/), { target: { value: "goldens:\n  - name: answer-bn\n    input: ৬ গুণ ৭ কত?\n    expected_output: ৪২\n" } });
+    fireEvent.change(within(datasetForm).getByLabelText("Name"), { target: { value: "tiny" } });
+    fireEvent.click(within(datasetForm).getByRole("button", { name: "Save dataset" }));
+    expect(await screen.findByRole("cell", { name: "tiny" })).toBeTruthy();
+
+    const runForm = screen.getByRole("form", { name: "Run an eval" });
+    await waitFor(() => expect((within(runForm).getByLabelText("Dataset") as HTMLSelectElement).textContent).toContain("tiny (1)"));
+    fireEvent.click(within(runForm).getByLabelText("Bangla fluency"));
+    fireEvent.click(within(runForm).getByRole("button", { name: "Start eval" }));
+    const open = await screen.findByRole("link", { name: "Open the run" }, { timeout: 5_000 });
+    expect(within(runForm).getByRole("status").textContent).toContain("1/1 passed");
+
+    fireEvent.click(open);
+    expect(await screen.findByText("answer-bn")).toBeTruthy();
+    expect(screen.getAllByText(/Bangla Fluency/).length).toBeGreaterThan(0);
   });
 
   it("adds a provider from a preset, tests it, switches to it and back", async () => {

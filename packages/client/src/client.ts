@@ -1,4 +1,4 @@
-import type { ActiveProvider, AdminKey, AdminSession, AdminStats, AuditEvent, EvalCase, EvalRun, Features, KnowledgeHit, Me, Memory, Message, NewEvalRun, NewProvider, ProviderList, ProviderPatch, ProviderProfile, ProviderTestResult, Run, RunResponse, Session, SessionEvent, StreamEvent, WorkspaceEntry } from "./types.js";
+import type { ActiveProvider, AdminKey, AdminSession, AdminStats, AuditEvent, EvalCase, EvalDataset, EvalJob, EvalRun, Features, KnowledgeHit, Me, Memory, Message, NewEvalDataset, NewEvalRun, NewProvider, ProviderList, ProviderPatch, ProviderProfile, ProviderTestResult, Run, RunResponse, Session, SessionEvent, StartEvalJob, StreamEvent, WorkspaceEntry } from "./types.js";
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -241,6 +241,17 @@ export class BanglaClawClient {
     eval: (id: string): Promise<{ eval: EvalRun; cases: EvalCase[] }> => this.#json("GET", `/v1/admin/evals/${enc(id)}`),
     recordEval: (body: NewEvalRun): Promise<{ eval: EvalRun }> => this.#json("POST", "/v1/admin/evals", body),
     deleteEval: (id: string): Promise<void> => this.#json("DELETE", `/v1/admin/evals/${enc(id)}`),
+    /** Datasets stored on the gateway, to run from the dashboard (ADR-0020). */
+    evalDatasets: (): Promise<{ datasets: EvalDataset[] }> => this.#json("GET", "/v1/admin/eval-datasets"),
+    evalDataset: (id: string): Promise<{ dataset: EvalDataset }> => this.#json("GET", `/v1/admin/eval-datasets/${enc(id)}`),
+    createEvalDataset: (body: NewEvalDataset): Promise<{ dataset: EvalDataset }> => this.#json("POST", "/v1/admin/eval-datasets", body),
+    updateEvalDataset: (id: string, body: { name?: string; description?: string | null; goldens?: NewEvalDataset["goldens"]; source?: string }): Promise<{ dataset: EvalDataset }> => this.#json("PUT", `/v1/admin/eval-datasets/${enc(id)}`, body),
+    deleteEvalDataset: (id: string): Promise<void> => this.#json("DELETE", `/v1/admin/eval-datasets/${enc(id)}`),
+    /** Runs a dataset through the agent on the gateway; real model calls (agent and judge). */
+    startEval: (body: StartEvalJob): Promise<{ job: EvalJob }> => this.#json("POST", "/v1/admin/eval-jobs", body),
+    evalJobs: (): Promise<{ jobs: EvalJob[] }> => this.#json("GET", "/v1/admin/eval-jobs"),
+    evalJob: (id: string): Promise<{ job: EvalJob }> => this.#json("GET", `/v1/admin/eval-jobs/${enc(id)}`),
+    cancelEval: (id: string): Promise<{ job: EvalJob }> => this.#json("POST", `/v1/admin/eval-jobs/${enc(id)}/cancel`, {}),
     /** Model providers added from the dashboard, and which one new runs use (ADR-0019). */
     providers: (): Promise<ProviderList> => this.#json("GET", "/v1/admin/providers"),
     createProvider: (body: NewProvider): Promise<{ provider: ProviderProfile }> => this.#json("POST", "/v1/admin/providers", body),

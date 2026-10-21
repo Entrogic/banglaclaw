@@ -23,8 +23,8 @@ function toProfile(r: Row): ProviderProfile {
   };
 }
 
-/** Postgres unique_violation on the name column. */
-function isDuplicateName(error: unknown): boolean {
+/** Postgres unique_violation on a name column. */
+export function isDuplicateName(error: unknown): boolean {
   const cause = error instanceof Error && "cause" in error ? error.cause : error;
   return typeof cause === "object" && cause !== null && "code" in cause && cause.code === "23505" && "constraint" in cause && String(cause.constraint).includes("name");
 }

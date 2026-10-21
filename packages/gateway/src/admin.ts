@@ -5,10 +5,10 @@ import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { ApiKeyAuthenticator, Principal } from "@entrogic-net/auth";
 import { windowStart, type RunStats } from "@entrogic-net/session";
-import type { EvalRun, EvalStore, NewAuditEvent, ProviderAdmin } from "@entrogic-net/shared";
+import { parseGoldens, type EvalDataset, type EvalDatasetStore, type EvalRun, type EvalRunner, type EvalStore, type NewAuditEvent, type ProviderAdmin } from "@entrogic-net/shared";
 import type { GatewayDeps } from "./context.js";
 import { HttpError } from "./errors.js";
-import { activeProviderBody, createProviderBody, evalRunBody, limitQuery, updateProviderBody } from "./schemas.js";
+import { activeProviderBody, createDatasetBody, createProviderBody, evalRunBody, limitQuery, startEvalJobBody, updateDatasetBody, updateProviderBody } from "./schemas.js";
 import { messageJson, runJson, sessionJson } from "./serialize.js";
 
 export type Pricing = Record<string, { input: number; output: number }>;
@@ -35,6 +35,11 @@ export const EVAL_BODY_LIMIT = 10 * 1024 * 1024;
 
 export function evalRunJson(r: EvalRun) {
   return { ...r, createdAt: r.createdAt.toISOString() };
+}
+
+export function datasetJson(d: EvalDataset, withGoldens: boolean) {
+  const { goldens, createdAt, updatedAt, ...rest } = d;
+  return { ...rest, goldenCount: goldens.length, ...(withGoldens && { goldens }), createdAt: createdAt.toISOString(), updatedAt: updatedAt.toISOString() };
 }
 
 type Env = { Variables: { principal: Principal; requestId: string; ip: string | undefined } };
@@ -167,6 +172,79 @@ export function adminRoutes(
     const principal = c.get("principal");
     helpers.audit(c, { action: "eval.deleted", outcome: "success", actorId: principal.user.id, actorName: principal.user.name, target: c.req.param("id") });
     return c.body(null, 204);
+  });
+
+  const datasets = (): EvalDatasetStore => {
+    if (deps.evalDatasets === undefined) throw new HttpError(404, "evals_disabled", "Eval datasets are not stored on this gateway");
+    return deps.evalDatasets;
+  };
+  const runner = (): EvalRunner => {
+    if (deps.evalRunner === undefined) throw new HttpError(404, "evals_disabled", "This gateway cannot run evals");
+    return deps.evalRunner;
+  };
+  const evalLimit = bodyLimit({ maxSize: EVAL_BODY_LIMIT, onError: () => { throw new HttpError(413, "payload_too_large", "Dataset too large"); } });
+  const actor = (c: Context) => {
+    const principal = c.get("principal");
+    return { actorId: principal.user.id, actorName: principal.user.name };
+  };
+
+  app.get("/eval-datasets", async (c) => c.json({ datasets: (await datasets().list()).map((d) => datasetJson(d, false)) }));
+
+  app.post("/eval-datasets", evalLimit, async (c) => {
+    const body = await helpers.parseJson(c, createDatasetBody);
+    const goldens = parseGoldens(body.source ?? body.goldens);
+    const dataset = await datasets().create({ name: body.name, goldens, ...(body.description !== undefined && body.description !== "" && { description: body.description }), createdBy: c.get("principal").user.id });
+    helpers.audit(c, { action: "eval.dataset_saved", outcome: "success", ...actor(c), target: dataset.id, metadata: { name: dataset.name, goldens: goldens.length } });
+    return c.json({ dataset: datasetJson(dataset, true) }, 201);
+  });
+
+  app.get("/eval-datasets/:id", async (c) => {
+    const dataset = await datasets().get(c.req.param("id"));
+    if (dataset === undefined) throw new HttpError(404, "dataset_not_found", "Dataset not found");
+    return c.json({ dataset: datasetJson(dataset, true) });
+  });
+
+  app.put("/eval-datasets/:id", evalLimit, async (c) => {
+    const body = await helpers.parseJson(c, updateDatasetBody);
+    const content = body.source ?? body.goldens;
+    const dataset = await datasets().update(c.req.param("id"), {
+      ...(body.name !== undefined && { name: body.name }),
+      ...(body.description !== undefined && { description: body.description === "" ? null : body.description }),
+      ...(content !== undefined && { goldens: parseGoldens(content) }),
+    });
+    if (dataset === undefined) throw new HttpError(404, "dataset_not_found", "Dataset not found");
+    helpers.audit(c, { action: "eval.dataset_saved", outcome: "success", ...actor(c), target: dataset.id, metadata: { name: dataset.name, goldens: dataset.goldens.length } });
+    return c.json({ dataset: datasetJson(dataset, true) });
+  });
+
+  app.delete("/eval-datasets/:id", async (c) => {
+    if (!(await datasets().delete(c.req.param("id")))) throw new HttpError(404, "dataset_not_found", "Dataset not found");
+    helpers.audit(c, { action: "eval.dataset_deleted", outcome: "success", ...actor(c), target: c.req.param("id") });
+    return c.body(null, 204);
+  });
+
+  app.get("/eval-jobs", (c) => c.json({ jobs: runner().list() }));
+
+  /** Starts an eval in the gateway process: real model calls (agent and judge), so it costs money. */
+  app.post("/eval-jobs", async (c) => {
+    const body = await helpers.parseJson(c, startEvalJobBody);
+    const job = await runner().start({ ...body, startedBy: c.get("principal").user.id });
+    helpers.audit(c, { action: "eval.started", outcome: "success", ...actor(c), target: job.id, metadata: { dataset: job.datasetName, goldens: job.total, metrics: job.metrics.join(","), ...(job.judgeModel !== undefined && { judge: job.judgeModel }) } });
+    return c.json({ job }, 202);
+  });
+
+  app.get("/eval-jobs/:id", (c) => {
+    const job = runner().get(c.req.param("id"));
+    if (job === undefined) throw new HttpError(404, "eval_job_not_found", "Eval job not found");
+    return c.json({ job });
+  });
+
+  app.post("/eval-jobs/:id/cancel", (c) => {
+    const id = c.req.param("id");
+    if (runner().get(id) === undefined) throw new HttpError(404, "eval_job_not_found", "Eval job not found");
+    if (!runner().cancel(id)) throw new HttpError(409, "eval_not_running", "The eval is not running");
+    helpers.audit(c, { action: "eval.cancelled", outcome: "success", ...actor(c), target: id });
+    return c.json({ job: runner().get(id) });
   });
 
   const providers = (): ProviderAdmin => {

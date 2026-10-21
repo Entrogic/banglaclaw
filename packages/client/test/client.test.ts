@@ -4,7 +4,8 @@ import { ApiKeyAuthenticator, InMemoryAuthStore } from "@entrogic-net/auth";
 import { createGatewayApp } from "@entrogic-net/gateway";
 import { FakeProvider, ProviderManager } from "@entrogic-net/providers";
 import { InMemoryRunStore, InMemorySessionStore } from "@entrogic-net/session";
-import { InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
+import { EvalJobRunner } from "@entrogic-net/evals";
+import { InMemoryEvalDatasetStore, InMemoryEvalStore, InMemoryProviderStore, createLogger } from "@entrogic-net/shared";
 import { SkillSet } from "@entrogic-net/skills";
 import { AllowlistPolicy, ToolRegistry, builtinTools } from "@entrogic-net/tools";
 import { BanglaClawApiError, BanglaClawClient, parseSSE, type StreamEvent } from "../src/index.js";
@@ -29,10 +30,13 @@ async function setup() {
   const auth = new ApiKeyAuthenticator(new InMemoryAuthStore());
   const { token } = await auth.issueKey("sdk-user");
   const { token: adminToken } = await auth.issueKey("sdk-admin", "admin", "admin");
+  const evals = new InMemoryEvalStore();
+  const evalDatasets = new InMemoryEvalDatasetStore();
+  const evalRunner = new EvalJobRunner({ runtime, sessions, evals, datasets: evalDatasets, agentName: "banglaclaw", agentModel: () => provider.id, judge: async () => undefined, logger: silent });
   const app = createGatewayApp({
     runtime, sessions, runs, auth, registry, policy, skills: new SkillSet([]), agent: { name: "banglaclaw", model: provider.id },
     config: { host: "127.0.0.1", port: 0, corsOrigins: [], maxInputChars: 1000, trustProxy: false, metrics: true, rateLimit: { requestsPerMinute: 1000, maxConcurrentRuns: 2 } },
-    version: "1.0.0", logger: silent, evals: new InMemoryEvalStore(), providers,
+    version: "1.0.0", logger: silent, evals, evalDatasets, evalRunner, providers,
   });
   const fetchViaApp = async (url: string, init?: RequestInit) => app.request(url.replace("http://gateway.test", ""), init);
   return {
@@ -40,6 +44,7 @@ async function setup() {
     admin: new BanglaClawClient({ baseUrl: "http://gateway.test", apiKey: adminToken, fetch: fetchViaApp }),
     fetchViaApp,
     sessions,
+    evalRunner,
   };
 }
 
@@ -95,6 +100,26 @@ describe("BanglaClawClient", () => {
     expect((await admin.admin.activateProvider(null)).active.source).toBe("config");
     await admin.admin.deleteProvider(provider.id);
     await expect(admin.admin.createProvider({ name: "Claude", provider: "anthropic", model: "claude-sonnet-5", apiKey: "sk-ant-xxxxxxxxxxxxxxxx" })).rejects.toMatchObject({ status: 400, code: "invalid_provider" });
+  });
+
+  it("stores a dataset and runs it as an eval job", async () => {
+    const { admin, evalRunner } = await setup();
+    const { dataset } = await admin.admin.createEvalDataset({ name: "smoke", source: "- name: multiply-en\n  input: What is 6 times 7?\n  expected_tools: [calculator]\n" });
+    expect(dataset).toMatchObject({ name: "smoke", goldenCount: 1 });
+    expect((await admin.admin.evalDatasets()).datasets.map((d) => d.id)).toEqual([dataset.id]);
+    expect((await admin.admin.evalDataset(dataset.id)).dataset.goldens?.[0]?.name).toBe("multiply-en");
+    // No judge provider here: deterministic metrics only.
+    await expect(admin.admin.startEval({ datasetId: dataset.id })).rejects.toMatchObject({ status: 404, code: "provider_not_found" });
+    const { job } = await admin.admin.startEval({ datasetId: dataset.id, metrics: ["tool_correctness", "language_match"] });
+    await evalRunner.wait(job.id);
+    const { job: done } = await admin.admin.evalJob(job.id);
+    expect(done).toMatchObject({ status: "completed", total: 1, passed: 1 });
+    expect((await admin.admin.eval(done.evalId ?? "")).eval.framework).toBe("banglaclaw");
+    expect((await admin.admin.evalJobs()).jobs).toHaveLength(1);
+    await expect(admin.admin.cancelEval(job.id)).rejects.toMatchObject({ status: 409 });
+    await admin.admin.updateEvalDataset(dataset.id, { description: "ছোট সেট" });
+    await admin.admin.deleteEvalDataset(dataset.id);
+    expect((await admin.admin.evalDatasets()).datasets).toEqual([]);
   });
 
   it("renames, searches and deletes sessions, and reports features", async () => {

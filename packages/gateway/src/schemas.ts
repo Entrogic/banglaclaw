@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ProviderIdSchema } from "@entrogic-net/shared";
+import { BUILTIN_EVAL_METRICS, ProviderIdSchema } from "@entrogic-net/shared";
 
 export function runBody(maxInputChars: number) {
   return z.strictObject({
@@ -94,3 +94,32 @@ export const updateProviderBody = z
 
 /** PUT /v1/admin/providers/active: a profile id, or null for the config provider. */
 export const activeProviderBody = z.strictObject({ id: z.uuid().nullable() });
+
+const datasetName = z.string().trim().min(1).max(100);
+const datasetDescription = z.string().trim().max(500);
+/** Goldens as a list (validated by `parseGoldens`) or as YAML/JSON text, e.g. a harness dataset file. */
+const datasetContent = { goldens: z.array(z.unknown()).min(1).max(500).optional(), source: z.string().min(1).max(5_000_000).optional() };
+
+/** POST /v1/admin/eval-datasets: exactly one of `goldens` or `source`. */
+export const createDatasetBody = z
+  .strictObject({ name: datasetName, description: datasetDescription.optional(), ...datasetContent })
+  .refine((b) => (b.goldens === undefined) !== (b.source === undefined), "Send either goldens or source");
+
+/** PUT /v1/admin/eval-datasets/:id: `description: null` clears it; goldens or source replace them. */
+export const updateDatasetBody = z
+  .strictObject({ name: datasetName.optional(), description: datasetDescription.nullable().optional(), ...datasetContent })
+  .refine((b) => b.goldens === undefined || b.source === undefined, "Send goldens or source, not both")
+  .refine((b) => Object.keys(b).length > 0, "Nothing to update");
+
+const metric = z.enum(BUILTIN_EVAL_METRICS);
+
+/** POST /v1/admin/eval-jobs: run a stored dataset through the agent (ADR-0020). */
+export const startEvalJobBody = z.strictObject({
+  datasetId: z.uuid(),
+  name: z.string().trim().min(1).max(100).optional(),
+  metrics: z.array(metric).min(1).optional(),
+  /** A provider profile for the judge; absent = the agent's current provider. */
+  judgeProviderId: z.uuid().optional(),
+  judgeLanguage: z.enum(["bn", "en"]).optional(),
+  thresholds: z.partialRecord(metric, z.number().min(0).max(1)).optional(),
+});

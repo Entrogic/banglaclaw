@@ -101,6 +101,8 @@ describe("ProviderManager", () => {
     expect(await manager.list()).toEqual([]);
     expect(await manager.update("missing", { model: "x" })).toBeUndefined();
     expect(await manager.activate("missing")).toBeUndefined();
+    expect(await manager.providerFor("missing")).toBeUndefined();
+    expect((await manager.providerFor())?.id).toBe("openai-compatible:gpt-4o-mini");
   });
 
   it("tests a profile and never echoes its key", async () => {

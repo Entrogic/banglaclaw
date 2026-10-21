@@ -99,4 +99,29 @@ test.describe("admin dashboard (/admin)", () => {
     await row.getByRole("button", { name: "Confirm delete" }).click();
     await expect(page.locator("tbody tr").filter({ hasText: name })).toHaveCount(0);
   });
+
+  test("saves a dataset and runs an eval, then opens the recorded run", async ({ page }) => {
+    const { adminKey } = e2eState();
+    const name = `e2e-run-${Date.now()}`;
+    await page.goto("/admin/");
+    await page.getByLabel("API key").fill(adminKey);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.getByRole("link", { name: "Evals" }).click();
+
+    const datasets = page.locator("section").filter({ has: page.getByRole("heading", { name: "Datasets" }) });
+    const form = page.getByRole("form", { name: "Add a dataset" });
+    await expect(datasets).toBeVisible();
+    if (!(await form.isVisible())) await datasets.getByRole("button", { name: "Add dataset" }).click();
+    await form.getByLabel("Name").fill(name);
+    await form.getByLabel(/Goldens/).fill("goldens:\n  - name: multiply-bn\n    input: ৬ গুণ ৭ কত?\n    expected_tools: [calculator]\n");
+    await form.getByRole("button", { name: "Save dataset" }).click();
+    await expect(datasets.getByRole("cell", { name, exact: true })).toBeVisible();
+
+    const run = page.getByRole("form", { name: "Run an eval" });
+    await run.getByLabel("Dataset").selectOption({ label: `${name} (1)` });
+    await run.getByRole("button", { name: "Start eval" }).click();
+    await run.getByRole("link", { name: "Open the run" }).click();
+    await expect(page.getByText("multiply-bn")).toBeVisible();
+    await expect(page.getByText("Tool Correctness").first()).toBeVisible();
+  });
 });
