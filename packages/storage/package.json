@@ -57,7 +57,7 @@
     "@langchain/langgraph": "^1.4.17",
     "@langchain/langgraph-checkpoint-postgres": "^1.0.5",
     "drizzle-orm": "^0.45.3",
-    "pg": "^8.23.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@entrogic-net/agent": "workspace:*",
